@@ -1,0 +1,21 @@
+[package]
+name = "backend"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+axum = { workspace = true, features = ["macros"] }
+better_tokio_select = { workspace = true }
+rand = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+sqlx = { workspace = true, features = ["sqlite", "chrono", "runtime-tokio"] }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+tower-http = { workspace = true, features = ["cors", "fs"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
+utoipa = { workspace = true }
+utoipa-axum = { workspace = true }
+utoipa-redoc = { workspace = true, features = ["axum"] }
+utoipa-swagger-ui = { workspace = true, features = ["axum"] }

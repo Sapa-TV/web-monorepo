@@ -1,0 +1,15 @@
+{
+  "name": "sapa-tv-ru",
+  "version": "0.1.0",
+  "description": "",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "Th0rN13",
+  "license": "MIT",
+  "packageManager": "pnpm@11.15.1",
+  "devDependencies": {
+    "turbo": "^2.10.5"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "tasks": {
+    "codegen:rest": {
+      "inputs": ["apps/server/src/**/*"],
+      "outputs": ["packages/api-client/src/generated/**/*"]
+    },
+    "codegen:ws": {
+      "inputs": ["apps/server/src/**/*"],
+      "outputs": ["packages/ws-client/src/generated/**/*"]
+    },
+    "codegen": {
+      "dependsOn": ["codegen:rest", "codegen:ws"]
+    },
+    "build": {
+      "dependsOn": ["^build", "codegen"],
+      "outputs": [".svelte-kit/**", "build/**", "dist/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    }
+  }
+}
