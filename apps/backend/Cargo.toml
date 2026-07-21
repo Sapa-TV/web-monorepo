@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 axum = { workspace = true, features = ["macros"] }
 better_tokio_select = { workspace = true }
-rand = { workspace = true }
+rand = { workspace = true, features = ["thread_rng"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 sqlx = { workspace = true, features = ["sqlite", "chrono", "runtime-tokio"] }
