@@ -1,8 +1,11 @@
 use super::repository::RouletteSlotRepository;
 use crate::error::RepositoryError;
 use crate::roulette::rarity::RarityId;
+use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[serde(transparent)]
 pub struct RouletteSlotId(u32);
 
 impl RouletteSlotId {

@@ -1,8 +1,12 @@
 use std::future::Future;
 
+use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
+
 use crate::error::RepositoryError;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[serde(transparent)]
 pub struct RarityId(u32);
 
 impl RarityId {
