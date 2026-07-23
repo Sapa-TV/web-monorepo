@@ -31,7 +31,10 @@ mod tests {
     use std::cell::Cell;
 
     use crate::db::inmemory::InMemoryRouletteSlotRepository;
-    use crate::roulette::slot_service::{RouletteSlotId, RouletteSlotRarity};
+    use crate::roulette::rarity_id::RarityId;
+    use crate::roulette::slot_service::RouletteSlotId;
+
+    const COMMON: RarityId = RarityId::new(1);
 
     use super::*;
 
@@ -60,21 +63,21 @@ mod tests {
             RouletteSlot::new(
                 RouletteSlotId::new(0),
                 "Test_Loser_1",
-                RouletteSlotRarity::Common,
+                COMMON,
                 0,
                 "Loser 1 Action",
             ),
             RouletteSlot::new(
                 RouletteSlotId::new(0),
                 "Test_Winner",
-                RouletteSlotRarity::Common,
+                COMMON,
                 100,
                 "Winner Action",
             ),
             RouletteSlot::new(
                 RouletteSlotId::new(0),
                 "Test_Loser_2",
-                RouletteSlotRarity::Common,
+                COMMON,
                 0,
                 "Loser 1 Action",
             ),
@@ -94,14 +97,14 @@ mod tests {
             RouletteSlot::new(
                 RouletteSlotId::new(0),
                 "Test_Variant_A",
-                RouletteSlotRarity::Common,
+                COMMON,
                 10,
                 "Variant A Action",
             ),
             RouletteSlot::new(
                 RouletteSlotId::new(0),
                 "Test_Variant_B",
-                RouletteSlotRarity::Common,
+                COMMON,
                 20,
                 "Variant B Action",
             ),

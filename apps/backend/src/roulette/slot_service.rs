@@ -1,12 +1,6 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[allow(unused)]
-pub enum RouletteSlotRarity {
-    Common,
-    Uncommon,
-    Rare,
-    Legendary,
-    Mythical,
-}
+use super::repository::RouletteSlotRepository;
+use crate::error::RepositoryError;
+use crate::roulette::rarity_id::RarityId;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RouletteSlotId(u32);
@@ -25,7 +19,7 @@ impl RouletteSlotId {
 pub struct RouletteSlot {
     pub(crate) id: RouletteSlotId,
     pub(crate) name: String,
-    pub(crate) rarity: RouletteSlotRarity,
+    pub(crate) rarity_id: RarityId,
     pub(crate) weight: u64,
     pub(crate) action: String,
 }
@@ -34,7 +28,7 @@ impl RouletteSlot {
     pub fn new<S1, S2>(
         id: RouletteSlotId,
         name: S1,
-        rarity: RouletteSlotRarity,
+        rarity_id: RarityId,
         weight: u64,
         action: S2,
     ) -> Self
@@ -45,15 +39,12 @@ impl RouletteSlot {
         Self {
             id,
             name: name.into(),
-            rarity,
+            rarity_id,
             weight,
             action: action.into(),
         }
     }
 }
-
-use super::repository::RouletteSlotRepository;
-use crate::error::RepositoryError;
 
 pub struct RouletteSlotService<R: RouletteSlotRepository> {
     repo: R,
@@ -110,15 +101,16 @@ impl<R: RouletteSlotRepository> RouletteSlotService<R> {
 #[cfg(test)]
 mod tests {
     use crate::db::inmemory::InMemoryRouletteSlotRepository;
-    use crate::roulette::slot_service::RouletteSlotRarity::Common;
+
+    const COMMON: RarityId = RarityId::new(1);
 
     use super::*;
 
     #[tokio::test]
     async fn test_total_weight_calc() {
         let slots = vec![
-            RouletteSlot::new(RouletteSlotId::new(0), "Test_1", Common, 123, "Action 1"),
-            RouletteSlot::new(RouletteSlotId::new(0), "Test_2", Common, 246, "Action 2"),
+            RouletteSlot::new(RouletteSlotId::new(0), "Test_1", COMMON, 123, "Action 1"),
+            RouletteSlot::new(RouletteSlotId::new(0), "Test_2", COMMON, 246, "Action 2"),
         ];
         let repo = InMemoryRouletteSlotRepository::seed(slots);
         let slot_service = RouletteSlotService::build(repo).await.unwrap();
@@ -130,8 +122,8 @@ mod tests {
     #[tokio::test]
     async fn test_mid_boundary_switching() {
         let slots = vec![
-            RouletteSlot::new(RouletteSlotId::new(0), "Test_1", Common, 10, "Action 1"),
-            RouletteSlot::new(RouletteSlotId::new(0), "Test_2", Common, 20, "Action 2"),
+            RouletteSlot::new(RouletteSlotId::new(0), "Test_1", COMMON, 10, "Action 1"),
+            RouletteSlot::new(RouletteSlotId::new(0), "Test_2", COMMON, 20, "Action 2"),
         ];
         let repo = InMemoryRouletteSlotRepository::seed(slots);
         let slot_service = RouletteSlotService::build(repo).await.unwrap();
@@ -149,9 +141,9 @@ mod tests {
     #[tokio::test]
     async fn test_absolute_favorite() {
         let slots = vec![
-            RouletteSlot::new(RouletteSlotId::new(0), "Loser_1", Common, 0, "Loser 1"),
-            RouletteSlot::new(RouletteSlotId::new(0), "Winner", Common, 20, "Winner"),
-            RouletteSlot::new(RouletteSlotId::new(0), "Loser_2", Common, 0, "Loser 1"),
+            RouletteSlot::new(RouletteSlotId::new(0), "Loser_1", COMMON, 0, "Loser 1"),
+            RouletteSlot::new(RouletteSlotId::new(0), "Winner", COMMON, 20, "Winner"),
+            RouletteSlot::new(RouletteSlotId::new(0), "Loser_2", COMMON, 0, "Loser 1"),
         ];
         let repo = InMemoryRouletteSlotRepository::seed(slots);
         let slot_service = RouletteSlotService::build(repo).await.unwrap();
@@ -169,9 +161,9 @@ mod tests {
     #[tokio::test]
     async fn test_fallback_heaviest() {
         let slots = vec![
-            RouletteSlot::new(RouletteSlotId::new(0), "Loser_1", Common, 0, "Loser 1"),
-            RouletteSlot::new(RouletteSlotId::new(0), "Winner", Common, 20, "Winner"),
-            RouletteSlot::new(RouletteSlotId::new(0), "Loser_2", Common, 0, "Loser 1"),
+            RouletteSlot::new(RouletteSlotId::new(0), "Loser_1", COMMON, 0, "Loser 1"),
+            RouletteSlot::new(RouletteSlotId::new(0), "Winner", COMMON, 20, "Winner"),
+            RouletteSlot::new(RouletteSlotId::new(0), "Loser_2", COMMON, 0, "Loser 1"),
         ];
         let repo = InMemoryRouletteSlotRepository::seed(slots);
         let slot_service = RouletteSlotService::build(repo).await.unwrap();
@@ -189,7 +181,7 @@ mod tests {
             .add_slot(RouletteSlot::new(
                 RouletteSlotId::new(0),
                 "New",
-                Common,
+                COMMON,
                 50,
                 "Action",
             ))
@@ -208,7 +200,7 @@ mod tests {
             .add_slot(RouletteSlot::new(
                 RouletteSlotId::new(0),
                 "ToDelete",
-                Common,
+                COMMON,
                 10,
                 "Act",
             ))
@@ -228,7 +220,7 @@ mod tests {
             .add_slot(RouletteSlot::new(
                 RouletteSlotId::new(0),
                 "Original",
-                Common,
+                COMMON,
                 10,
                 "Act",
             ))
@@ -237,7 +229,7 @@ mod tests {
 
         let id = slot_service.get_slots()[0].id;
         slot_service
-            .edit_slot(RouletteSlot::new(id, "Edited", Common, 99, "NewAct"))
+            .edit_slot(RouletteSlot::new(id, "Edited", COMMON, 99, "NewAct"))
             .await
             .unwrap();
 

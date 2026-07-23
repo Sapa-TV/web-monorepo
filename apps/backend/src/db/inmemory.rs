@@ -26,7 +26,7 @@ impl InMemoryRouletteSlotRepository {
                 RouletteSlot::new(
                     RouletteSlotId::new(i as u32 + 1),
                     &slot.name,
-                    slot.rarity,
+                    slot.rarity_id,
                     slot.weight,
                     &slot.action,
                 )
@@ -76,12 +76,12 @@ impl RouletteSlotRepository for InMemoryRouletteSlotRepository {
 
 #[cfg(test)]
 mod tests {
-    use crate::roulette::slot_service::RouletteSlotRarity::Common;
+    use crate::roulette::rarity_id::RarityId;
 
     use super::*;
 
     fn make_slot(name: &str) -> RouletteSlot {
-        RouletteSlot::new(RouletteSlotId::new(0), name, Common, 10, "action")
+        RouletteSlot::new(RouletteSlotId::new(0), name, RarityId::new(1), 10, "action")
     }
 
     #[tokio::test]
@@ -119,7 +119,7 @@ mod tests {
         let repo = InMemoryRouletteSlotRepository::new();
         let saved = repo.save(make_slot("original")).await.unwrap();
 
-        let updated = RouletteSlot::new(saved.id, "updated", Common, 99, "new action");
+        let updated = RouletteSlot::new(saved.id, "updated", RarityId::new(1), 99, "new action");
         let result = repo.update(updated.clone()).await.unwrap();
         assert_eq!(result.name, "updated");
         assert_eq!(result.weight, 99);
@@ -132,7 +132,7 @@ mod tests {
     #[tokio::test]
     async fn test_update_nonexistent_returns_error() {
         let repo = InMemoryRouletteSlotRepository::new();
-        let slot = RouletteSlot::new(RouletteSlotId::new(999), "ghost", Common, 10, "action");
+        let slot = RouletteSlot::new(RouletteSlotId::new(999), "ghost", RarityId::new(1), 10, "action");
         let err = repo.update(slot).await.unwrap_err();
         assert_eq!(err, RepositoryError::NotFound(999));
     }
@@ -176,8 +176,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_seed_normalizes_ids() {
-        let s1 = RouletteSlot::new(RouletteSlotId::new(0), "a", Common, 10, "act");
-        let s2 = RouletteSlot::new(RouletteSlotId::new(0), "b", Common, 10, "act");
+        let s1 = RouletteSlot::new(RouletteSlotId::new(0), "a", RarityId::new(1), 10, "act");
+        let s2 = RouletteSlot::new(RouletteSlotId::new(0), "b", RarityId::new(1), 10, "act");
         let repo = InMemoryRouletteSlotRepository::seed(vec![s1, s2]);
 
         let all = repo.load_all().await.unwrap();
