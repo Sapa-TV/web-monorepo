@@ -1,6 +1,6 @@
 use rand::RngExt;
 
-use crate::roulette::RandomProvider;
+use crate::roulette::machine::RandomProvider;
 
 pub struct StandartRandomProvider;
 

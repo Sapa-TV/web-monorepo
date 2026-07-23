@@ -9,48 +9,65 @@ pub enum RouletteSlotRarity {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct RouletteSlotId(u64);
+pub struct RouletteSlotId(u32);
+
+impl RouletteSlotId {
+    pub(crate) fn new(id: u32) -> Self {
+        Self(id)
+    }
+
+    pub(crate) fn value(&self) -> u32 {
+        self.0
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct RouletteSlot {
-    pub(super) id: RouletteSlotId,
-    pub(super) name: String,
-    pub(super) rarity: RouletteSlotRarity,
-    pub(super) weight: u64,
-    pub(super) action: String,
+    pub(crate) id: RouletteSlotId,
+    pub(crate) name: String,
+    pub(crate) rarity: RouletteSlotRarity,
+    pub(crate) weight: u64,
+    pub(crate) action: String,
 }
 
 impl RouletteSlot {
-    pub fn new(name: &str, rarity: RouletteSlotRarity, weight: u64, action: &str) -> Self {
+    pub fn new<S1, S2>(
+        id: RouletteSlotId,
+        name: S1,
+        rarity: RouletteSlotRarity,
+        weight: u64,
+        action: S2,
+    ) -> Self
+    where
+        S1: Into<String>,
+        S2: Into<String>,
+    {
         Self {
-            id: RouletteSlotId(0),
-            name: name.to_string(),
+            id,
+            name: name.into(),
             rarity,
             weight,
-            action: action.to_string(),
+            action: action.into(),
         }
     }
 }
 
-pub struct RouletteSlotService {
+use super::repository::RouletteSlotRepository;
+use crate::error::RepositoryError;
+
+pub struct RouletteSlotService<R: RouletteSlotRepository> {
+    repo: R,
     slots: Vec<RouletteSlot>,
 }
 
-impl RouletteSlotService {
-    pub fn new(slots: Vec<RouletteSlot>) -> Self {
-        Self { slots }
+impl<R: RouletteSlotRepository> RouletteSlotService<R> {
+    pub async fn build(repo: R) -> Result<Self, RepositoryError> {
+        let slots = repo.load_all().await?;
+        Ok(Self { repo, slots })
     }
 
-    pub fn add_slot(&mut self, slot: RouletteSlot) {
-        self.slots.push(slot);
-    }
-
-    pub fn get_slots(&self) -> &Vec<RouletteSlot> {
+    pub fn get_slots(&self) -> &[RouletteSlot] {
         &self.slots
-    }
-
-    pub fn edit_slot(&mut self, _slot: RouletteSlot) {
-        // TODO: Implement edit slot
     }
 
     pub fn total_weight(&self) -> u64 {
@@ -66,36 +83,58 @@ impl RouletteSlotService {
             }
         }
 
-        let slot = self.slots.iter().max_by_key(|slot| slot.weight);
-        slot
+        self.slots.iter().max_by_key(|slot| slot.weight)
+    }
+
+    pub async fn add_slot(&mut self, slot: RouletteSlot) -> Result<(), RepositoryError> {
+        let saved = self.repo.save(slot).await?;
+        self.slots.push(saved);
+        Ok(())
+    }
+
+    pub async fn edit_slot(&mut self, slot: RouletteSlot) -> Result<(), RepositoryError> {
+        let updated = self.repo.update(slot).await?;
+        if let Some(existing) = self.slots.iter_mut().find(|s| s.id == updated.id) {
+            *existing = updated;
+        }
+        Ok(())
+    }
+
+    pub async fn delete_slot(&mut self, id: RouletteSlotId) -> Result<(), RepositoryError> {
+        self.repo.delete(id).await?;
+        self.slots.retain(|s| s.id != id);
+        Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::db::inmemory::InMemoryRouletteSlotRepository;
     use crate::roulette::slot_service::RouletteSlotRarity::Common;
 
     use super::*;
 
-    #[test]
-    fn test_total_weight_calc() {
+    #[tokio::test]
+    async fn test_total_weight_calc() {
         let slots = vec![
-            RouletteSlot::new("Test_1", Common, 123, "Action 1"),
-            RouletteSlot::new("Test_2", Common, 246, "Action 2"),
+            RouletteSlot::new(RouletteSlotId::new(0), "Test_1", Common, 123, "Action 1"),
+            RouletteSlot::new(RouletteSlotId::new(0), "Test_2", Common, 246, "Action 2"),
         ];
-        let slot_service = RouletteSlotService::new(slots);
+        let repo = InMemoryRouletteSlotRepository::seed(slots);
+        let slot_service = RouletteSlotService::build(repo).await.unwrap();
 
         let total_weight = slot_service.total_weight();
         assert_eq!(total_weight, 369);
     }
 
-    #[test]
-    fn test_mid_boundary_switching() {
+    #[tokio::test]
+    async fn test_mid_boundary_switching() {
         let slots = vec![
-            RouletteSlot::new("Test_1", Common, 10, "Action 1"),
-            RouletteSlot::new("Test_2", Common, 20, "Action 2"),
+            RouletteSlot::new(RouletteSlotId::new(0), "Test_1", Common, 10, "Action 1"),
+            RouletteSlot::new(RouletteSlotId::new(0), "Test_2", Common, 20, "Action 2"),
         ];
-        let slot_service = RouletteSlotService::new(slots);
+        let repo = InMemoryRouletteSlotRepository::seed(slots);
+        let slot_service = RouletteSlotService::build(repo).await.unwrap();
 
         let slot = slot_service.get_slot_by_weight(0).unwrap();
         assert_eq!(slot.name, "Test_1".to_string());
@@ -107,14 +146,15 @@ mod tests {
         assert_eq!(slot.name, "Test_2".to_string());
     }
 
-    #[test]
-    fn test_absolute_favorite() {
+    #[tokio::test]
+    async fn test_absolute_favorite() {
         let slots = vec![
-            RouletteSlot::new("Loser_1", Common, 0, "Loser 1"),
-            RouletteSlot::new("Winner", Common, 20, "Winner"),
-            RouletteSlot::new("Loser_2", Common, 0, "Loser 1"),
+            RouletteSlot::new(RouletteSlotId::new(0), "Loser_1", Common, 0, "Loser 1"),
+            RouletteSlot::new(RouletteSlotId::new(0), "Winner", Common, 20, "Winner"),
+            RouletteSlot::new(RouletteSlotId::new(0), "Loser_2", Common, 0, "Loser 1"),
         ];
-        let slot_service = RouletteSlotService::new(slots);
+        let repo = InMemoryRouletteSlotRepository::seed(slots);
+        let slot_service = RouletteSlotService::build(repo).await.unwrap();
 
         let slot = slot_service.get_slot_by_weight(0).unwrap();
         assert_eq!(slot.name, "Winner".to_string());
@@ -126,16 +166,82 @@ mod tests {
         assert_eq!(slot.name, "Winner".to_string());
     }
 
-    #[test]
-    fn test_fallback_heaviest() {
+    #[tokio::test]
+    async fn test_fallback_heaviest() {
         let slots = vec![
-            RouletteSlot::new("Loser_1", Common, 0, "Loser 1"),
-            RouletteSlot::new("Winner", Common, 20, "Winner"),
-            RouletteSlot::new("Loser_2", Common, 0, "Loser 1"),
+            RouletteSlot::new(RouletteSlotId::new(0), "Loser_1", Common, 0, "Loser 1"),
+            RouletteSlot::new(RouletteSlotId::new(0), "Winner", Common, 20, "Winner"),
+            RouletteSlot::new(RouletteSlotId::new(0), "Loser_2", Common, 0, "Loser 1"),
         ];
-        let slot_service = RouletteSlotService::new(slots);
+        let repo = InMemoryRouletteSlotRepository::seed(slots);
+        let slot_service = RouletteSlotService::build(repo).await.unwrap();
 
         let slot = slot_service.get_slot_by_weight(30).unwrap();
         assert_eq!(slot.name, "Winner".to_string());
+    }
+
+    #[tokio::test]
+    async fn test_add_and_get_slots() {
+        let repo = InMemoryRouletteSlotRepository::new();
+        let mut slot_service = RouletteSlotService::build(repo).await.unwrap();
+
+        slot_service
+            .add_slot(RouletteSlot::new(
+                RouletteSlotId::new(0),
+                "New",
+                Common,
+                50,
+                "Action",
+            ))
+            .await
+            .unwrap();
+        assert_eq!(slot_service.get_slots().len(), 1);
+        assert_eq!(slot_service.total_weight(), 50);
+    }
+
+    #[tokio::test]
+    async fn test_delete_slot() {
+        let repo = InMemoryRouletteSlotRepository::new();
+        let mut slot_service = RouletteSlotService::build(repo).await.unwrap();
+
+        slot_service
+            .add_slot(RouletteSlot::new(
+                RouletteSlotId::new(0),
+                "ToDelete",
+                Common,
+                10,
+                "Act",
+            ))
+            .await
+            .unwrap();
+        let id = slot_service.get_slots()[0].id;
+        slot_service.delete_slot(id).await.unwrap();
+        assert!(slot_service.get_slots().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_edit_slot() {
+        let repo = InMemoryRouletteSlotRepository::new();
+        let mut slot_service = RouletteSlotService::build(repo).await.unwrap();
+
+        slot_service
+            .add_slot(RouletteSlot::new(
+                RouletteSlotId::new(0),
+                "Original",
+                Common,
+                10,
+                "Act",
+            ))
+            .await
+            .unwrap();
+
+        let id = slot_service.get_slots()[0].id;
+        slot_service
+            .edit_slot(RouletteSlot::new(id, "Edited", Common, 99, "NewAct"))
+            .await
+            .unwrap();
+
+        assert_eq!(slot_service.get_slots()[0].name, "Edited");
+        assert_eq!(slot_service.get_slots()[0].weight, 99);
     }
 }

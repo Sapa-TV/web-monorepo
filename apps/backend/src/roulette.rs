@@ -1,4 +1,3 @@
-mod machine;
-mod slot_service;
-
-pub use machine::*;
+pub mod machine;
+pub mod repository;
+pub mod slot_service;

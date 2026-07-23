@@ -2,6 +2,10 @@
 resolver = "2"
 members = ["apps/backend"]
 
+[workspace.lints.clippy]
+unwrap_used = "deny"
+let_underscore_must_use = "warn"
+
 [workspace.dependencies]
 axum = "0.8.9"
 better_tokio_select = "0.2.0"

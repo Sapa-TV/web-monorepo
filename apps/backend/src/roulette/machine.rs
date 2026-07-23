@@ -1,16 +1,17 @@
+use crate::roulette::repository::RouletteSlotRepository;
 use crate::roulette::slot_service::{RouletteSlot, RouletteSlotService};
 
 pub trait RandomProvider {
     fn next(&self) -> f64;
 }
 
-pub struct RouletteService<R: RandomProvider> {
-    slot_service: RouletteSlotService,
-    random: R,
+pub struct RouletteService<Rand: RandomProvider, Repo: RouletteSlotRepository> {
+    slot_service: RouletteSlotService<Repo>,
+    random: Rand,
 }
 
-impl<R: RandomProvider> RouletteService<R> {
-    pub fn new(slot_service: RouletteSlotService, random: R) -> Self {
+impl<Rand: RandomProvider, Repo: RouletteSlotRepository> RouletteService<Rand, Repo> {
+    pub fn new(slot_service: RouletteSlotService<Repo>, random: Rand) -> Self {
         Self {
             slot_service,
             random,
@@ -21,9 +22,7 @@ impl<R: RandomProvider> RouletteService<R> {
         let total_weight: u64 = self.slot_service.total_weight();
         let random_value = self.random.next() * total_weight as f64;
 
-        let slot = self.slot_service.get_slot_by_weight(random_value as u64);
-
-        slot
+        self.slot_service.get_slot_by_weight(random_value as u64)
     }
 }
 
@@ -31,7 +30,8 @@ impl<R: RandomProvider> RouletteService<R> {
 mod tests {
     use std::cell::Cell;
 
-    use crate::roulette::slot_service::RouletteSlotRarity;
+    use crate::db::inmemory::InMemoryRouletteSlotRepository;
+    use crate::roulette::slot_service::{RouletteSlotId, RouletteSlotRarity};
 
     use super::*;
 
@@ -53,54 +53,61 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_absolute_favorite_case() {
+    #[tokio::test]
+    async fn test_absolute_favorite_case() {
         let mock_random = MockRandomProvider::new(0.99);
         let slots = vec![
             RouletteSlot::new(
+                RouletteSlotId::new(0),
                 "Test_Loser_1",
                 RouletteSlotRarity::Common,
                 0,
                 "Loser 1 Action",
             ),
             RouletteSlot::new(
+                RouletteSlotId::new(0),
                 "Test_Winner",
                 RouletteSlotRarity::Common,
                 100,
                 "Winner Action",
             ),
             RouletteSlot::new(
+                RouletteSlotId::new(0),
                 "Test_Loser_2",
                 RouletteSlotRarity::Common,
                 0,
                 "Loser 1 Action",
             ),
         ];
-        let slot_service = RouletteSlotService::new(slots);
+        let repo = InMemoryRouletteSlotRepository::seed(slots);
+        let slot_service = RouletteSlotService::build(repo).await.unwrap();
         let roulette = RouletteService::new(slot_service, mock_random);
 
         let winner_slot = roulette.roll().unwrap();
         assert_eq!(winner_slot.name, "Test_Winner".to_string());
     }
 
-    #[test]
-    fn test_mid_boundary_switching() {
+    #[tokio::test]
+    async fn test_mid_boundary_switching() {
         let mock_random = MockRandomProvider::new(0.0);
         let slots = vec![
             RouletteSlot::new(
+                RouletteSlotId::new(0),
                 "Test_Variant_A",
                 RouletteSlotRarity::Common,
                 10,
                 "Variant A Action",
             ),
             RouletteSlot::new(
+                RouletteSlotId::new(0),
                 "Test_Variant_B",
                 RouletteSlotRarity::Common,
                 20,
                 "Variant B Action",
             ),
         ];
-        let slot_service = RouletteSlotService::new(slots);
+        let repo = InMemoryRouletteSlotRepository::seed(slots);
+        let slot_service = RouletteSlotService::build(repo).await.unwrap();
         let roulette = RouletteService::new(slot_service, mock_random);
 
         let winner_slot = roulette.roll().unwrap();
