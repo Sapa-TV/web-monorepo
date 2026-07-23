@@ -30,8 +30,8 @@ impl<Rand: RandomProvider, Repo: RouletteSlotRepository> RouletteService<Rand, R
 mod tests {
     use std::cell::Cell;
 
-    use crate::db::inmemory::InMemoryRouletteSlotRepository;
-    use crate::roulette::rarity_id::RarityId;
+    use crate::db::inmemory_roulette_slots::InMemoryRouletteSlotRepository;
+    use crate::roulette::rarity::RarityId;
     use crate::roulette::slot_service::RouletteSlotId;
 
     const COMMON: RarityId = RarityId::new(1);

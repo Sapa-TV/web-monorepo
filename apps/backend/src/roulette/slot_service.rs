@@ -1,6 +1,6 @@
 use super::repository::RouletteSlotRepository;
 use crate::error::RepositoryError;
-use crate::roulette::rarity_id::RarityId;
+use crate::roulette::rarity::RarityId;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RouletteSlotId(u32);
@@ -100,7 +100,7 @@ impl<R: RouletteSlotRepository> RouletteSlotService<R> {
 
 #[cfg(test)]
 mod tests {
-    use crate::db::inmemory::InMemoryRouletteSlotRepository;
+    use crate::db::inmemory_roulette_slots::InMemoryRouletteSlotRepository;
 
     const COMMON: RarityId = RarityId::new(1);
 
