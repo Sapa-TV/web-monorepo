@@ -1,10 +1,12 @@
 #![feature(sync_nonpoison)]
 #![feature(nonpoison_mutex)]
 
+mod api;
 mod db;
 mod error;
 mod random;
 mod roulette;
+mod state;
 
 #[tokio::main]
 async fn main() {

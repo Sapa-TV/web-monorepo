@@ -2,6 +2,7 @@ use rand::RngExt;
 
 use crate::roulette::machine::RandomProvider;
 
+#[derive(Clone)]
 pub struct StandartRandomProvider;
 
 impl RandomProvider for StandartRandomProvider {
