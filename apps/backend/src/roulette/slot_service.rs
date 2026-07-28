@@ -18,7 +18,7 @@ impl RouletteSlotId {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, ToSchema)]
 pub struct RouletteSlot {
     pub(crate) id: RouletteSlotId,
     pub(crate) name: String,

@@ -2,9 +2,12 @@
 #![feature(nonpoison_mutex)]
 
 mod api;
+mod config;
 mod db;
 mod error;
+mod event;
 mod platform;
+mod queue;
 mod random;
 mod roulette;
 mod state;

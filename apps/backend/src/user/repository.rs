@@ -53,8 +53,6 @@ pub trait UserRepository: Send + Sync {
         platform_id: PlatformId,
     ) -> impl Future<Output = Result<bool, RepositoryError>> + Send;
 
-    fn delete_user(
-        &self,
-        id: UserId,
-    ) -> impl Future<Output = Result<bool, RepositoryError>> + Send;
+    fn delete_user(&self, id: UserId)
+    -> impl Future<Output = Result<bool, RepositoryError>> + Send;
 }

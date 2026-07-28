@@ -1,6 +1,6 @@
+use axum::Json;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
-use axum::Json;
 use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, OpenApi, ToSchema};
 
@@ -185,8 +185,7 @@ pub async fn get_user(
     State(state): State<AppState>,
     Path(params): Path<UserIdParam>,
 ) -> Result<Json<UserResponse>, ApiError> {
-    let response =
-        build_user_response(params.id, &*state.platform_repo, &*state.user_repo).await?;
+    let response = build_user_response(params.id, &*state.platform_repo, &*state.user_repo).await?;
     Ok(Json(response))
 }
 
@@ -213,8 +212,7 @@ pub async fn update_user(
     if updated.is_none() {
         return Err(ApiError::new(StatusCode::NOT_FOUND, "user not found"));
     }
-    let response =
-        build_user_response(params.id, &*state.platform_repo, &*state.user_repo).await?;
+    let response = build_user_response(params.id, &*state.platform_repo, &*state.user_repo).await?;
     Ok(Json(response))
 }
 
@@ -260,10 +258,14 @@ pub async fn link_platform(
     let platform = resolve_platform(&body.platform, &*state.platform_repo).await?;
     state
         .user_repo
-        .link_platform(params.id, platform.id, &body.platform_user_id, &body.platform_username)
+        .link_platform(
+            params.id,
+            platform.id,
+            &body.platform_user_id,
+            &body.platform_username,
+        )
         .await?;
-    let response =
-        build_user_response(params.id, &*state.platform_repo, &*state.user_repo).await?;
+    let response = build_user_response(params.id, &*state.platform_repo, &*state.user_repo).await?;
     Ok(Json(response))
 }
 
@@ -290,10 +292,12 @@ pub async fn update_platform_username(
         .update_platform_username(params.id, platform.id, &body.platform_username)
         .await?;
     if updated.is_none() {
-        return Err(ApiError::new(StatusCode::NOT_FOUND, "platform link not found"));
+        return Err(ApiError::new(
+            StatusCode::NOT_FOUND,
+            "platform link not found",
+        ));
     }
-    let response =
-        build_user_response(params.id, &*state.platform_repo, &*state.user_repo).await?;
+    let response = build_user_response(params.id, &*state.platform_repo, &*state.user_repo).await?;
     Ok(Json(response))
 }
 
@@ -318,10 +322,12 @@ pub async fn delete_platform(
         .delete_platform(params.id, platform.id)
         .await?;
     if !deleted {
-        return Err(ApiError::new(StatusCode::NOT_FOUND, "platform link not found"));
+        return Err(ApiError::new(
+            StatusCode::NOT_FOUND,
+            "platform link not found",
+        ));
     }
-    let response =
-        build_user_response(params.id, &*state.platform_repo, &*state.user_repo).await?;
+    let response = build_user_response(params.id, &*state.platform_repo, &*state.user_repo).await?;
     Ok(Json(response))
 }
 
@@ -369,10 +375,29 @@ pub async fn list_platforms(
         LinkPlatformRequest,
         UpdateUserRequest,
         UpdatePlatformRequest,
-
     ))
 )]
 pub(crate) struct UsersApiDoc;
+
+pub fn router() -> axum::Router<AppState> {
+    use axum::routing::{delete, get, patch, post};
+    axum::Router::new()
+        .route("/api/users", post(create_user))
+        .route("/api/users", get(find_user))
+        .route("/api/users/{id}", get(get_user))
+        .route("/api/users/{id}", patch(update_user))
+        .route("/api/users/{id}", delete(delete_user))
+        .route("/api/users/{id}/platforms", post(link_platform))
+        .route(
+            "/api/users/{id}/platforms/{platform}",
+            patch(update_platform_username),
+        )
+        .route(
+            "/api/users/{id}/platforms/{platform}",
+            delete(delete_platform),
+        )
+        .route("/api/platforms", get(list_platforms))
+}
 
 #[cfg(test)]
 mod tests {
@@ -384,9 +409,11 @@ mod tests {
 
     use crate::api::router;
     use crate::db::inmemory_platform::InMemoryPlatformRepository;
+    use crate::db::inmemory_queue::InMemoryQueueRepository;
     use crate::db::inmemory_rarity::InMemoryRarityRepository;
     use crate::db::inmemory_roulette_slots::InMemoryRouletteSlotRepository;
     use crate::db::inmemory_user::InMemoryUserRepository;
+    use crate::event::NoopEventPublisher;
     use crate::random::StandartRandomProvider;
     use crate::state::AppState;
     use crate::user::repository::UserRepository;
@@ -397,7 +424,9 @@ mod tests {
             rarity_repo: Arc::new(InMemoryRarityRepository::new()),
             user_repo: Arc::new(InMemoryUserRepository::new()),
             platform_repo: Arc::new(InMemoryPlatformRepository::new_seeded()),
+            queue_repo: Arc::new(InMemoryQueueRepository::new()),
             random: StandartRandomProvider,
+            event_publisher: NoopEventPublisher,
         }
     }
 
@@ -710,7 +739,12 @@ mod tests {
         let user = state.user_repo.create("Viewer").await.unwrap();
         state
             .user_repo
-            .link_platform(user.id, crate::platform::PlatformId::new(1), "123", "old_name")
+            .link_platform(
+                user.id,
+                crate::platform::PlatformId::new(1),
+                "123",
+                "old_name",
+            )
             .await
             .unwrap();
 
@@ -718,12 +752,11 @@ mod tests {
             .oneshot(
                 axum::http::Request::builder()
                     .method("PATCH")
-                    .uri(&format!(
-                        "/api/users/{}/platforms/twitch",
-                        user.id.value()
-                    ))
+                    .uri(&format!("/api/users/{}/platforms/twitch", user.id.value()))
                     .header("content-type", "application/json")
-                    .body(axum::body::Body::from(r#"{"platform_username":"new_name"}"#))
+                    .body(axum::body::Body::from(
+                        r#"{"platform_username":"new_name"}"#,
+                    ))
                     .unwrap(),
             )
             .await
@@ -755,10 +788,7 @@ mod tests {
             .oneshot(
                 axum::http::Request::builder()
                     .method("DELETE")
-                    .uri(&format!(
-                        "/api/users/{}/platforms/twitch",
-                        user.id.value()
-                    ))
+                    .uri(&format!("/api/users/{}/platforms/twitch", user.id.value()))
                     .body(axum::body::Body::empty())
                     .unwrap(),
             )
@@ -786,10 +816,7 @@ mod tests {
             .oneshot(
                 axum::http::Request::builder()
                     .method("DELETE")
-                    .uri(&format!(
-                        "/api/users/{}/platforms/twitch",
-                        user.id.value()
-                    ))
+                    .uri(&format!("/api/users/{}/platforms/twitch", user.id.value()))
                     .body(axum::body::Body::empty())
                     .unwrap(),
             )
@@ -810,10 +837,7 @@ mod tests {
             .oneshot(
                 axum::http::Request::builder()
                     .method("DELETE")
-                    .uri(&format!(
-                        "/api/users/{}/platforms/unknown",
-                        user.id.value()
-                    ))
+                    .uri(&format!("/api/users/{}/platforms/unknown", user.id.value()))
                     .body(axum::body::Body::empty())
                     .unwrap(),
             )

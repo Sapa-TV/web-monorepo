@@ -62,10 +62,7 @@ impl UserRepository for InMemoryUserRepository {
         Ok(users.iter().find(|u| u.id == id).cloned())
     }
 
-    async fn get_platforms(
-        &self,
-        user_id: UserId,
-    ) -> Result<Vec<UserPlatform>, RepositoryError> {
+    async fn get_platforms(&self, user_id: UserId) -> Result<Vec<UserPlatform>, RepositoryError> {
         let user_platforms = self.user_platforms.lock();
         Ok(user_platforms
             .iter()
@@ -281,7 +278,11 @@ mod tests {
     async fn update_display_name() {
         let repo = InMemoryUserRepository::new();
         let user = repo.create("OldName").await.unwrap();
-        let updated = repo.update_display_name(user.id, "NewName").await.unwrap().unwrap();
+        let updated = repo
+            .update_display_name(user.id, "NewName")
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(updated.display_name, "NewName");
 
         let fetched = repo.get_by_id(user.id).await.unwrap().unwrap();
@@ -291,7 +292,10 @@ mod tests {
     #[tokio::test]
     async fn update_display_name_nonexistent() {
         let repo = InMemoryUserRepository::new();
-        let result = repo.update_display_name(UserId::new(999), "Name").await.unwrap();
+        let result = repo
+            .update_display_name(UserId::new(999), "Name")
+            .await
+            .unwrap();
         assert!(result.is_none());
     }
 
@@ -397,7 +401,11 @@ mod tests {
         let user = repo.create("Viewer").await.unwrap();
         let original = user.updated_at;
 
-        let updated = repo.update_display_name(user.id, "New").await.unwrap().unwrap();
+        let updated = repo
+            .update_display_name(user.id, "New")
+            .await
+            .unwrap()
+            .unwrap();
         assert!(updated.updated_at > original);
     }
 

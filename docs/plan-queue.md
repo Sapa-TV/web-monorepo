@@ -5,6 +5,7 @@
 **QueueEntry** — элемент очереди розыгрыша.
 
 - Поля: id, user_id (User), reward_title (опционально), status, result_slot_id (опционально, RouletteSlot), created_at, updated_at.
+  > **Изменение относительно плана:** `reward_title` удалён из `QueueEntry`, `EnqueueRequest`, `QueueEntryResponse` и `enqueue()`.
 - Статусы: Pending (ждёт), Spinning (крутится), Completed (завершён), Error (ошибка), Cancelled (отменён).
 - Один пользователь может иметь несколько Pending одновременно.
 
@@ -37,6 +38,8 @@
 | `count_by_status()`                          | Количество по каждому статусу                         | `Result<QueueStats, RepositoryError>`         |
 | `find_timed_out()`                           | Найти Spinning, у которых истёк таймаут               | `Result<Vec<QueueEntry>, RepositoryError>`    |
 
+> **Изменение относительно плана:** `enqueue` принимает `user_id` без `reward_title`.
+
 ## API
 
 | Method | Path                       | Caller           | Request                                                            | Response              | Описание                                                                                                             |
@@ -49,6 +52,8 @@
 | `POST` | `/api/queue/{id}/complete` | Widget           | —                                                                  | 200                   | Подтвердить → Completed. 409 если не Spinning.                                                                       |
 | `POST` | `/api/queue/{id}/cancel`   | Dock             | —                                                                  | 200                   | Отменить Pending или Error. 409 если не Pending и не Error.                                                          |
 | `GET`  | `/api/queue/stats`         | Dock             | —                                                                  | 200 + QueueStats      | Количество по статусам.                                                                                              |
+
+> **Изменение относительно плана:** `reward_title` удалён из запроса.
 
 ## Сценарии использования
 
@@ -95,10 +100,32 @@ pub enum SpinEvent {
     Completed { entry: QueueEntry },
     Error { entry: QueueEntry },
 }
+```
 
+> **Изменение относительно плана:** события содержат только id и display-поля:
+>
+> ```rust
+> Started { entry_id: QueueEntryId, slot_name: String, slot_rarity: String, user_name: String },
+> Completed { entry_id: QueueEntryId },
+> Error { entry_id: QueueEntryId },
+> ```
+
+```rust
 /// Инфраструктурная ошибка при отправке события (сеть, канал переполнен, и т.д.)
 pub struct EventError(pub String);
+```
 
+> **Изменение относительно плана:** `EventError` — `thiserror` enum в `src/error/event.rs`:
+>
+> ```rust
+> #[derive(Debug, Error)]
+> pub enum EventError {
+>     #[error("publish failed: {0}")]
+>     Publish(String),
+> }
+> ```
+
+```rust
 pub trait SpinEventPublisher: Send + Sync {
     async fn publish_spin(&self, event: SpinEvent) -> Result<(), EventError>;
 }

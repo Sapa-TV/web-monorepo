@@ -3,11 +3,7 @@ use std::sync::nonpoison::Mutex;
 use crate::error::RepositoryError;
 use crate::platform::{Platform, PlatformId, PlatformRepository};
 
-const SEEDED: &[(u32, &str)] = &[
-    (1, "twitch"),
-    (2, "youtube"),
-    (3, "vk_video_live"),
-];
+const SEEDED: &[(u32, &str)] = &[(1, "twitch"), (2, "youtube"), (3, "vk_video_live")];
 
 pub struct InMemoryPlatformRepository {
     platforms: Mutex<Vec<Platform>>,

@@ -1,6 +1,6 @@
+use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
-use axum::Json;
 use serde::{Deserialize, Serialize};
 use utoipa::OpenApi;
 use utoipa::{IntoParams, ToSchema};
@@ -149,7 +149,7 @@ pub async fn delete_slot(
     State(state): State<AppState>,
     Path(params): Path<SlotIdParam>,
 ) -> Result<StatusCode, ApiError> {
-    let deleted =     state.slot_repo.delete(params.id).await?;
+    let deleted = state.slot_repo.delete(params.id).await?;
     if !deleted {
         return Err(ApiError::new(StatusCode::NOT_FOUND, "slot not found"));
     }
@@ -166,9 +166,11 @@ mod tests {
 
     use crate::api::router;
     use crate::db::inmemory_platform::InMemoryPlatformRepository;
+    use crate::db::inmemory_queue::InMemoryQueueRepository;
     use crate::db::inmemory_rarity::InMemoryRarityRepository;
     use crate::db::inmemory_roulette_slots::InMemoryRouletteSlotRepository;
     use crate::db::inmemory_user::InMemoryUserRepository;
+    use crate::event::NoopEventPublisher;
     use crate::random::StandartRandomProvider;
     use crate::roulette::repository::RouletteSlotRepository;
     use crate::state::AppState;
@@ -179,7 +181,9 @@ mod tests {
             rarity_repo: Arc::new(InMemoryRarityRepository::new()),
             user_repo: Arc::new(InMemoryUserRepository::new()),
             platform_repo: Arc::new(InMemoryPlatformRepository::new_seeded()),
+            queue_repo: Arc::new(InMemoryQueueRepository::new()),
             random: StandartRandomProvider,
+            event_publisher: NoopEventPublisher,
         }
     }
 
@@ -352,4 +356,13 @@ mod tests {
 
         assert_eq!(response.status(), 404);
     }
+}
+
+pub fn router() -> axum::Router<AppState> {
+    use axum::routing::{delete, get, post, put};
+    axum::Router::new()
+        .route("/api/slots", get(list_slots))
+        .route("/api/slots", post(create_slot))
+        .route("/api/slots/{id}", put(update_slot))
+        .route("/api/slots/{id}", delete(delete_slot))
 }
