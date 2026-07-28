@@ -87,9 +87,10 @@ impl<R: RouletteSlotRepository> RouletteSlotService<R> {
     }
 
     pub async fn edit_slot(&mut self, slot: RouletteSlot) -> Result<(), RepositoryError> {
-        let updated = self.repo.update(slot).await?;
-        if let Some(existing) = self.slots.iter_mut().find(|s| s.id == updated.id) {
-            *existing = updated;
+        if let Some(updated) = self.repo.update(slot).await? {
+            if let Some(existing) = self.slots.iter_mut().find(|s| s.id == updated.id) {
+                *existing = updated;
+            }
         }
         Ok(())
     }

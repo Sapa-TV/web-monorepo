@@ -127,7 +127,11 @@ pub async fn update_slot(
         body.weight,
         &body.action,
     );
-    let updated = state.slot_repo.update(slot).await?;
+    let updated = state
+        .slot_repo
+        .update(slot)
+        .await?
+        .ok_or_else(|| ApiError::new(StatusCode::NOT_FOUND, "slot not found"))?;
     Ok(Json(updated.into()))
 }
 

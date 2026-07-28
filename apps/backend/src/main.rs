@@ -4,9 +4,11 @@
 mod api;
 mod db;
 mod error;
+mod platform;
 mod random;
 mod roulette;
 mod state;
+mod user;
 
 #[tokio::main]
 async fn main() {

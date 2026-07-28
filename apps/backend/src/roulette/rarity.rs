@@ -52,6 +52,6 @@ pub trait RarityRepository: Send + Sync {
     fn update(
         &self,
         rarity: Rarity,
-    ) -> impl Future<Output = Result<Rarity, RepositoryError>> + Send;
-    fn delete(&self, id: RarityId) -> impl Future<Output = Result<(), RepositoryError>> + Send;
+    ) -> impl Future<Output = Result<Option<Rarity>, RepositoryError>> + Send;
+    fn delete(&self, id: RarityId) -> impl Future<Output = Result<bool, RepositoryError>> + Send;
 }

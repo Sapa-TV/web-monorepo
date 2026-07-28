@@ -53,25 +53,21 @@ impl RouletteSlotRepository for InMemoryRouletteSlotRepository {
         Ok(slot)
     }
 
-    async fn update(&self, slot: RouletteSlot) -> Result<RouletteSlot, RepositoryError> {
+    async fn update(&self, slot: RouletteSlot) -> Result<Option<RouletteSlot>, RepositoryError> {
         let mut slots = self.slots.lock();
         if let Some(existing) = slots.iter_mut().find(|s| s.id == slot.id) {
             *existing = slot.clone();
-            Ok(slot)
+            Ok(Some(slot))
         } else {
-            Err(RepositoryError::NotFound(slot.id.value()))
+            Ok(None)
         }
     }
 
-    async fn delete(&self, id: RouletteSlotId) -> Result<(), RepositoryError> {
+    async fn delete(&self, id: RouletteSlotId) -> Result<bool, RepositoryError> {
         let mut slots = self.slots.lock();
         let len_before = slots.len();
         slots.retain(|s| s.id != id);
-        if slots.len() == len_before {
-            Err(RepositoryError::NotFound(id.value()))
-        } else {
-            Ok(())
-        }
+        Ok(slots.len() != len_before)
     }
 }
 
@@ -123,7 +119,7 @@ mod tests {
         let saved = repo.save(make_slot("original")).await.unwrap();
 
         let updated = RouletteSlot::new(saved.id, "updated", COMMON, 99, "new action");
-        let result = repo.update(updated.clone()).await.unwrap();
+        let result = repo.update(updated.clone()).await.unwrap().unwrap();
         assert_eq!(result.name, "updated");
         assert_eq!(result.weight, 99);
 
@@ -133,11 +129,11 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_update_nonexistent_returns_error() {
+    async fn test_update_nonexistent_returns_none() {
         let repo = InMemoryRouletteSlotRepository::new();
         let slot = RouletteSlot::new(RouletteSlotId::new(999), "ghost", COMMON, 10, "action");
-        let err = repo.update(slot).await.unwrap_err();
-        assert_eq!(err, RepositoryError::NotFound(999));
+        let result = repo.update(slot).await.unwrap();
+        assert!(result.is_none());
     }
 
     #[tokio::test]
@@ -151,10 +147,10 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_delete_nonexistent_returns_error() {
+    async fn test_delete_nonexistent_returns_false() {
         let repo = InMemoryRouletteSlotRepository::new();
-        let err = repo.delete(RouletteSlotId::new(42)).await.unwrap_err();
-        assert_eq!(err, RepositoryError::NotFound(42));
+        let result = repo.delete(RouletteSlotId::new(42)).await.unwrap();
+        assert!(!result);
     }
 
     #[tokio::test]

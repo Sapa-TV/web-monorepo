@@ -52,24 +52,20 @@ impl RarityRepository for InMemoryRarityRepository {
         Ok(rarity)
     }
 
-    async fn update(&self, rarity: Rarity) -> Result<Rarity, RepositoryError> {
+    async fn update(&self, rarity: Rarity) -> Result<Option<Rarity>, RepositoryError> {
         let mut rarities = self.rarities.lock();
         if let Some(existing) = rarities.iter_mut().find(|r| r.id == rarity.id) {
             *existing = rarity.clone();
-            Ok(rarity)
+            Ok(Some(rarity))
         } else {
-            Err(RepositoryError::NotFound(rarity.id.value()))
+            Ok(None)
         }
     }
 
-    async fn delete(&self, id: RarityId) -> Result<(), RepositoryError> {
+    async fn delete(&self, id: RarityId) -> Result<bool, RepositoryError> {
         let mut rarities = self.rarities.lock();
         let len_before = rarities.len();
         rarities.retain(|r| r.id != id);
-        if rarities.len() == len_before {
-            Err(RepositoryError::NotFound(id.value()))
-        } else {
-            Ok(())
-        }
+        Ok(rarities.len() != len_before)
     }
 }

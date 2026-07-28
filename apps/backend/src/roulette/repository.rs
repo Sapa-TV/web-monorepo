@@ -12,9 +12,9 @@ pub trait RouletteSlotRepository: Send + Sync {
     fn update(
         &self,
         slot: RouletteSlot,
-    ) -> impl Future<Output = Result<RouletteSlot, RepositoryError>> + Send;
+    ) -> impl Future<Output = Result<Option<RouletteSlot>, RepositoryError>> + Send;
     fn delete(
         &self,
         id: RouletteSlotId,
-    ) -> impl Future<Output = Result<(), RepositoryError>> + Send;
+    ) -> impl Future<Output = Result<bool, RepositoryError>> + Send;
 }
