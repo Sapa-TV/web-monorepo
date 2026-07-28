@@ -149,6 +149,207 @@ pub async fn delete_slot(
     State(state): State<AppState>,
     Path(params): Path<SlotIdParam>,
 ) -> Result<StatusCode, ApiError> {
-    state.slot_repo.delete(params.id).await?;
+    let deleted =     state.slot_repo.delete(params.id).await?;
+    if !deleted {
+        return Err(ApiError::new(StatusCode::NOT_FOUND, "slot not found"));
+    }
     Ok(StatusCode::NO_CONTENT)
+}
+
+#[cfg(test)]
+mod tests {
+    use axum::Router;
+    use serde_json::Value;
+    use tower::ServiceExt;
+
+    use std::sync::Arc;
+
+    use crate::api::router;
+    use crate::db::inmemory_platform::InMemoryPlatformRepository;
+    use crate::db::inmemory_rarity::InMemoryRarityRepository;
+    use crate::db::inmemory_roulette_slots::InMemoryRouletteSlotRepository;
+    use crate::db::inmemory_user::InMemoryUserRepository;
+    use crate::random::StandartRandomProvider;
+    use crate::roulette::repository::RouletteSlotRepository;
+    use crate::state::AppState;
+
+    fn test_state() -> AppState {
+        AppState {
+            slot_repo: Arc::new(InMemoryRouletteSlotRepository::new()),
+            rarity_repo: Arc::new(InMemoryRarityRepository::new()),
+            user_repo: Arc::new(InMemoryUserRepository::new()),
+            platform_repo: Arc::new(InMemoryPlatformRepository::new_seeded()),
+            random: StandartRandomProvider,
+        }
+    }
+
+    #[tokio::test]
+    async fn list_slots_empty() {
+        let state = test_state();
+        let app = Router::new().merge(router()).with_state(state);
+
+        let response = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .method("GET")
+                    .uri("/api/slots")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), 200);
+        let body: Value = serde_json::from_slice(
+            &axum::body::to_bytes(response.into_body(), usize::MAX)
+                .await
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(body.as_array().unwrap().len(), 0);
+    }
+
+    #[tokio::test]
+    async fn create_slot_201() {
+        let state = test_state();
+        let app = Router::new().merge(router()).with_state(state);
+
+        let response = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .method("POST")
+                    .uri("/api/slots")
+                    .header("content-type", "application/json")
+                    .body(axum::body::Body::from(
+                        r#"{"name":"test","rarity_id":1,"weight":10,"action":"act"}"#,
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), 201);
+        let body: Value = serde_json::from_slice(
+            &axum::body::to_bytes(response.into_body(), usize::MAX)
+                .await
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(body["name"], "test");
+        assert_eq!(body["id"], 1);
+    }
+
+    #[tokio::test]
+    async fn update_slot_200() {
+        let state = test_state();
+        let app = Router::new().merge(router()).with_state(state.clone());
+
+        let saved = state
+            .slot_repo
+            .save(crate::roulette::slot_service::RouletteSlot::new(
+                crate::roulette::slot_service::RouletteSlotId::new(0),
+                "original",
+                crate::roulette::rarity::RarityId::new(1),
+                10,
+                "act",
+            ))
+            .await
+            .unwrap();
+
+        let response = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .method("PUT")
+                    .uri(&format!("/api/slots/{}", saved.id.value()))
+                    .header("content-type", "application/json")
+                    .body(axum::body::Body::from(
+                        r#"{"name":"updated","rarity_id":1,"weight":99,"action":"new_act"}"#,
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), 200);
+        let body: Value = serde_json::from_slice(
+            &axum::body::to_bytes(response.into_body(), usize::MAX)
+                .await
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(body["name"], "updated");
+        assert_eq!(body["weight"], 99);
+    }
+
+    #[tokio::test]
+    async fn update_slot_404() {
+        let state = test_state();
+        let app = Router::new().merge(router()).with_state(state);
+
+        let response = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .method("PUT")
+                    .uri("/api/slots/999")
+                    .header("content-type", "application/json")
+                    .body(axum::body::Body::from(
+                        r#"{"name":"nonexistent","rarity_id":1,"weight":1,"action":"act"}"#,
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), 404);
+    }
+
+    #[tokio::test]
+    async fn delete_slot_204() {
+        let state = test_state();
+        let app = Router::new().merge(router()).with_state(state.clone());
+
+        let saved = state
+            .slot_repo
+            .save(crate::roulette::slot_service::RouletteSlot::new(
+                crate::roulette::slot_service::RouletteSlotId::new(0),
+                "to_delete",
+                crate::roulette::rarity::RarityId::new(1),
+                10,
+                "act",
+            ))
+            .await
+            .unwrap();
+
+        let response = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .method("DELETE")
+                    .uri(&format!("/api/slots/{}", saved.id.value()))
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), 204);
+    }
+
+    #[tokio::test]
+    async fn delete_slot_404() {
+        let state = test_state();
+        let app = Router::new().merge(router()).with_state(state);
+
+        let response = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .method("DELETE")
+                    .uri("/api/slots/999")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), 404);
+    }
 }
