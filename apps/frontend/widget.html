@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Виджет — Рулетка</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body class="page-widget">
+<div class="widget" id="widget">
+  <div class="state" id="stateLabel">Ожидание</div>
+  <div class="spinner hidden" id="spinner"></div>
+  <div class="idle-text" id="idleText">Ожидание следующего спина...</div>
+  <div class="spin-info hidden" id="spinInfo">
+    <div class="user-name" id="userName"></div>
+    <div class="slot-name" id="slotName"></div>
+    <div class="slot-rarity" id="slotRarity"></div>
+    <div class="entry-id" id="entryId"></div>
+  </div>
+  <div class="auto-timer hidden" id="autoTimer"><div class="bar"><div class="bar-fill"></div></div></div>
+</div>
+<div class="sse-badge">
+  <span class="sse-dot disconnected" id="sseDot"></span>
+  <span id="sseLabel">SSE</span>
+</div>
+
+<script src="js/widget.js"></script>
+</body>
+</html>

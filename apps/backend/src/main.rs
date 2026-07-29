@@ -17,9 +17,9 @@ mod test_fixtures;
 mod user;
 
 use tower_http::cors::CorsLayer;
-use tower_http::services::ServeDir;
 use tracing::info;
 use utoipa::OpenApi;
+use utoipa_redoc::{Redoc, Servable};
 use utoipa_swagger_ui::SwaggerUi;
 
 use crate::api::ApiDoc;
@@ -44,7 +44,7 @@ async fn main() {
         .with_state(state.clone())
         .layer(cors)
         .merge(SwaggerUi::new("/docs").url("/api-doc/openapi.json", ApiDoc::openapi()))
-        .nest_service("/", ServeDir::new("static"));
+        .merge(Redoc::with_url("/redoc", ApiDoc::openapi()));
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
         .await
