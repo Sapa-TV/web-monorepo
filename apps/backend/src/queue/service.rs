@@ -77,7 +77,6 @@ impl QueueService {
             .list(Some(QueueStatus::Spinning))
             .await?
             .into_iter()
-            .chain(self.queue_repo.list(Some(QueueStatus::Error)).await?)
             .next();
 
         if active.is_some() {
