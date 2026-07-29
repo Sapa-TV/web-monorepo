@@ -17,6 +17,7 @@ sqlx = { workspace = true, features = ["sqlite", "chrono", "runtime-tokio"] }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 tower = { workspace = true }
+tokio-stream = { workspace = true, features = ["sync"] }
 tower-http = { workspace = true, features = ["cors", "fs"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }

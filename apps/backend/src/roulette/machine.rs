@@ -5,6 +5,7 @@ pub trait RandomProvider {
     fn next(&self) -> f64;
 }
 
+#[non_exhaustive]
 pub struct RouletteService<Rand: RandomProvider, Repo: RouletteSlotRepository> {
     slot_service: RouletteSlotService<Repo>,
     random: Rand,

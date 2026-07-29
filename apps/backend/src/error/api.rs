@@ -7,10 +7,20 @@ use utoipa::ToSchema;
 use super::RepositoryError;
 
 #[derive(Debug, Serialize, ToSchema)]
+#[non_exhaustive]
 pub struct ErrorResponse {
     pub error: String,
 }
 
+impl ErrorResponse {
+    pub fn new(error: impl Into<String>) -> Self {
+        Self {
+            error: error.into(),
+        }
+    }
+}
+
+#[non_exhaustive]
 pub struct ApiError {
     status: StatusCode,
     body: ErrorResponse,
@@ -20,9 +30,7 @@ impl ApiError {
     pub fn new(status: StatusCode, error: impl Into<String>) -> Self {
         Self {
             status,
-            body: ErrorResponse {
-                error: error.into(),
-            },
+            body: ErrorResponse::new(error),
         }
     }
 }
@@ -38,11 +46,11 @@ impl From<RepositoryError> for ApiError {
         match e {
             RepositoryError::Conflict(msg) => Self {
                 status: StatusCode::CONFLICT,
-                body: ErrorResponse { error: msg },
+                body: ErrorResponse::new(msg),
             },
             RepositoryError::Database(msg) => Self {
                 status: StatusCode::INTERNAL_SERVER_ERROR,
-                body: ErrorResponse { error: msg },
+                body: ErrorResponse::new(msg),
             },
         }
     }

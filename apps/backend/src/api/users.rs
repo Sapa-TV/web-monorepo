@@ -11,6 +11,7 @@ use crate::user::repository::UserRepository;
 use crate::user::{User, UserId, UserPlatform, UserPlatformId};
 
 #[derive(Debug, Serialize, ToSchema)]
+#[non_exhaustive]
 pub struct UserResponse {
     pub id: UserId,
     pub display_name: String,
@@ -20,6 +21,7 @@ pub struct UserResponse {
 }
 
 #[derive(Debug, Serialize, ToSchema)]
+#[non_exhaustive]
 pub struct UserPlatformResponse {
     pub id: UserPlatformId,
     pub platform: String,
@@ -28,17 +30,20 @@ pub struct UserPlatformResponse {
 }
 
 #[derive(Debug, Serialize, ToSchema)]
+#[non_exhaustive]
 pub struct PlatformResponse {
     pub id: PlatformId,
     pub name: String,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
+#[non_exhaustive]
 pub struct CreateUserRequest {
     pub display_name: String,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
+#[non_exhaustive]
 pub struct LinkPlatformRequest {
     pub platform: String,
     pub platform_user_id: String,
@@ -46,27 +51,32 @@ pub struct LinkPlatformRequest {
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
+#[non_exhaustive]
 pub struct UpdateUserRequest {
     pub display_name: String,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
+#[non_exhaustive]
 pub struct UpdatePlatformRequest {
     pub platform_username: String,
 }
 
 #[derive(Debug, Deserialize, IntoParams)]
+#[non_exhaustive]
 pub struct FindUserQuery {
     pub platform: String,
     pub platform_user_id: String,
 }
 
 #[derive(Debug, Deserialize, IntoParams)]
+#[non_exhaustive]
 pub struct UserIdParam {
     pub id: UserId,
 }
 
 #[derive(Debug, Deserialize, IntoParams)]
+#[non_exhaustive]
 pub struct PlatformNameParam {
     pub id: UserId,
     pub platform: String,
@@ -377,6 +387,7 @@ pub async fn list_platforms(
         UpdatePlatformRequest,
     ))
 )]
+#[non_exhaustive]
 pub(crate) struct UsersApiDoc;
 
 pub fn router() -> axum::Router<AppState> {
@@ -405,30 +416,9 @@ mod tests {
     use serde_json::Value;
     use tower::ServiceExt;
 
-    use std::sync::Arc;
-
     use crate::api::router;
-    use crate::db::inmemory_platform::InMemoryPlatformRepository;
-    use crate::db::inmemory_queue::InMemoryQueueRepository;
-    use crate::db::inmemory_rarity::InMemoryRarityRepository;
-    use crate::db::inmemory_roulette_slots::InMemoryRouletteSlotRepository;
-    use crate::db::inmemory_user::InMemoryUserRepository;
-    use crate::event::NoopEventPublisher;
-    use crate::random::StandartRandomProvider;
-    use crate::state::AppState;
+    use crate::test_fixtures::test_state;
     use crate::user::repository::UserRepository;
-
-    fn test_state() -> AppState {
-        AppState {
-            slot_repo: Arc::new(InMemoryRouletteSlotRepository::new()),
-            rarity_repo: Arc::new(InMemoryRarityRepository::new()),
-            user_repo: Arc::new(InMemoryUserRepository::new()),
-            platform_repo: Arc::new(InMemoryPlatformRepository::new_seeded()),
-            queue_repo: Arc::new(InMemoryQueueRepository::new()),
-            random: StandartRandomProvider,
-            event_publisher: NoopEventPublisher,
-        }
-    }
 
     #[tokio::test]
     async fn create_user_201() {

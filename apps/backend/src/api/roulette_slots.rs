@@ -12,6 +12,7 @@ use crate::roulette::slot_service::{RouletteSlot, RouletteSlotId};
 use crate::state::AppState;
 
 #[derive(Debug, Serialize, ToSchema)]
+#[non_exhaustive]
 pub struct RouletteSlotResponse {
     pub id: RouletteSlotId,
     pub name: String,
@@ -21,6 +22,7 @@ pub struct RouletteSlotResponse {
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
+#[non_exhaustive]
 pub struct CreateRouletteSlotRequest {
     pub name: String,
     pub rarity_id: RarityId,
@@ -29,6 +31,7 @@ pub struct CreateRouletteSlotRequest {
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
+#[non_exhaustive]
 pub struct UpdateRouletteSlotRequest {
     pub name: String,
     pub rarity_id: RarityId,
@@ -37,6 +40,7 @@ pub struct UpdateRouletteSlotRequest {
 }
 
 #[derive(Debug, Deserialize, IntoParams)]
+#[non_exhaustive]
 pub struct SlotIdParam {
     pub id: RouletteSlotId,
 }
@@ -50,6 +54,7 @@ pub struct SlotIdParam {
         UpdateRouletteSlotRequest,
     ))
 )]
+#[non_exhaustive]
 pub(crate) struct SlotsApiDoc;
 
 impl From<RouletteSlot> for RouletteSlotResponse {
@@ -162,30 +167,9 @@ mod tests {
     use serde_json::Value;
     use tower::ServiceExt;
 
-    use std::sync::Arc;
-
     use crate::api::router;
-    use crate::db::inmemory_platform::InMemoryPlatformRepository;
-    use crate::db::inmemory_queue::InMemoryQueueRepository;
-    use crate::db::inmemory_rarity::InMemoryRarityRepository;
-    use crate::db::inmemory_roulette_slots::InMemoryRouletteSlotRepository;
-    use crate::db::inmemory_user::InMemoryUserRepository;
-    use crate::event::NoopEventPublisher;
-    use crate::random::StandartRandomProvider;
     use crate::roulette::repository::RouletteSlotRepository;
-    use crate::state::AppState;
-
-    fn test_state() -> AppState {
-        AppState {
-            slot_repo: Arc::new(InMemoryRouletteSlotRepository::new()),
-            rarity_repo: Arc::new(InMemoryRarityRepository::new()),
-            user_repo: Arc::new(InMemoryUserRepository::new()),
-            platform_repo: Arc::new(InMemoryPlatformRepository::new_seeded()),
-            queue_repo: Arc::new(InMemoryQueueRepository::new()),
-            random: StandartRandomProvider,
-            event_publisher: NoopEventPublisher,
-        }
-    }
+    use crate::test_fixtures::test_state;
 
     #[tokio::test]
     async fn list_slots_empty() {

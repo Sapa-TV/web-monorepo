@@ -9,6 +9,7 @@ use crate::queue::repository::QueueRepository;
 use crate::roulette::slot_service::RouletteSlotId;
 use crate::user::UserId;
 
+#[non_exhaustive]
 pub struct InMemoryQueueRepository {
     entries: Mutex<Vec<QueueEntry>>,
     next_id: AtomicU32,
@@ -27,14 +28,14 @@ impl QueueRepository for InMemoryQueueRepository {
     async fn enqueue(&self, user_id: UserId) -> Result<QueueEntry, RepositoryError> {
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
         let now = Utc::now().naive_utc();
-        let entry = QueueEntry {
-            id: QueueEntryId::new(id),
+        let entry = QueueEntry::new(
+            QueueEntryId::new(id),
             user_id,
-            status: QueueStatus::Pending,
-            result_slot_id: None,
-            created_at: now,
-            updated_at: now,
-        };
+            QueueStatus::Pending,
+            None,
+            now,
+            now,
+        );
         self.entries.lock().push(entry.clone());
         Ok(entry)
     }
@@ -96,13 +97,7 @@ impl QueueRepository for InMemoryQueueRepository {
 
     async fn count_by_status(&self) -> Result<QueueStats, RepositoryError> {
         let entries = self.entries.lock();
-        let mut stats = QueueStats {
-            pending: 0,
-            spinning: 0,
-            completed: 0,
-            error: 0,
-            cancelled: 0,
-        };
+        let mut stats = QueueStats::new(0, 0, 0, 0, 0);
         for entry in entries.iter() {
             match entry.status {
                 QueueStatus::Pending => stats.pending += 1,
@@ -125,5 +120,22 @@ impl QueueRepository for InMemoryQueueRepository {
             .filter(|e| e.status == QueueStatus::Spinning && e.updated_at < cutoff)
             .cloned()
             .collect())
+    }
+
+    async fn mark_timed_out(
+        &self,
+        cutoff: NaiveDateTime,
+    ) -> Result<Vec<QueueEntry>, RepositoryError> {
+        let mut entries = self.entries.lock();
+        let now = Utc::now().naive_utc();
+        let mut result = Vec::new();
+        for entry in entries.iter_mut() {
+            if entry.status == QueueStatus::Spinning && entry.updated_at < cutoff {
+                entry.status = QueueStatus::Error;
+                entry.updated_at = now;
+                result.push(entry.clone());
+            }
+        }
+        Ok(result)
     }
 }

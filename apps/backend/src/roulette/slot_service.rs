@@ -6,6 +6,7 @@ use utoipa::ToSchema;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 #[serde(transparent)]
+#[non_exhaustive]
 pub struct RouletteSlotId(u32);
 
 impl RouletteSlotId {
@@ -19,6 +20,7 @@ impl RouletteSlotId {
 }
 
 #[derive(Debug, Clone, serde::Serialize, ToSchema)]
+#[non_exhaustive]
 pub struct RouletteSlot {
     pub(crate) id: RouletteSlotId,
     pub(crate) name: String,
@@ -49,6 +51,7 @@ impl RouletteSlot {
     }
 }
 
+#[non_exhaustive]
 pub struct RouletteSlotService<R: RouletteSlotRepository> {
     repo: R,
     slots: Vec<RouletteSlot>,
@@ -87,10 +90,10 @@ impl<R: RouletteSlotRepository> RouletteSlotService<R> {
     }
 
     pub async fn edit_slot(&mut self, slot: RouletteSlot) -> Result<(), RepositoryError> {
-        if let Some(updated) = self.repo.update(slot).await? {
-            if let Some(existing) = self.slots.iter_mut().find(|s| s.id == updated.id) {
-                *existing = updated;
-            }
+        if let Some(updated) = self.repo.update(slot).await?
+            && let Some(existing) = self.slots.iter_mut().find(|s| s.id == updated.id)
+        {
+            *existing = updated;
         }
         Ok(())
     }

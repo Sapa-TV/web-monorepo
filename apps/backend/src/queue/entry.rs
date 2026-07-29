@@ -7,6 +7,7 @@ use crate::user::UserId;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 #[serde(transparent)]
+#[non_exhaustive]
 pub struct QueueEntryId(u32);
 
 impl QueueEntryId {
@@ -20,6 +21,7 @@ impl QueueEntryId {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[non_exhaustive]
 pub enum QueueStatus {
     Pending,
     Spinning,
@@ -29,6 +31,7 @@ pub enum QueueStatus {
 }
 
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct QueueEntry {
     pub id: QueueEntryId,
     pub user_id: UserId,
@@ -38,11 +41,44 @@ pub struct QueueEntry {
     pub updated_at: NaiveDateTime,
 }
 
+impl QueueEntry {
+    pub fn new(
+        id: QueueEntryId,
+        user_id: UserId,
+        status: QueueStatus,
+        result_slot_id: Option<RouletteSlotId>,
+        created_at: NaiveDateTime,
+        updated_at: NaiveDateTime,
+    ) -> Self {
+        Self {
+            id,
+            user_id,
+            status,
+            result_slot_id,
+            created_at,
+            updated_at,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, ToSchema)]
+#[non_exhaustive]
 pub struct QueueStats {
     pub pending: u32,
     pub spinning: u32,
     pub completed: u32,
     pub error: u32,
     pub cancelled: u32,
+}
+
+impl QueueStats {
+    pub fn new(pending: u32, spinning: u32, completed: u32, error: u32, cancelled: u32) -> Self {
+        Self {
+            pending,
+            spinning,
+            completed,
+            error,
+            cancelled,
+        }
+    }
 }

@@ -1,3 +1,4 @@
+#[non_exhaustive]
 pub struct Config {
     pub roulette_timeout_secs: u64,
 }

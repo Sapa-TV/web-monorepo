@@ -1,11 +1,30 @@
+use std::sync::Arc;
+
+use tokio::sync::broadcast;
+
 use crate::error::event::EventError;
 use crate::queue::events::{SpinEvent, SpinEventPublisher};
 
 #[derive(Clone)]
-pub struct NoopEventPublisher;
+#[non_exhaustive]
+pub struct BroadcastEventPublisher {
+    tx: broadcast::Sender<Arc<SpinEvent>>,
+}
 
-impl SpinEventPublisher for NoopEventPublisher {
-    async fn publish_spin(&self, _event: SpinEvent) -> Result<(), EventError> {
+impl BroadcastEventPublisher {
+    pub fn new() -> Self {
+        let (tx, _) = broadcast::channel(16);
+        Self { tx }
+    }
+
+    pub fn subscribe(&self) -> broadcast::Receiver<Arc<SpinEvent>> {
+        self.tx.subscribe()
+    }
+}
+
+impl SpinEventPublisher for BroadcastEventPublisher {
+    async fn publish_spin(&self, event: SpinEvent) -> Result<(), EventError> {
+        let _ = self.tx.send(Arc::new(event));
         Ok(())
     }
 }

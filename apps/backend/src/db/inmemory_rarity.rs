@@ -4,6 +4,7 @@ use std::sync::nonpoison::Mutex;
 use crate::error::RepositoryError;
 use crate::roulette::rarity::{Rarity, RarityId, RarityRepository};
 
+#[non_exhaustive]
 pub struct InMemoryRarityRepository {
     rarities: Mutex<Vec<Rarity>>,
     next_id: AtomicU32,
@@ -14,6 +15,31 @@ impl InMemoryRarityRepository {
         Self {
             rarities: Mutex::new(Vec::new()),
             next_id: AtomicU32::new(1),
+        }
+    }
+
+    pub fn new_seeded() -> Self {
+        let rarities = vec![
+            Rarity::new(
+                RarityId::new(1),
+                "common",
+                "Common",
+                "common.png",
+                "#9d9d9d",
+            ),
+            Rarity::new(RarityId::new(2), "rare", "Rare", "rare.png", "#4CAF50"),
+            Rarity::new(RarityId::new(3), "epic", "Epic", "epic.png", "#9C27B0"),
+            Rarity::new(
+                RarityId::new(4),
+                "legendary",
+                "Legendary",
+                "legendary.png",
+                "#FFD700",
+            ),
+        ];
+        Self {
+            rarities: Mutex::new(rarities),
+            next_id: AtomicU32::new(5),
         }
     }
 

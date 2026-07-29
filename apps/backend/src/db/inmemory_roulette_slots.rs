@@ -2,19 +2,49 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::nonpoison::Mutex;
 
 use crate::error::RepositoryError;
+use crate::roulette::rarity::RarityId;
 use crate::roulette::repository::RouletteSlotRepository;
 use crate::roulette::slot_service::{RouletteSlot, RouletteSlotId};
 
+#[non_exhaustive]
 pub struct InMemoryRouletteSlotRepository {
     slots: Mutex<Vec<RouletteSlot>>,
     next_id: AtomicU32,
 }
+
+const SEEDED_SLOTS: &[(&str, u32, u64, &str)] = &[
+    ("Поболтать", 1, 50, "chat"),
+    ("Подписка", 2, 20, "subscribe"),
+    ("Суперчат", 3, 5, "superchat"),
+    ("Джекпот", 4, 1, "jackpot"),
+];
 
 impl InMemoryRouletteSlotRepository {
     pub fn new() -> Self {
         Self {
             slots: Mutex::new(Vec::new()),
             next_id: AtomicU32::new(1),
+        }
+    }
+
+    pub fn new_seeded() -> Self {
+        let slots: Vec<RouletteSlot> = SEEDED_SLOTS
+            .iter()
+            .enumerate()
+            .map(|(i, (name, rarity, weight, action))| {
+                RouletteSlot::new(
+                    RouletteSlotId::new(i as u32 + 1),
+                    *name,
+                    RarityId::new(*rarity),
+                    *weight,
+                    *action,
+                )
+            })
+            .collect();
+        let next_id = slots.len() as u32 + 1;
+        Self {
+            slots: Mutex::new(slots),
+            next_id: AtomicU32::new(next_id),
         }
     }
 

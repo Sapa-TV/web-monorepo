@@ -7,6 +7,7 @@ use crate::error::RepositoryError;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 #[serde(transparent)]
+#[non_exhaustive]
 pub struct PlatformId(u32);
 
 impl PlatformId {
@@ -20,9 +21,19 @@ impl PlatformId {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct Platform {
     pub id: PlatformId,
     pub name: String,
+}
+
+impl Platform {
+    pub fn new(id: PlatformId, name: impl Into<String>) -> Self {
+        Self {
+            id,
+            name: name.into(),
+        }
+    }
 }
 
 pub trait PlatformRepository: Send + Sync {

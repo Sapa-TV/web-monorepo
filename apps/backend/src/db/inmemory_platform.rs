@@ -5,6 +5,7 @@ use crate::platform::{Platform, PlatformId, PlatformRepository};
 
 const SEEDED: &[(u32, &str)] = &[(1, "twitch"), (2, "youtube"), (3, "vk_video_live")];
 
+#[non_exhaustive]
 pub struct InMemoryPlatformRepository {
     platforms: Mutex<Vec<Platform>>,
 }
@@ -13,10 +14,7 @@ impl InMemoryPlatformRepository {
     pub fn new_seeded() -> Self {
         let platforms = SEEDED
             .iter()
-            .map(|&(id, name)| Platform {
-                id: PlatformId::new(id),
-                name: name.to_string(),
-            })
+            .map(|&(id, name)| Platform::new(PlatformId::new(id), name))
             .collect();
         Self {
             platforms: Mutex::new(platforms),

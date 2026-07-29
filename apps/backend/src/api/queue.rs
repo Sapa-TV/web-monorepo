@@ -7,15 +7,14 @@ use utoipa::{IntoParams, OpenApi, ToSchema};
 use crate::error::api::ApiError;
 use crate::platform::PlatformRepository;
 use crate::queue::entry::{QueueEntry, QueueEntryId, QueueStats, QueueStatus};
-use crate::queue::events::{SpinEvent, SpinEventPublisher};
 use crate::queue::repository::QueueRepository;
-use crate::roulette::rarity::RarityRepository;
-use crate::roulette::repository::RouletteSlotRepository;
+use crate::queue::service::QueueServiceError;
 use crate::roulette::slot_service::RouletteSlot;
 use crate::state::AppState;
 use crate::user::repository::UserRepository;
 
 #[derive(Debug, Deserialize, ToSchema)]
+#[non_exhaustive]
 pub struct EnqueueRequest {
     pub platform: String,
     pub platform_user_id: String,
@@ -23,6 +22,7 @@ pub struct EnqueueRequest {
 }
 
 #[derive(Debug, Serialize, ToSchema)]
+#[non_exhaustive]
 pub struct QueueEntryResponse {
     pub id: QueueEntryId,
     pub user_id: u32,
@@ -44,41 +44,22 @@ fn to_entry_response(entry: &QueueEntry) -> QueueEntryResponse {
 }
 
 #[derive(Debug, Serialize, ToSchema)]
+#[non_exhaustive]
 pub struct NextResponse {
     pub entry: QueueEntryResponse,
     pub slot: RouletteSlot,
 }
 
 #[derive(Debug, Deserialize, IntoParams)]
+#[non_exhaustive]
 pub struct ListQuery {
     pub status: Option<QueueStatus>,
 }
 
 #[derive(Debug, Deserialize, IntoParams)]
+#[non_exhaustive]
 pub struct QueueIdParam {
     pub id: QueueEntryId,
-}
-
-fn pick_slot(
-    random: &impl crate::roulette::machine::RandomProvider,
-    slots: &[RouletteSlot],
-) -> Option<RouletteSlot> {
-    if slots.is_empty() {
-        return None;
-    }
-    let total_weight: u64 = slots.iter().map(|s| s.weight).sum();
-    if total_weight == 0 {
-        return slots.last().cloned();
-    }
-    let threshold = (random.next() * total_weight as f64) as u64;
-    let mut cumulative = 0u64;
-    for slot in slots {
-        cumulative += slot.weight;
-        if threshold < cumulative {
-            return Some(slot.clone());
-        }
-    }
-    slots.last().cloned()
 }
 
 async fn resolve_platform(
@@ -198,85 +179,14 @@ pub async fn peek_next(
     responses(
         (status = 200, description = "Spin started", body = NextResponse),
         (status = 404, description = "No pending or error entries"),
-        (status = 409, description = "A spin is already in progress"),
+        (status = 409, description = "A spin or error is already active"),
         (status = 500, description = "No slots configured or server error"),
     )
 )]
-pub async fn dequeue_next(State(state): State<AppState>) -> Result<Json<NextResponse>, ApiError> {
-    let has_spinning = state
-        .queue_repo
-        .list(Some(QueueStatus::Spinning))
-        .await?
-        .first()
-        .cloned();
-
-    if has_spinning.is_some() {
-        return Err(ApiError::new(
-            StatusCode::CONFLICT,
-            "a spin is already in progress",
-        ));
-    }
-
-    let entry = state
-        .queue_repo
-        .dequeue_next()
-        .await?
-        .ok_or_else(|| ApiError::new(StatusCode::NOT_FOUND, "no pending or error entries"))?;
-
-    let slots = state
-        .slot_repo
-        .load_all()
-        .await
-        .map_err(|e| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-
-    let slot = pick_slot(&state.random, &slots).ok_or_else(|| {
-        ApiError::new(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "no roulette slots configured",
-        )
-    })?;
-
-    let updated = state
-        .queue_repo
-        .update_status(entry.id, QueueStatus::Spinning, Some(slot.id))
-        .await?;
-
-    let Some(entry) = updated else {
-        return Err(ApiError::new(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "failed to update entry status",
-        ));
-    };
-
-    let user = state
-        .user_repo
-        .get_by_id(entry.user_id)
-        .await?
-        .ok_or_else(|| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "user not found"))?;
-
-    let rarities = state
-        .rarity_repo
-        .load_all()
-        .await
-        .map_err(|e| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-
-    let slot_rarity = rarities
-        .iter()
-        .find(|r| r.id == slot.rarity_id)
-        .map(|r| r.display_name.clone())
-        .ok_or_else(|| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "rarity not found"))?;
-
-    state
-        .event_publisher
-        .publish_spin(SpinEvent::Started {
-            entry_id: entry.id,
-            slot_name: slot.name.clone(),
-            slot_rarity,
-            user_name: user.display_name,
-        })
-        .await
-        .map_err(|e| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-
+pub async fn dequeue_next(
+    State(state): State<AppState>,
+) -> Result<Json<NextResponse>, QueueServiceError> {
+    let (entry, slot) = state.queue_service.dequeue_next().await?;
     Ok(Json(NextResponse {
         entry: to_entry_response(&entry),
         slot,
@@ -297,38 +207,8 @@ pub async fn dequeue_next(State(state): State<AppState>) -> Result<Json<NextResp
 pub async fn complete(
     State(state): State<AppState>,
     Path(params): Path<QueueIdParam>,
-) -> Result<StatusCode, ApiError> {
-    let entry = state
-        .queue_repo
-        .get_by_id(params.id)
-        .await?
-        .ok_or_else(|| ApiError::new(StatusCode::NOT_FOUND, "queue entry not found"))?;
-
-    if entry.status != QueueStatus::Spinning {
-        return Err(ApiError::new(
-            StatusCode::CONFLICT,
-            "entry is not in spinning state",
-        ));
-    }
-
-    let updated = state
-        .queue_repo
-        .update_status(params.id, QueueStatus::Completed, entry.result_slot_id)
-        .await?;
-
-    let Some(entry) = updated else {
-        return Err(ApiError::new(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "failed to update entry status",
-        ));
-    };
-
-    state
-        .event_publisher
-        .publish_spin(SpinEvent::Completed { entry_id: entry.id })
-        .await
-        .map_err(|e| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-
+) -> Result<StatusCode, QueueServiceError> {
+    state.queue_service.complete(params.id).await?;
     Ok(StatusCode::OK)
 }
 
@@ -346,32 +226,8 @@ pub async fn complete(
 pub async fn cancel(
     State(state): State<AppState>,
     Path(params): Path<QueueIdParam>,
-) -> Result<StatusCode, ApiError> {
-    let entry = state
-        .queue_repo
-        .get_by_id(params.id)
-        .await?
-        .ok_or_else(|| ApiError::new(StatusCode::NOT_FOUND, "queue entry not found"))?;
-
-    if entry.status != QueueStatus::Pending && entry.status != QueueStatus::Error {
-        return Err(ApiError::new(
-            StatusCode::CONFLICT,
-            "only pending or error entries can be cancelled",
-        ));
-    }
-
-    let updated = state
-        .queue_repo
-        .update_status(params.id, QueueStatus::Cancelled, entry.result_slot_id)
-        .await?;
-
-    if updated.is_none() {
-        return Err(ApiError::new(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "failed to update entry status",
-        ));
-    }
-
+) -> Result<StatusCode, QueueServiceError> {
+    state.queue_service.cancel(params.id).await?;
     Ok(StatusCode::OK)
 }
 
@@ -409,6 +265,7 @@ pub async fn stats(State(state): State<AppState>) -> Result<Json<QueueStats>, Ap
         NextResponse,
     ))
 )]
+#[non_exhaustive]
 pub(crate) struct QueueApiDoc;
 
 pub fn router() -> axum::Router<AppState> {

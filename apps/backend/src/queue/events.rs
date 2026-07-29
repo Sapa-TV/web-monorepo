@@ -2,6 +2,7 @@ use crate::error::event::EventError;
 use crate::queue::entry::QueueEntryId;
 
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub enum SpinEvent {
     Started {
         entry_id: QueueEntryId,

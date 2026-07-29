@@ -7,6 +7,7 @@ use crate::error::RepositoryError;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 #[serde(transparent)]
+#[non_exhaustive]
 pub struct RarityId(u32);
 
 impl RarityId {
@@ -20,6 +21,7 @@ impl RarityId {
 }
 
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct Rarity {
     pub(crate) id: RarityId,
     pub(crate) name: String,

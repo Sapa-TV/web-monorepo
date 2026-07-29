@@ -42,4 +42,9 @@ pub trait QueueRepository: Send + Sync {
         &self,
         cutoff: NaiveDateTime,
     ) -> impl Future<Output = Result<Vec<QueueEntry>, RepositoryError>> + Send;
+
+    fn mark_timed_out(
+        &self,
+        cutoff: NaiveDateTime,
+    ) -> impl Future<Output = Result<Vec<QueueEntry>, RepositoryError>> + Send;
 }

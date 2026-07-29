@@ -8,6 +8,7 @@ use crate::platform::PlatformId;
 use crate::user::repository::UserRepository;
 use crate::user::{User, UserId, UserPlatform, UserPlatformId};
 
+#[non_exhaustive]
 pub struct InMemoryUserRepository {
     users: Mutex<Vec<User>>,
     user_platforms: Mutex<Vec<UserPlatform>>,
