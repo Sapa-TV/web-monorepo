@@ -1,17 +1,13 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use axum::http::StatusCode;
-use axum::response::{IntoResponse, Response};
 use chrono::Utc;
 
 use crate::db::inmemory_queue::InMemoryQueueRepository;
 use crate::db::inmemory_rarity::InMemoryRarityRepository;
 use crate::db::inmemory_roulette_slots::InMemoryRouletteSlotRepository;
 use crate::db::inmemory_user::InMemoryUserRepository;
-use crate::error::RepositoryError;
-use crate::error::api::ApiError;
-use crate::error::event::EventError;
+use crate::error::QueueServiceError;
 use crate::event::BroadcastEventPublisher;
 use crate::queue::entry::{QueueEntry, QueueEntryId, QueueStatus};
 use crate::queue::events::{SpinEvent, SpinEventPublisher};
@@ -101,7 +97,7 @@ impl QueueService {
             .queue_repo
             .update_status(entry.id, QueueStatus::Spinning, Some(slot.id))
             .await?
-            .ok_or(QueueServiceError::StatusUpdateFailed)?;
+            .ok_or(QueueServiceError::NotFound)?;
 
         let user = self
             .user_repo
@@ -143,7 +139,7 @@ impl QueueService {
             .queue_repo
             .update_status(id, QueueStatus::Completed, entry.result_slot_id)
             .await?
-            .ok_or(QueueServiceError::StatusUpdateFailed)?;
+            .ok_or(QueueServiceError::NotFound)?;
 
         self.event_publisher
             .publish_spin(SpinEvent::Completed {
@@ -165,14 +161,10 @@ impl QueueService {
             return Err(QueueServiceError::NotCancellable);
         }
 
-        let updated = self
-            .queue_repo
+        self.queue_repo
             .update_status(id, QueueStatus::Cancelled, entry.result_slot_id)
-            .await?;
-
-        if updated.is_none() {
-            return Err(QueueServiceError::StatusUpdateFailed);
-        }
+            .await?
+            .ok_or(QueueServiceError::NotFound)?;
 
         Ok(())
     }
@@ -194,82 +186,5 @@ impl QueueService {
                 .await;
         }
         Ok(())
-    }
-}
-
-#[derive(Debug)]
-#[non_exhaustive]
-pub enum QueueServiceError {
-    NotFound,
-    QueueEmpty,
-    AlreadyActive,
-    NotSpinning,
-    NotCancellable,
-    NoSlots,
-    StatusUpdateFailed,
-    UserNotFound,
-    RarityNotFound,
-    Repo(RepositoryError),
-    Event(EventError),
-}
-
-impl From<RepositoryError> for QueueServiceError {
-    fn from(e: RepositoryError) -> Self {
-        QueueServiceError::Repo(e)
-    }
-}
-
-impl From<EventError> for QueueServiceError {
-    fn from(e: EventError) -> Self {
-        QueueServiceError::Event(e)
-    }
-}
-
-impl From<QueueServiceError> for ApiError {
-    fn from(e: QueueServiceError) -> Self {
-        match e {
-            QueueServiceError::NotFound => {
-                ApiError::new(StatusCode::NOT_FOUND, "queue entry not found")
-            }
-            QueueServiceError::QueueEmpty => {
-                ApiError::new(StatusCode::NOT_FOUND, "no pending or error entries")
-            }
-            QueueServiceError::AlreadyActive => {
-                ApiError::new(StatusCode::CONFLICT, "a spin or error is already active")
-            }
-            QueueServiceError::NotSpinning => {
-                ApiError::new(StatusCode::CONFLICT, "entry is not in spinning state")
-            }
-            QueueServiceError::NotCancellable => ApiError::new(
-                StatusCode::CONFLICT,
-                "only pending or error entries can be cancelled",
-            ),
-            QueueServiceError::NoSlots => ApiError::new(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "no roulette slots configured",
-            ),
-            QueueServiceError::StatusUpdateFailed => ApiError::new(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "failed to update entry status",
-            ),
-            QueueServiceError::UserNotFound => {
-                ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "user not found")
-            }
-            QueueServiceError::RarityNotFound => {
-                ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "rarity not found")
-            }
-            QueueServiceError::Repo(e) => {
-                ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-            }
-            QueueServiceError::Event(e) => {
-                ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-            }
-        }
-    }
-}
-
-impl IntoResponse for QueueServiceError {
-    fn into_response(self) -> Response {
-        ApiError::from(self).into_response()
     }
 }

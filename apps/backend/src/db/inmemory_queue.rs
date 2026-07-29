@@ -53,16 +53,23 @@ impl QueueRepository for InMemoryQueueRepository {
 
     async fn dequeue_next(&self) -> Result<Option<QueueEntry>, RepositoryError> {
         let mut entries = self.entries.lock();
-        if let Some(pos) = entries.iter().position(|e| e.status == QueueStatus::Error) {
-            return Ok(Some(entries.remove(pos)));
-        }
-        if let Some(pos) = entries
+        let pos = entries
             .iter()
-            .position(|e| e.status == QueueStatus::Pending)
-        {
-            return Ok(Some(entries.remove(pos)));
+            .position(|e| e.status == QueueStatus::Error)
+            .or_else(|| {
+                entries
+                    .iter()
+                    .position(|e| e.status == QueueStatus::Pending)
+            });
+
+        if let Some(pos) = pos {
+            let entry = &mut entries[pos];
+            entry.status = QueueStatus::Spinning;
+            entry.updated_at = Utc::now().naive_utc();
+            Ok(Some(entry.clone()))
+        } else {
+            Ok(None)
         }
-        Ok(None)
     }
 
     async fn list(&self, status: Option<QueueStatus>) -> Result<Vec<QueueEntry>, RepositoryError> {

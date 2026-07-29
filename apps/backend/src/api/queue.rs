@@ -4,11 +4,11 @@ use axum::http::StatusCode;
 use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, OpenApi, ToSchema};
 
+use crate::error::QueueServiceError;
 use crate::error::api::ApiError;
 use crate::platform::PlatformRepository;
 use crate::queue::entry::{QueueEntry, QueueEntryId, QueueStats, QueueStatus};
 use crate::queue::repository::QueueRepository;
-use crate::queue::service::QueueServiceError;
 use crate::roulette::slot_service::RouletteSlot;
 use crate::state::AppState;
 use crate::user::repository::UserRepository;
@@ -60,6 +60,77 @@ pub struct ListQuery {
 #[non_exhaustive]
 pub struct QueueIdParam {
     pub id: QueueEntryId,
+}
+
+#[cfg(test)]
+mod tests {
+    use axum::Router;
+    use tower::ServiceExt;
+
+    use crate::api::router;
+    use crate::roulette::rarity::{Rarity, RarityId, RarityRepository};
+    use crate::roulette::repository::RouletteSlotRepository;
+    use crate::roulette::slot_service::{RouletteSlot, RouletteSlotId};
+    use crate::test_fixtures::test_state;
+
+    #[tokio::test]
+    async fn dequeue_next_returns_200() {
+        let state = test_state();
+
+        state
+            .rarity_repo
+            .save(Rarity::new(
+                RarityId::new(1),
+                "common",
+                "Common",
+                "c.png",
+                "#fff",
+            ))
+            .await
+            .unwrap();
+        state
+            .slot_repo
+            .save(RouletteSlot::new(
+                RouletteSlotId::new(0),
+                "test_slot",
+                RarityId::new(1),
+                100,
+                "test",
+            ))
+            .await
+            .unwrap();
+
+        let app = Router::new().merge(router()).with_state(state.clone());
+
+        let resp = app
+            .clone()
+            .oneshot(
+                axum::http::Request::builder()
+                    .method("POST")
+                    .uri("/api/queue")
+                    .header("content-type", "application/json")
+                    .body(axum::body::Body::from(
+                        r#"{"platform":"twitch","platform_user_id":"u1","platform_username":"user1"}"#,
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), 200);
+
+        let resp = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .method("POST")
+                    .uri("/api/queue/next")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(resp.status(), 200);
+    }
 }
 
 async fn resolve_platform(
@@ -180,7 +251,7 @@ pub async fn peek_next(
         (status = 200, description = "Spin started", body = NextResponse),
         (status = 404, description = "No pending or error entries"),
         (status = 409, description = "A spin or error is already active"),
-        (status = 500, description = "No slots configured or server error"),
+        (status = 422, description = "No slots configured"),
     )
 )]
 pub async fn dequeue_next(
