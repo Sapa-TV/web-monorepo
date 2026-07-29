@@ -7,7 +7,7 @@ edition = "2024"
 workspace = true
 
 [dependencies]
-axum = { workspace = true, features = ["macros"] }
+axum = { workspace = true, features = ["macros", "ws"] }
 better_tokio_select = { workspace = true }
 chrono = { workspace = true }
 rand = { workspace = true, features = ["thread_rng"] }
@@ -25,3 +25,4 @@ utoipa = { workspace = true }
 utoipa-axum = { workspace = true }
 utoipa-redoc = { workspace = true, features = ["axum"] }
 utoipa-swagger-ui = { workspace = true, features = ["axum"] }
+futures-util = { workspace = true }

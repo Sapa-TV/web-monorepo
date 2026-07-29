@@ -147,30 +147,45 @@ document.getElementById('btnEnqueue').addEventListener('click', enqueueEntry);
 loadAll();
 setInterval(loadAll, 10000);
 
-const evtSource = new EventSource(`${API}/api/events`);
-const sseDot = document.getElementById('sseDot');
-const sseStatus = document.getElementById('sseStatus');
+const wsDot = document.getElementById('sseDot');
+const wsStatus = document.getElementById('sseStatus');
+let ws = null;
 
-evtSource.onopen = () => {
-  sseDot.className = 'sse-dot connected';
-  sseStatus.textContent = 'SSE connected';
-};
-evtSource.onerror = () => {
-  sseDot.className = 'sse-dot disconnected';
-  sseStatus.textContent = 'SSE disconnected';
-};
-evtSource.addEventListener('spin_started', e => {
-  const d = JSON.parse(e.data);
-  addEvent(`🎰 Спин #${d.entry_id} — ${d.user_name}: ${d.slot_name} (${d.slot_rarity})`, 'start');
-  loadAll();
-});
-evtSource.addEventListener('spin_completed', e => {
-  const d = JSON.parse(e.data);
-  addEvent(`✔ Спин #${d.entry_id} завершён`, 'complete');
-  loadAll();
-});
-evtSource.addEventListener('spin_error', e => {
-  const d = JSON.parse(e.data);
-  addEvent(`⚠ Спин #${d.entry_id} таймаут`, 'error');
-  loadAll();
-});
+function connectWs() {
+  ws = new WebSocket(`ws://localhost:3000/ws`);
+
+  ws.onopen = () => {
+    wsDot.className = 'sse-dot connected';
+    wsStatus.textContent = 'подключено';
+  };
+
+  ws.onmessage = e => {
+    const d = JSON.parse(e.data);
+    switch (d.type) {
+      case 'spin_started':
+        addEvent(`🎰 Спин #${d.entry_id} — ${d.user_name}: ${d.slot_name} (${d.slot_rarity})`, 'start');
+        loadAll();
+        break;
+      case 'spin_completed':
+        addEvent(`✔ Спин #${d.entry_id} завершён`, 'complete');
+        loadAll();
+        break;
+      case 'spin_error':
+        addEvent(`⚠ Спин #${d.entry_id} таймаут`, 'error');
+        loadAll();
+        break;
+    }
+  };
+
+  ws.onclose = () => {
+    wsDot.className = 'sse-dot disconnected';
+    wsStatus.textContent = 'отключено';
+    setTimeout(connectWs, 3000);
+  };
+
+  ws.onerror = () => {
+    ws.close();
+  };
+}
+
+connectWs();

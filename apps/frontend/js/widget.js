@@ -75,24 +75,41 @@ function setError(data) {
   setTimeout(setIdle, 4000);
 }
 
-const evtSource = new EventSource(`${API}/api/events`);
+let ws = null;
 
-evtSource.onopen = () => {
-  sseDot.className = 'sse-dot connected';
-  sseLabel.textContent = 'SSE connected';
-};
-evtSource.onerror = () => {
-  sseDot.className = 'sse-dot disconnected';
-  sseLabel.textContent = 'SSE disconnected';
-};
-evtSource.addEventListener('spin_started', e => setSpinning(JSON.parse(e.data)));
-evtSource.addEventListener('spin_completed', e => {
-  const d = JSON.parse(e.data);
-  if (currentEntryId === d.entry_id) setCompleted();
-});
-evtSource.addEventListener('spin_error', e => {
-  const d = JSON.parse(e.data);
-  if (currentEntryId === d.entry_id) setError(d);
-});
+function connectWs() {
+  ws = new WebSocket(`ws://localhost:3000/ws`);
 
+  ws.onopen = () => {
+    sseDot.className = 'sse-dot connected';
+    sseLabel.textContent = 'подключено';
+  };
+
+  ws.onmessage = e => {
+    const d = JSON.parse(e.data);
+    switch (d.type) {
+      case 'spin_started':
+        setSpinning(d);
+        break;
+      case 'spin_completed':
+        if (currentEntryId === d.entry_id) setCompleted();
+        break;
+      case 'spin_error':
+        if (currentEntryId === d.entry_id) setError(d);
+        break;
+    }
+  };
+
+  ws.onclose = () => {
+    sseDot.className = 'sse-dot disconnected';
+    sseLabel.textContent = 'отключено';
+    setTimeout(connectWs, 3000);
+  };
+
+  ws.onerror = () => {
+    ws.close();
+  };
+}
+
+connectWs();
 setIdle();

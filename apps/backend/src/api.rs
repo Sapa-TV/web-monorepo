@@ -1,5 +1,5 @@
-pub mod events;
 pub mod queue;
+pub mod ws;
 pub mod rarities;
 pub mod roulette_slots;
 pub mod users;
@@ -35,5 +35,5 @@ pub fn router() -> axum::Router<AppState> {
         .merge(roulette_slots::router())
         .merge(users::router())
         .merge(queue::router())
-        .merge(events::router())
+        .merge(ws::router())
 }
