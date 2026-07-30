@@ -36,7 +36,7 @@ async fn main() {
         )
         .init();
 
-    let config = Config::default();
+    let config = Config::load();
     let state = AppState::new(StandartRandomProvider, &config);
     let cors = CorsLayer::permissive();
 
@@ -46,10 +46,11 @@ async fn main() {
         .merge(SwaggerUi::new("/docs").url("/api-doc/openapi.json", ApiDoc::openapi()))
         .merge(Redoc::with_url("/redoc", ApiDoc::openapi()));
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
+    let addr = format!("0.0.0.0:{}", config.port);
+    let listener = tokio::net::TcpListener::bind(&addr)
         .await
-        .expect("failed to bind to 0.0.0.0:3000");
-    info!("listening on http://0.0.0.0:3000");
+        .expect("failed to bind");
+    info!("listening on http://{}", addr);
 
     tokio::spawn(timeout_task(state));
 
