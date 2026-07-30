@@ -5,42 +5,66 @@ use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, OpenApi, ToSchema};
 
 use crate::error::QueueServiceError;
+use crate::error::RepositoryError;
 use crate::error::api::ApiError;
-use crate::platform::PlatformRepository;
 use crate::queue::entry::{QueueEntry, QueueEntryId, QueueStats, QueueStatus};
 use crate::queue::repository::QueueRepository;
-use crate::roulette::slot_service::RouletteSlot;
+use crate::roulette::repository::RouletteSlotRepository;
+use crate::roulette::slot_service::{RouletteSlot, RouletteSlotId};
 use crate::state::AppState;
+use crate::user::UserId;
 use crate::user::repository::UserRepository;
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[non_exhaustive]
+pub struct EnqueueRequest {
+    pub user_id: UserId,
+    pub user_name: String,
+}
 
 #[derive(Debug, Deserialize, ToSchema)]
 #[non_exhaustive]
-pub struct EnqueueRequest {
-    pub platform: String,
-    pub platform_user_id: String,
-    pub platform_username: String,
+pub struct AnonymousEnqueueRequest {
+    pub name: String,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
 #[non_exhaustive]
 pub struct QueueEntryResponse {
     pub id: QueueEntryId,
-    pub user_id: u32,
+    pub user_id: UserId,
+    pub user_name: String,
     pub status: QueueStatus,
-    pub result_slot_id: Option<u32>,
+    pub result_slot_id: Option<RouletteSlotId>,
+    pub slot_name: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }
 
-fn to_entry_response(entry: &QueueEntry) -> QueueEntryResponse {
-    QueueEntryResponse {
-        id: entry.id,
-        user_id: entry.user_id.value(),
-        status: entry.status,
-        result_slot_id: entry.result_slot_id.map(|id| id.value()),
-        created_at: entry.created_at.and_utc().to_rfc3339(),
-        updated_at: entry.updated_at.and_utc().to_rfc3339(),
+impl From<&QueueEntry> for QueueEntryResponse {
+    fn from(entry: &QueueEntry) -> Self {
+        Self {
+            id: entry.id,
+            user_id: entry.user_id,
+            user_name: entry.user_name.clone(),
+            status: entry.status,
+            result_slot_id: entry.result_slot_id,
+            slot_name: None,
+            created_at: entry.created_at.and_utc().to_rfc3339(),
+            updated_at: entry.updated_at.and_utc().to_rfc3339(),
+        }
     }
+}
+
+async fn resolve_slot_name(
+    slot_id: Option<crate::roulette::slot_service::RouletteSlotId>,
+    slot_repo: &impl RouletteSlotRepository,
+) -> Result<Option<String>, RepositoryError> {
+    let Some(slot_id) = slot_id else {
+        return Ok(None);
+    };
+    let slots = slot_repo.load_all().await?;
+    Ok(slots.into_iter().find(|s| s.id == slot_id).map(|s| s.name))
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -67,6 +91,7 @@ mod tests {
     use axum::Router;
     use tower::ServiceExt;
 
+    use crate::api::queue::EnqueueRequest;
     use crate::api::router;
     use crate::queue::entry::{QueueEntryId, QueueStatus};
     use crate::queue::repository::QueueRepository;
@@ -74,6 +99,19 @@ mod tests {
     use crate::roulette::repository::RouletteSlotRepository;
     use crate::roulette::slot_service::{RouletteSlot, RouletteSlotId};
     use crate::test_fixtures::test_state;
+    use crate::user::UserId;
+    use crate::user::repository::UserRepository;
+
+    async fn setup_user(state: &crate::state::AppState) -> UserId {
+        state.user_repo.create("user1").await.unwrap().id
+    }
+
+    fn enqueue_body(user_id: UserId) -> EnqueueRequest {
+        EnqueueRequest {
+            user_id,
+            user_name: "user1".to_string(),
+        }
+    }
 
     #[tokio::test]
     async fn dequeue_next_retries_error_entry() {
@@ -102,6 +140,7 @@ mod tests {
             .await
             .unwrap();
 
+        let user_id = setup_user(&state).await;
         let app = Router::new().merge(router()).with_state(state.clone());
 
         let resp = app
@@ -112,7 +151,7 @@ mod tests {
                     .uri("/api/queue")
                     .header("content-type", "application/json")
                     .body(axum::body::Body::from(
-                        r#"{"platform":"twitch","platform_user_id":"u1","platform_username":"user1"}"#,
+                        serde_json::to_string(&enqueue_body(user_id)).unwrap(),
                     ))
                     .unwrap(),
             )
@@ -179,6 +218,7 @@ mod tests {
             .await
             .unwrap();
 
+        let user_id = setup_user(&state).await;
         let app = Router::new().merge(router()).with_state(state.clone());
 
         let resp = app
@@ -189,7 +229,7 @@ mod tests {
                     .uri("/api/queue")
                     .header("content-type", "application/json")
                     .body(axum::body::Body::from(
-                        r#"{"platform":"twitch","platform_user_id":"u1","platform_username":"user1"}"#,
+                        serde_json::to_string(&enqueue_body(user_id)).unwrap(),
                     ))
                     .unwrap(),
             )
@@ -251,6 +291,7 @@ mod tests {
             .await
             .unwrap();
 
+        let user_id = setup_user(&state).await;
         let app = Router::new().merge(router()).with_state(state.clone());
 
         let resp = app
@@ -261,7 +302,7 @@ mod tests {
                     .uri("/api/queue")
                     .header("content-type", "application/json")
                     .body(axum::body::Body::from(
-                        r#"{"platform":"twitch","platform_user_id":"u1","platform_username":"user1"}"#,
+                        serde_json::to_string(&enqueue_body(user_id)).unwrap(),
                     ))
                     .unwrap(),
             )
@@ -284,16 +325,6 @@ mod tests {
     }
 }
 
-async fn resolve_platform(
-    name: &str,
-    platform_repo: &impl PlatformRepository,
-) -> Result<crate::platform::Platform, ApiError> {
-    platform_repo
-        .find_by_name(name)
-        .await?
-        .ok_or_else(|| ApiError::new(StatusCode::BAD_REQUEST, format!("unknown platform: {name}")))
-}
-
 #[utoipa::path(
     post,
     path = "/api/queue",
@@ -301,38 +332,41 @@ async fn resolve_platform(
     request_body = EnqueueRequest,
     responses(
         (status = 200, description = "Entry enqueued", body = QueueEntryResponse),
-        (status = 400, description = "Unknown platform"),
     )
 )]
 pub async fn enqueue(
     State(state): State<AppState>,
     Json(body): Json<EnqueueRequest>,
 ) -> Result<(StatusCode, Json<QueueEntryResponse>), ApiError> {
-    let platform = resolve_platform(&body.platform, &*state.platform_repo).await?;
+    let entry = state
+        .queue_repo
+        .enqueue(body.user_id, &body.user_name)
+        .await?;
+    let resp = QueueEntryResponse::from(&entry);
+    Ok((StatusCode::OK, Json(resp)))
+}
 
-    let user = match state
-        .user_repo
-        .find_by_platform(platform.id, &body.platform_user_id)
-        .await?
-    {
-        Some(user) => user,
-        None => {
-            let user = state.user_repo.create(&body.platform_username).await?;
-            state
-                .user_repo
-                .link_platform(
-                    user.id,
-                    platform.id,
-                    &body.platform_user_id,
-                    &body.platform_username,
-                )
-                .await?;
-            user
-        }
-    };
-
-    let entry = state.queue_repo.enqueue(user.id).await?;
-    Ok((StatusCode::OK, Json(to_entry_response(&entry))))
+#[utoipa::path(
+    post,
+    path = "/api/queue/anonymous",
+    tag = "queue",
+    request_body = AnonymousEnqueueRequest,
+    responses(
+        (status = 200, description = "Entry enqueued", body = QueueEntryResponse),
+    )
+)]
+pub async fn enqueue_anonymous(
+    State(state): State<AppState>,
+    Json(body): Json<AnonymousEnqueueRequest>,
+) -> Result<(StatusCode, Json<QueueEntryResponse>), ApiError> {
+    if state.guest_user_id.get().is_none() {
+        let user = state.user_repo.create("guest").await?;
+        let _ = state.guest_user_id.set(user.id);
+    }
+    let guest_id = state.guest_user_id.get().copied().unwrap();
+    let entry = state.queue_repo.enqueue(guest_id, &body.name).await?;
+    let resp = QueueEntryResponse::from(&entry);
+    Ok((StatusCode::OK, Json(resp)))
 }
 
 #[utoipa::path(
@@ -349,7 +383,17 @@ pub async fn list(
     Query(query): Query<ListQuery>,
 ) -> Result<Json<Vec<QueueEntryResponse>>, ApiError> {
     let entries = state.queue_repo.list(query.status).await?;
-    Ok(Json(entries.iter().map(to_entry_response).collect()))
+    let slots = state.slot_repo.load_all().await?;
+    let mut responses = Vec::with_capacity(entries.len());
+    for entry in &entries {
+        let mut resp = QueueEntryResponse::from(entry);
+        resp.slot_name = entry
+            .result_slot_id
+            .and_then(|sid| slots.iter().find(|s| s.id == sid))
+            .map(|s| s.name.clone());
+        responses.push(resp);
+    }
+    Ok(Json(responses))
 }
 
 #[utoipa::path(
@@ -371,7 +415,9 @@ pub async fn get_by_id(
         .get_by_id(params.id)
         .await?
         .ok_or_else(|| ApiError::new(StatusCode::NOT_FOUND, "queue entry not found"))?;
-    Ok(Json(to_entry_response(&entry)))
+    let mut resp = QueueEntryResponse::from(&entry);
+    resp.slot_name = resolve_slot_name(entry.result_slot_id, &*state.slot_repo).await?;
+    Ok(Json(resp))
 }
 
 #[utoipa::path(
@@ -391,7 +437,9 @@ pub async fn peek_next(
         .peek_next()
         .await?
         .ok_or_else(|| ApiError::new(StatusCode::NOT_FOUND, "no pending or error entries"))?;
-    Ok(Json(to_entry_response(&entry)))
+    let mut resp = QueueEntryResponse::from(&entry);
+    resp.slot_name = resolve_slot_name(entry.result_slot_id, &*state.slot_repo).await?;
+    Ok(Json(resp))
 }
 
 #[utoipa::path(
@@ -409,8 +457,10 @@ pub async fn dequeue_next(
     State(state): State<AppState>,
 ) -> Result<Json<NextResponse>, QueueServiceError> {
     let (entry, slot) = state.queue_service.dequeue_next().await?;
+    let mut entry_resp = QueueEntryResponse::from(&entry);
+    entry_resp.slot_name = Some(slot.name.clone());
     Ok(Json(NextResponse {
-        entry: to_entry_response(&entry),
+        entry: entry_resp,
         slot,
     }))
 }
@@ -470,6 +520,7 @@ pub async fn stats(State(state): State<AppState>) -> Result<Json<QueueStats>, Ap
 #[openapi(
     paths(
         enqueue,
+        enqueue_anonymous,
         list,
         get_by_id,
         peek_next,
@@ -484,7 +535,10 @@ pub async fn stats(State(state): State<AppState>) -> Result<Json<QueueStats>, Ap
         QueueEntryId,
         QueueStatus,
         EnqueueRequest,
+        AnonymousEnqueueRequest,
         NextResponse,
+        UserId,
+        RouletteSlotId,
     ))
 )]
 #[non_exhaustive]
@@ -494,6 +548,7 @@ pub fn router() -> axum::Router<AppState> {
     use axum::routing::{get, post};
     axum::Router::new()
         .route("/api/queue", post(enqueue))
+        .route("/api/queue/anonymous", post(enqueue_anonymous))
         .route("/api/queue", get(list))
         .route("/api/queue/{id}", get(get_by_id))
         .route("/api/queue/next", get(peek_next))

@@ -28,6 +28,16 @@ body {
 .stat.error { border-left-color: #f85149; }
 .stat.cancelled { border-left-color: #6e7681; }
 .toolbar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+.panel-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.panel-header h1 { font-size: 18px; color: #fff; margin: 0; }
+.panel-header-right { display: flex; align-items: center; gap: 8px; }
+.btn-sm {
+  padding: 4px 10px; border-radius: 6px; border: none; font-size: 12px; font-weight: 600;
+  cursor: pointer; background: #373a40; color: #e4e5e7; transition: background .15s;
+}
+.btn-sm:hover { background: #4a4d54; }
+.next-user { font-size: 12px; color: #909296; min-width: 80px; }
+.spacer { flex: 1; }
 .toolbar button {
   padding: 8px 18px; border-radius: 8px; border: none; font-size: 13px; font-weight: 600;
   cursor: pointer; transition: background .15s; display: flex; align-items: center; gap: 6px;

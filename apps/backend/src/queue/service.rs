@@ -6,7 +6,6 @@ use chrono::Utc;
 use crate::db::inmemory_queue::InMemoryQueueRepository;
 use crate::db::inmemory_rarity::InMemoryRarityRepository;
 use crate::db::inmemory_roulette_slots::InMemoryRouletteSlotRepository;
-use crate::db::inmemory_user::InMemoryUserRepository;
 use crate::error::QueueServiceError;
 use crate::event::BroadcastEventPublisher;
 use crate::queue::entry::{QueueEntry, QueueEntryId, QueueStatus};
@@ -17,7 +16,6 @@ use crate::roulette::machine::RandomProvider;
 use crate::roulette::rarity::RarityRepository;
 use crate::roulette::repository::RouletteSlotRepository;
 use crate::roulette::slot_service::RouletteSlot;
-use crate::user::repository::UserRepository;
 
 #[derive(Clone)]
 #[non_exhaustive]
@@ -25,7 +23,6 @@ pub struct QueueService {
     queue_repo: Arc<InMemoryQueueRepository>,
     slot_repo: Arc<InMemoryRouletteSlotRepository>,
     rarity_repo: Arc<InMemoryRarityRepository>,
-    user_repo: Arc<InMemoryUserRepository>,
     random: StandartRandomProvider,
     event_publisher: BroadcastEventPublisher,
     timeout: Duration,
@@ -36,7 +33,6 @@ impl QueueService {
         queue_repo: Arc<InMemoryQueueRepository>,
         slot_repo: Arc<InMemoryRouletteSlotRepository>,
         rarity_repo: Arc<InMemoryRarityRepository>,
-        user_repo: Arc<InMemoryUserRepository>,
         random: StandartRandomProvider,
         event_publisher: BroadcastEventPublisher,
         timeout: Duration,
@@ -45,7 +41,6 @@ impl QueueService {
             queue_repo,
             slot_repo,
             rarity_repo,
-            user_repo,
             random,
             event_publisher,
             timeout,
@@ -98,12 +93,6 @@ impl QueueService {
             .await?
             .ok_or(QueueServiceError::NotFound)?;
 
-        let user = self
-            .user_repo
-            .get_by_id(entry.user_id)
-            .await?
-            .ok_or(QueueServiceError::UserNotFound)?;
-
         let rarities = self.rarity_repo.load_all().await?;
         let slot_rarity = rarities
             .iter()
@@ -116,7 +105,7 @@ impl QueueService {
                 entry_id: entry.id,
                 slot_name: slot.name.clone(),
                 slot_rarity,
-                user_name: user.display_name,
+                user_name: entry.user_name.clone(),
             })
             .await?;
 

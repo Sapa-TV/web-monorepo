@@ -35,6 +35,7 @@ pub enum QueueStatus {
 pub struct QueueEntry {
     pub id: QueueEntryId,
     pub user_id: UserId,
+    pub user_name: String,
     pub status: QueueStatus,
     pub result_slot_id: Option<RouletteSlotId>,
     pub created_at: NaiveDateTime,
@@ -45,6 +46,7 @@ impl QueueEntry {
     pub fn new(
         id: QueueEntryId,
         user_id: UserId,
+        user_name: impl Into<String>,
         status: QueueStatus,
         result_slot_id: Option<RouletteSlotId>,
         created_at: NaiveDateTime,
@@ -53,6 +55,7 @@ impl QueueEntry {
         Self {
             id,
             user_id,
+            user_name: user_name.into(),
             status,
             result_slot_id,
             created_at,

@@ -15,13 +15,9 @@ pub enum SpinEvent {
         user_name: String,
     },
     #[serde(rename = "spin_completed")]
-    Completed {
-        entry_id: QueueEntryId,
-    },
+    Completed { entry_id: QueueEntryId },
     #[serde(rename = "spin_error")]
-    Error {
-        entry_id: QueueEntryId,
-    },
+    Error { entry_id: QueueEntryId },
 }
 
 pub trait SpinEventPublisher: Send + Sync {

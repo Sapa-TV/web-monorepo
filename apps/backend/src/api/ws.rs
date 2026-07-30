@@ -1,6 +1,7 @@
 use axum::extract::State;
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::response::IntoResponse;
+use better_tokio_select::tokio_select;
 use tokio::sync::broadcast;
 
 use crate::state::AppState;
@@ -15,10 +16,12 @@ async fn handle_socket(mut socket: WebSocket, state: AppState) {
     tracing::info!("ws client connected");
 
     loop {
-        better_tokio_select::tokio_select!(match .. {
+        tokio_select!(match .. {
             .. if let result = rx.recv() => match result {
                 Ok(event) => {
-                    let Ok(json) = serde_json::to_string(&*event) else { break };
+                    let Ok(json) = serde_json::to_string(&*event) else {
+                        break;
+                    };
                     if socket.send(Message::Text(json.into())).await.is_err() {
                         break;
                     }

@@ -1,8 +1,8 @@
 pub mod queue;
-pub mod ws;
 pub mod rarities;
 pub mod roulette_slots;
 pub mod users;
+pub mod ws;
 
 use utoipa::OpenApi;
 

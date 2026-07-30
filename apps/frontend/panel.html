@@ -3,61 +3,46 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Док-панель — Очередь</title>
+<title>Док-панель</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="page-panel">
-<h1>Док-панель</h1>
-
-<div class="stats" id="stats">
-  <div class="stat pending"><div class="count" id="cntPending">0</div><div class="label">Pending</div></div>
-  <div class="stat spinning"><div class="count" id="cntSpinning">0</div><div class="label">Spinning</div></div>
-  <div class="stat completed"><div class="count" id="cntCompleted">0</div><div class="label">Completed</div></div>
-  <div class="stat error"><div class="count" id="cntError">0</div><div class="label">Error</div></div>
-  <div class="stat cancelled"><div class="count" id="cntCancelled">0</div><div class="label">Cancelled</div></div>
+<div class="panel-header">
+  <h1>Док-панель</h1>
+  <div class="panel-header-right">
+    <span class="sse-dot disconnected" id="sseDot"></span>
+    <button class="btn-sm" id="btnRefresh" title="Обновить">⟳</button>
+  </div>
 </div>
 
 <div class="toolbar">
-  <button class="btn-next" id="btnNext">▶ Dequeue Next</button>
-  <button class="btn-refresh" id="btnRefresh">⟳ Обновить</button>
-  <div class="sse-indicator">
-    <span class="sse-dot disconnected" id="sseDot"></span>
-    <span id="sseStatus"></span>
-  </div>
+  <button class="btn-next" id="btnNext">▶ Dequeue</button>
+  <span class="next-user" id="nextUser"></span>
+  <button class="btn-sm" id="btnToggleEnqueue">+ Добавить</button>
+  <span class="spacer"></span>
+  <button class="btn-sm" id="btnToggleLog">📋 Лог</button>
 </div>
 
-<div class="section enqueue-form">
-  <div class="section-title">Добавить в очередь</div>
+<div class="section hidden" id="enqueueSection">
   <div class="inline-form">
-    <select id="enqPlatform">
-      <option value="twitch">Twitch</option>
-      <option value="youtube">YouTube</option>
-      <option value="vk_video_live">VK Video Live</option>
-    </select>
-    <input type="text" id="enqUserId" placeholder="ID на платформе">
-    <input type="text" id="enqUsername" placeholder="Имя">
-    <button class="btn-next" id="btnEnqueue">+ Добавить</button>
+    <input type="text" id="enqName" placeholder="Имя зрителя">
+    <button class="btn-next" id="btnEnqueue">Добавить</button>
   </div>
 </div>
 
 <div class="section">
-  <div class="section-title">В очереди (Pending)</div>
-  <table><thead><tr><th>ID</th><th>User ID</th><th>Статус</th><th>Создана</th><th></th></tr></thead><tbody id="tblPending"><tr><td colspan="5" class="empty">Нет записей</td></tr></tbody></table>
+  <div class="section-title">Активные</div>
+  <table><thead><tr><th>Имя</th><th>Статус</th><th>Слот</th><th></th></tr></thead><tbody id="tblActive"><tr><td colspan="4" class="empty-row">Нет записей</td></tr></tbody></table>
 </div>
 
 <div class="section">
-  <div class="section-title">Крутится (Spinning)</div>
-  <table><thead><tr><th>ID</th><th>User ID</th><th>Статус</th><th>Слот</th><th>Обновлена</th><th></th></tr></thead><tbody id="tblSpinning"><tr><td colspan="6" class="empty">Нет записей</td></tr></tbody></table>
+  <div class="section-title">Завершённые / Отменённые</div>
+  <table><thead><tr><th>Имя</th><th>Результат</th><th>Статус</th></tr></thead><tbody id="tblDone"><tr><td colspan="3" class="empty-row">Нет записей</td></tr></tbody></table>
 </div>
 
-<div class="section">
-  <div class="section-title">Завершённые / Ошибки / Отменённые</div>
-  <table><thead><tr><th>ID</th><th>User ID</th><th>Статус</th><th>Слот</th><th>Обновлена</th><th></th></tr></thead><tbody id="tblDone"><tr><td colspan="6" class="empty">Нет записей</td></tr></tbody></table>
-</div>
-
-<div class="section">
+<div class="section hidden" id="logSection">
   <div class="section-title">События</div>
-  <div id="eventLog"><div class="empty" style="text-align:left">Ожидание событий...</div></div>
+  <div id="eventLog"><div class="empty-row">Ожидание событий...</div></div>
 </div>
 
 <script src="js/panel.js"></script>

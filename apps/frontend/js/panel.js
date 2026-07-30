@@ -8,51 +8,68 @@ async function loadAll() {
       fetch(`${API}/api/queue/stats`),
     ]);
     if (listRes.ok) entries = await listRes.json();
+
+    const hasSpinning = entries.some(e => e.status === 'Spinning');
+    if (!hasSpinning) {
+      const next = entries.find(e => e.status === 'Error' || e.status === 'Pending');
+      document.getElementById('nextUser').textContent = next ? (next.user_name || '') : '';
+    }
+
     if (statsRes.ok) {
       const s = await statsRes.json();
-      document.getElementById('cntPending').textContent = s.pending ?? 0;
-      document.getElementById('cntSpinning').textContent = s.spinning ?? 0;
-      document.getElementById('cntCompleted').textContent = s.completed ?? 0;
-      document.getElementById('cntError').textContent = s.error ?? 0;
-      document.getElementById('cntCancelled').textContent = s.cancelled ?? 0;
+      document.getElementById('btnNext').textContent = `▶ Dequeue (${s.pending + s.error})`;
     }
     renderTables();
-  } catch { /* ignore */ }
+  } catch { /* */ }
 }
 
 function renderTables() {
-  const pending = entries.filter(e => e.status === 'Pending');
-  const spinning = entries.filter(e => e.status === 'Spinning');
-  const done = entries.filter(e => e.status !== 'Pending' && e.status !== 'Spinning');
+  const active = entries.filter(e => e.status === 'Pending' || e.status === 'Spinning' || e.status === 'Error');
+  const done = entries.filter(e => e.status === 'Completed' || e.status === 'Cancelled');
 
-  renderTable('tblPending', pending, false);
-  renderTable('tblSpinning', spinning, true);
-  renderTable('tblDone', done, false);
+  renderActive(active);
+  renderDone(done);
 }
 
-function renderTable(id, items) {
-  const tbody = document.getElementById(id);
+function renderActive(items) {
+  const tbody = document.getElementById('tblActive');
   if (items.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="empty">Нет записей</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" class="empty-row">Нет записей</td></tr>';
     return;
   }
   tbody.innerHTML = items.map(e => {
     const badge = `<span class="status-badge ${e.status.toLowerCase()}">${e.status}</span>`;
     let actions = '';
     if (e.status === 'Pending') {
-      actions = `<button class="btn-cancel" onclick="cancelEntry(${e.id})">Отменить</button>`;
+      actions = `<button class="btn-cancel" onclick="cancelEntry(${e.id})">✕</button>`;
     } else if (e.status === 'Spinning') {
-      actions = `<button class="btn-complete" onclick="completeEntry(${e.id})">✔ Завершить</button>`;
+      actions = `<button class="btn-complete" onclick="completeEntry(${e.id})">✔</button>`;
     } else if (e.status === 'Error') {
-      actions = `<button class="btn-cancel" onclick="cancelEntry(${e.id})">Отменить</button>`;
+      actions = `<button class="btn-cancel" onclick="cancelEntry(${e.id})">✕</button>`;
     }
+    const slotInfo = e.status === 'Spinning' ? (e.slot_name || e.result_slot_id || '—') : '—';
     return `<tr>
-      <td>${e.id}</td>
-      <td>${e.user_id}</td>
+      <td>${e.user_name || e.user_id}</td>
       <td>${badge}</td>
-      <td>${e.result_slot_id ?? '—'}</td>
-      <td>${new Date(e.updated_at).toLocaleTimeString()}</td>
+      <td>${slotInfo}</td>
       <td class="actions-cell">${actions}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderDone(items) {
+  const tbody = document.getElementById('tblDone');
+  if (items.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="3" class="empty-row">Нет записей</td></tr>';
+    return;
+  }
+  tbody.innerHTML = [...items].reverse().map(e => {
+    const badge = `<span class="status-badge ${e.status.toLowerCase()}">${e.status}</span>`;
+    const result = e.status === 'Completed' ? (e.slot_name || '✔') : 'отменен';
+    return `<tr>
+      <td>${e.user_name || e.user_id}</td>
+      <td>${result}</td>
+      <td>${badge}</td>
     </tr>`;
   }).join('');
 }
@@ -63,13 +80,13 @@ async function dequeueNext() {
     const r = await fetch(`${API}/api/queue/next`, { method: 'POST' });
     const data = await r.json();
     if (r.ok) {
-      addEvent(`🎰 ${data.slot.name} выпал для #${data.entry.id}`, 'start');
-      await loadAll();
+      addEvent(`🎰 ${data.slot.name} → #${data.entry.id} (${data.entry.user_name})`, 'start');
     } else {
-      addEvent(`❌ Dequeue: ${r.status} ${data.message || JSON.stringify(data)}`, 'error');
+      addEvent(`❌ Dequeue: ${r.status}`, 'error');
     }
+    await loadAll();
   } catch (err) {
-    addEvent(`❌ Ошибка: ${err.message}`, 'error');
+    addEvent(`❌ ${err.message}`, 'error');
   } finally {
     document.getElementById('btnNext').disabled = false;
   }
@@ -78,28 +95,22 @@ async function dequeueNext() {
 async function completeEntry(id) {
   try {
     const r = await fetch(`${API}/api/queue/${id}/complete`, { method: 'POST' });
-    if (r.ok) {
-      addEvent(`✔ #${id} завершён`, 'complete');
-      await loadAll();
-    } else {
-      addEvent(`❌ Complete #${id}: ${r.status}`, 'error');
-    }
+    if (r.ok) addEvent(`✔ #${id} завершён`, 'complete');
+    else addEvent(`❌ Complete #${id}: ${r.status}`, 'error');
+    await loadAll();
   } catch (err) {
-    addEvent(`❌ Ошибка: ${err.message}`, 'error');
+    addEvent(`❌ ${err.message}`, 'error');
   }
 }
 
 async function cancelEntry(id) {
   try {
     const r = await fetch(`${API}/api/queue/${id}/cancel`, { method: 'POST' });
-    if (r.ok) {
-      addEvent(`✕ #${id} отменён`, 'error');
-      await loadAll();
-    } else {
-      addEvent(`❌ Cancel #${id}: ${r.status}`, 'error');
-    }
+    if (r.ok) addEvent(`✕ #${id} отменён`, 'error');
+    else addEvent(`❌ Cancel #${id}: ${r.status}`, 'error');
+    await loadAll();
   } catch (err) {
-    addEvent(`❌ Ошибка: ${err.message}`, 'error');
+    addEvent(`❌ ${err.message}`, 'error');
   }
 }
 
@@ -107,32 +118,28 @@ function addEvent(msg, type) {
   const log = document.getElementById('eventLog');
   const div = document.createElement('div');
   div.className = `ev ev-${type}`;
-  const time = new Date().toLocaleTimeString();
-  div.innerHTML = `<span class="ev-time">[${time}]</span>${msg}`;
+  div.innerHTML = `<span class="ev-time">[${new Date().toLocaleTimeString()}]</span>${msg}`;
   log.prepend(div);
   while (log.children.length > 50) log.removeChild(log.lastChild);
 }
 
 async function enqueueEntry() {
-  const platform = document.getElementById('enqPlatform').value;
-  const userId = document.getElementById('enqUserId').value.trim();
-  const username = document.getElementById('enqUsername').value.trim();
-  if (!userId || !username) return;
+  const name = document.getElementById('enqName').value.trim();
+  if (!name) return;
   document.getElementById('btnEnqueue').disabled = true;
   try {
-    const r = await fetch(`${API}/api/queue`, {
+    const r = await fetch(`${API}/api/queue/anonymous`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ platform, platform_user_id: userId, platform_username: username }),
+      body: JSON.stringify({ name }),
     });
     if (r.ok) {
-      document.getElementById('enqUserId').value = '';
-      document.getElementById('enqUsername').value = '';
-      addEvent(`➕ #${(await r.json()).id} добавлен`, 'complete');
-      await loadAll();
+      document.getElementById('enqName').value = '';
+      addEvent(`➕ ${name} добавлен`, 'complete');
     } else {
       addEvent(`❌ Ошибка ${r.status}`, 'error');
     }
+    await loadAll();
   } catch (err) {
     addEvent(`❌ ${err.message}`, 'error');
   } finally {
@@ -143,48 +150,47 @@ async function enqueueEntry() {
 document.getElementById('btnNext').addEventListener('click', dequeueNext);
 document.getElementById('btnRefresh').addEventListener('click', loadAll);
 document.getElementById('btnEnqueue').addEventListener('click', enqueueEntry);
+document.getElementById('btnToggleEnqueue').addEventListener('click', () => {
+  const el = document.getElementById('enqueueSection');
+  el.classList.toggle('hidden');
+  document.getElementById('btnToggleEnqueue').textContent = el.classList.contains('hidden') ? '+ Добавить' : '✕ Закрыть';
+});
+document.getElementById('btnToggleLog').addEventListener('click', () => {
+  const el = document.getElementById('logSection');
+  el.classList.toggle('hidden');
+  document.getElementById('btnToggleLog').textContent = el.classList.contains('hidden') ? '📋 Лог' : '✕ Лог';
+});
 
 loadAll();
 setInterval(loadAll, 10000);
 
 const wsDot = document.getElementById('sseDot');
-const wsStatus = document.getElementById('sseStatus');
 let ws = null;
 
 function connectWs() {
   ws = new WebSocket(`ws://localhost:3000/ws`);
-
-  ws.onopen = () => {
-    wsDot.className = 'sse-dot connected';
-    wsStatus.textContent = 'подключено';
+  ws.onopen = () => { wsDot.className = 'sse-dot connected'; };
+  ws.onclose = () => {
+    wsDot.className = 'sse-dot disconnected';
+    setTimeout(connectWs, 3000);
   };
-
+  ws.onerror = () => { ws.close(); };
   ws.onmessage = e => {
     const d = JSON.parse(e.data);
     switch (d.type) {
       case 'spin_started':
-        addEvent(`🎰 Спин #${d.entry_id} — ${d.user_name}: ${d.slot_name} (${d.slot_rarity})`, 'start');
+        addEvent(`🎰 #${d.entry_id} — ${d.user_name}: ${d.slot_name}`, 'start');
         loadAll();
         break;
       case 'spin_completed':
-        addEvent(`✔ Спин #${d.entry_id} завершён`, 'complete');
+        addEvent(`✔ #${d.entry_id} завершён`, 'complete');
         loadAll();
         break;
       case 'spin_error':
-        addEvent(`⚠ Спин #${d.entry_id} таймаут`, 'error');
+        addEvent(`⚠ #${d.entry_id} таймаут`, 'error');
         loadAll();
         break;
     }
-  };
-
-  ws.onclose = () => {
-    wsDot.className = 'sse-dot disconnected';
-    wsStatus.textContent = 'отключено';
-    setTimeout(connectWs, 3000);
-  };
-
-  ws.onerror = () => {
-    ws.close();
   };
 }
 

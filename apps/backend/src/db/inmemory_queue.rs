@@ -25,12 +25,17 @@ impl InMemoryQueueRepository {
 }
 
 impl QueueRepository for InMemoryQueueRepository {
-    async fn enqueue(&self, user_id: UserId) -> Result<QueueEntry, RepositoryError> {
+    async fn enqueue(
+        &self,
+        user_id: UserId,
+        user_name: &str,
+    ) -> Result<QueueEntry, RepositoryError> {
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
         let now = Utc::now().naive_utc();
         let entry = QueueEntry::new(
             QueueEntryId::new(id),
             user_id,
+            user_name,
             QueueStatus::Pending,
             None,
             now,

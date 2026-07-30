@@ -10,6 +10,7 @@ pub trait QueueRepository: Send + Sync {
     fn enqueue(
         &self,
         user_id: crate::user::UserId,
+        user_name: &str,
     ) -> impl Future<Output = Result<QueueEntry, RepositoryError>> + Send;
 
     fn peek_next(&self)

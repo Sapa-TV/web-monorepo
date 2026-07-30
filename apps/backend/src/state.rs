@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::sync::OnceLock;
 
 use crate::config::Config;
 use crate::db::inmemory_platform::InMemoryPlatformRepository;
@@ -9,6 +10,7 @@ use crate::db::inmemory_user::InMemoryUserRepository;
 use crate::event::BroadcastEventPublisher;
 use crate::queue::service::QueueService;
 use crate::random::StandartRandomProvider;
+use crate::user::UserId;
 
 #[derive(Clone)]
 #[non_exhaustive]
@@ -21,6 +23,7 @@ pub struct AppState {
     pub queue_service: QueueService,
     pub random: StandartRandomProvider,
     pub event_publisher: BroadcastEventPublisher,
+    pub guest_user_id: Arc<OnceLock<UserId>>,
 }
 
 impl AppState {
@@ -35,7 +38,6 @@ impl AppState {
             Arc::clone(&queue_repo),
             Arc::clone(&slot_repo),
             Arc::clone(&rarity_repo),
-            Arc::clone(&user_repo),
             random.clone(),
             event_publisher.clone(),
             std::time::Duration::from_secs(config.roulette_timeout_secs),
@@ -49,6 +51,7 @@ impl AppState {
             queue_service,
             random,
             event_publisher,
+            guest_user_id: Arc::new(OnceLock::new()),
         }
     }
 }
@@ -66,7 +69,6 @@ impl AppState {
             Arc::clone(&queue_repo),
             Arc::clone(&slot_repo),
             Arc::clone(&rarity_repo),
-            Arc::clone(&user_repo),
             random.clone(),
             event_publisher.clone(),
             std::time::Duration::from_secs(10),
@@ -80,6 +82,7 @@ impl AppState {
             queue_service,
             random,
             event_publisher,
+            guest_user_id: Arc::new(OnceLock::new()),
         }
     }
 }
