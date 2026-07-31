@@ -309,6 +309,280 @@ mod tests {
 
         assert_eq!(resp.status(), 200);
     }
+
+    #[tokio::test]
+    #[ignore]
+    async fn dequeue_next_parallel_only_one_spin() {
+        let state = test_state().await;
+
+        state
+            .rarity_repo
+            .save(Rarity::new(
+                RarityId::new(1),
+                "common",
+                "Common",
+                "c.png",
+                "#fff",
+            ))
+            .await
+            .unwrap();
+        state
+            .slot_service
+            .add_slot(RouletteSlot::new(
+                RouletteSlotId::new(0),
+                "test_slot",
+                RarityId::new(1),
+                100,
+                "test",
+            ))
+            .await
+            .unwrap();
+
+        let user_1 = setup_user(&state).await;
+        let user_2 = setup_user(&state).await;
+        let app = router(state.clone());
+
+        for user in [user_1, user_2] {
+            let resp = app
+                .clone()
+                .oneshot(
+                    axum::http::Request::builder()
+                        .method("POST")
+                        .uri("/api/queue")
+                        .header("content-type", "application/json")
+                        .body(axum::body::Body::from(
+                            serde_json::to_string(&enqueue_body(user)).unwrap(),
+                        ))
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(resp.status(), 200);
+        }
+
+        let make_next = || {
+            axum::http::Request::builder()
+                .method("POST")
+                .uri("/api/queue/next")
+                .body(axum::body::Body::empty())
+                .unwrap()
+        };
+
+        let (a, b) = tokio::join!(app.clone().oneshot(make_next()), app.oneshot(make_next()));
+        let statuses = [a.unwrap().status(), b.unwrap().status()];
+        assert_eq!(statuses.iter().filter(|s| **s == 200).count(), 1);
+        assert_eq!(statuses.iter().filter(|s| **s == 409).count(), 1);
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn dequeue_next_no_slots_no_orphan() {
+        let state = test_state().await;
+        let app = router(state.clone());
+
+        let user_id = setup_user(&state).await;
+        let resp = app
+            .clone()
+            .oneshot(
+                axum::http::Request::builder()
+                    .method("POST")
+                    .uri("/api/queue")
+                    .header("content-type", "application/json")
+                    .body(axum::body::Body::from(
+                        serde_json::to_string(&enqueue_body(user_id)).unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), 200);
+
+        let resp = app
+            .clone()
+            .oneshot(
+                axum::http::Request::builder()
+                    .method("POST")
+                    .uri("/api/queue/next")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), 422);
+
+        let resp = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .method("GET")
+                    .uri("/api/queue?status=Spinning")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), 200);
+        let body: serde_json::Value = serde_json::from_slice(
+            &axum::body::to_bytes(resp.into_body(), usize::MAX)
+                .await
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(body.as_array().unwrap().len(), 0);
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn complete_parallel_only_one_success() {
+        let state = test_state().await;
+
+        state
+            .rarity_repo
+            .save(Rarity::new(
+                RarityId::new(1),
+                "common",
+                "Common",
+                "c.png",
+                "#fff",
+            ))
+            .await
+            .unwrap();
+        state
+            .slot_service
+            .add_slot(RouletteSlot::new(
+                RouletteSlotId::new(0),
+                "test_slot",
+                RarityId::new(1),
+                100,
+                "test",
+            ))
+            .await
+            .unwrap();
+
+        let user_id = setup_user(&state).await;
+        let app = router(state.clone());
+
+        let resp = app
+            .clone()
+            .oneshot(
+                axum::http::Request::builder()
+                    .method("POST")
+                    .uri("/api/queue")
+                    .header("content-type", "application/json")
+                    .body(axum::body::Body::from(
+                        serde_json::to_string(&enqueue_body(user_id)).unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), 200);
+        let body: serde_json::Value = serde_json::from_slice(
+            &axum::body::to_bytes(resp.into_body(), usize::MAX)
+                .await
+                .unwrap(),
+        )
+        .unwrap();
+        let entry_id = body["id"].as_u64().unwrap();
+
+        let resp = app
+            .clone()
+            .oneshot(
+                axum::http::Request::builder()
+                    .method("POST")
+                    .uri("/api/queue/next")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), 200);
+
+        let complete = |id: u64| {
+            axum::http::Request::builder()
+                .method("POST")
+                .uri(format!("/api/queue/{id}/complete"))
+                .body(axum::body::Body::empty())
+                .unwrap()
+        };
+
+        let (a, b) = tokio::join!(
+            app.clone().oneshot(complete(entry_id)),
+            app.oneshot(complete(entry_id)),
+        );
+        let statuses = [a.unwrap().status(), b.unwrap().status()];
+        assert_eq!(statuses.iter().filter(|s| **s == 200).count(), 1);
+        assert_eq!(statuses.iter().filter(|s| **s == 409).count(), 1);
+    }
+
+    #[tokio::test]
+    async fn slot_created_via_api_used_in_roll() {
+        let state = test_state().await;
+        let app = router(state.clone());
+
+        state
+            .rarity_repo
+            .save(Rarity::new(
+                RarityId::new(1),
+                "common",
+                "Common",
+                "c.png",
+                "#fff",
+            ))
+            .await
+            .unwrap();
+
+        let resp = app
+            .clone()
+            .oneshot(
+                axum::http::Request::builder()
+                    .method("POST")
+                    .uri("/api/slots")
+                    .header("content-type", "application/json")
+                    .body(axum::body::Body::from(
+                        r#"{"name":"api_slot","rarity_id":1,"weight":100,"action":"act"}"#,
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), 201);
+
+        let user_id = setup_user(&state).await;
+        let resp = app
+            .clone()
+            .oneshot(
+                axum::http::Request::builder()
+                    .method("POST")
+                    .uri("/api/queue")
+                    .header("content-type", "application/json")
+                    .body(axum::body::Body::from(
+                        serde_json::to_string(&enqueue_body(user_id)).unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), 200);
+
+        let resp = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .method("POST")
+                    .uri("/api/queue/next")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), 200);
+        let body: serde_json::Value = serde_json::from_slice(
+            &axum::body::to_bytes(resp.into_body(), usize::MAX)
+                .await
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(body["slot"]["name"], "api_slot");
+    }
 }
 
 #[utoipa::path(
