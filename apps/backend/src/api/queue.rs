@@ -141,7 +141,7 @@ mod tests {
             .unwrap();
 
         let user_id = setup_user(&state).await;
-        let app = Router::new().merge(router()).with_state(state.clone());
+        let app = router(state.clone());
 
         let resp = app
             .clone()
@@ -219,7 +219,7 @@ mod tests {
             .unwrap();
 
         let user_id = setup_user(&state).await;
-        let app = Router::new().merge(router()).with_state(state.clone());
+        let app = router(state.clone());
 
         let resp = app
             .clone()
@@ -292,7 +292,7 @@ mod tests {
             .unwrap();
 
         let user_id = setup_user(&state).await;
-        let app = Router::new().merge(router()).with_state(state.clone());
+        let app = router(state.clone());
 
         let resp = app
             .clone()
@@ -346,6 +346,16 @@ pub async fn enqueue(
     Ok((StatusCode::OK, Json(resp)))
 }
 
+async fn guest_user_id(state: &AppState) -> Result<UserId, RepositoryError> {
+    match state.guest_user_id.get() {
+        Some(id) => Ok(*id),
+        None => {
+            let user = state.user_repo.create("guest").await?;
+            Ok(*state.guest_user_id.get_or_init(|| user.id))
+        }
+    }
+}
+
 #[utoipa::path(
     post,
     path = "/api/queue/anonymous",
@@ -359,11 +369,7 @@ pub async fn enqueue_anonymous(
     State(state): State<AppState>,
     Json(body): Json<AnonymousEnqueueRequest>,
 ) -> Result<(StatusCode, Json<QueueEntryResponse>), ApiError> {
-    if state.guest_user_id.get().is_none() {
-        let user = state.user_repo.create("guest").await?;
-        let _ = state.guest_user_id.set(user.id);
-    }
-    let guest_id = state.guest_user_id.get().copied().unwrap();
+    let guest_id = guest_user_id(&state).await?;
     let entry = state.queue_repo.enqueue(guest_id, &body.name).await?;
     let resp = QueueEntryResponse::from(&entry);
     Ok((StatusCode::OK, Json(resp)))

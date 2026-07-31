@@ -1,3 +1,4 @@
+pub mod auth;
 pub mod queue;
 pub mod rarities;
 pub mod roulette_slots;
@@ -29,11 +30,26 @@ use crate::state::AppState;
 #[non_exhaustive]
 pub struct ApiDoc;
 
-pub fn router() -> axum::Router<AppState> {
+pub fn public_router() -> axum::Router<AppState> {
+    axum::Router::new().merge(ws::router())
+}
+
+pub fn protected_router() -> axum::Router<AppState> {
     axum::Router::new()
         .merge(rarities::router())
         .merge(roulette_slots::router())
         .merge(users::router())
         .merge(queue::router())
-        .merge(ws::router())
+}
+
+pub fn router(state: AppState) -> axum::Router {
+    public_router().merge(protected_router()).with_state(state)
+}
+
+pub fn router_with_auth(
+    state: AppState,
+    apply_auth: impl FnOnce(axum::Router<AppState>) -> axum::Router<AppState>,
+) -> axum::Router {
+    let protected = apply_auth(protected_router());
+    public_router().merge(protected).with_state(state)
 }

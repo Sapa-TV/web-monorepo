@@ -1,4 +1,5 @@
 const API = 'http://localhost:3000';
+const PAK = new URLSearchParams(location.search).get('pak') || '';
 let currentEntryId = null;
 let idleTimer = null;
 const AUTO_MS = 10000;
@@ -12,8 +13,45 @@ const slotRarity = $('slotRarity');
 const entryId = $('entryId');
 const stateLabel = $('stateLabel');
 const spinner = $('spinner');
-const sseDot = $('sseDot');
-const sseLabel = $('sseLabel');
+const connDot = $('connDot');
+const connLabel = $('connLabel');
+const keyBadge = $('keyBadge');
+
+let keyOk = false;
+
+function setConn(state, label) {
+  connDot.className = `conn-dot ${state}`;
+  connLabel.textContent = label;
+}
+
+function setKeyBadge(state, text) {
+  keyBadge.className = `key-badge ${state}`;
+  keyBadge.textContent = text;
+  keyBadge.classList.remove('hidden');
+}
+
+function failAuth() {
+  if (ws) {
+    ws.onclose = null;
+    ws.close();
+    ws = null;
+  }
+  clearTimeout(idleTimer);
+  setConn('disconnected', 'не авторизован');
+  setKeyBadge(PAK ? 'bad' : 'missing', PAK ? 'ключ неверный' : 'нет ключа');
+  stateLabel.textContent = 'Доступ запрещён';
+  idleText.textContent = 'Ошибка подключения виджета.';
+  spinner.classList.add('hidden');
+  spinInfo.classList.add('hidden');
+}
+
+function authFetch(input, options = {}) {
+  const opts = { ...options };
+  if (PAK) {
+    opts.headers = { ...opts.headers, 'Authorization': `Bearer ${PAK}` };
+  }
+  return fetch(input, opts);
+}
 
 function setIdle() {
   clearTimeout(idleTimer);
@@ -36,7 +74,7 @@ function setSpinning(data) {
   entryId.textContent = `#${data.entry_id}`;
   idleTimer = setTimeout(() => {
     if (currentEntryId === data.entry_id) {
-      fetch(`${API}/api/queue/${currentEntryId}/complete`, { method: 'POST' }).catch(() => {});
+      authFetch(`${API}/api/queue/${currentEntryId}/complete`, { method: 'POST' }).catch(() => {});
       setCompleted();
     }
   }, AUTO_MS);
@@ -58,13 +96,15 @@ function setError(data) {
 }
 
 let ws = null;
+let wsQueued = false;
 
 function connectWs() {
+  if (!keyOk || wsQueued) return;
+  wsQueued = true;
   ws = new WebSocket(`ws://localhost:3000/ws`);
 
   ws.onopen = () => {
-    sseDot.className = 'sse-dot connected';
-    sseLabel.textContent = 'подключено';
+    setConn('connected', 'подключено');
   };
 
   ws.onmessage = e => {
@@ -83,9 +123,9 @@ function connectWs() {
   };
 
   ws.onclose = () => {
-    sseDot.className = 'sse-dot disconnected';
-    sseLabel.textContent = 'отключено';
-    setTimeout(connectWs, 3000);
+    wsQueued = false;
+    setConn('disconnected', 'отключено');
+    if (keyOk) setTimeout(connectWs, 3000);
   };
 
   ws.onerror = () => {
@@ -93,5 +133,27 @@ function connectWs() {
   };
 }
 
-connectWs();
-setIdle();
+if (!PAK) {
+  failAuth();
+} else {
+  setIdle();
+  authFetch(`${API}/api/queue`)
+    .then(res => {
+      if (res.status === 401) {
+        failAuth();
+      } else if (!res.ok) {
+        setKeyBadge('bad', 'ошибка запроса');
+        stateLabel.textContent = 'Ошибка подключения виджета';
+        idleText.textContent = 'Ошибка подключения виджета.';
+      } else {
+        keyOk = true;
+        connectWs();
+      }
+    })
+    .catch(() => {
+      setConn('disconnected', 'нет связи');
+      setKeyBadge('bad', 'нет связи с сервером');
+      stateLabel.textContent = 'Нет связи';
+      idleText.textContent = 'Сервер недоступен.';
+    });
+}

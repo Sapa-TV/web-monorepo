@@ -40,11 +40,15 @@ async fn main() {
     let state = AppState::new(StandartRandomProvider, &config);
     let cors = CorsLayer::permissive();
 
-    let app = api::router()
-        .with_state(state.clone())
-        .layer(cors)
-        .merge(SwaggerUi::new("/docs").url("/api-doc/openapi.json", ApiDoc::openapi()))
-        .merge(Redoc::with_url("/redoc", ApiDoc::openapi()));
+    let app = api::router_with_auth(state.clone(), |router| {
+        router.route_layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            crate::api::auth::require_auth,
+        ))
+    })
+    .layer(cors)
+    .merge(SwaggerUi::new("/docs").url("/api-doc/openapi.json", ApiDoc::openapi()))
+    .merge(Redoc::with_url("/redoc", ApiDoc::openapi()));
 
     let addr = format!("0.0.0.0:{}", config.port);
     let listener = tokio::net::TcpListener::bind(&addr)

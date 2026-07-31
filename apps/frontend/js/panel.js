@@ -1,11 +1,36 @@
 const API = 'http://localhost:3000';
+const PAK = new URLSearchParams(location.search).get('pak') || '';
 let entries = [];
+
+const keyBadge = document.getElementById('keyBadge');
+
+function setKeyBadge(state) {
+  keyBadge.className = `key-badge ${state}`;
+  keyBadge.textContent = {
+    ok: '🔑 ключ ок',
+    missing: '🔑 нет ключа',
+    bad: '🔑 ключ неверный',
+  }[state];
+  keyBadge.classList.remove('hidden');
+}
+
+function authFetch(input, options = {}) {
+  const opts = { ...options };
+  if (PAK) {
+    opts.headers = { ...opts.headers, 'Authorization': `Bearer ${PAK}` };
+  }
+  return fetch(input, opts).then(res => {
+    if (res.status === 401) setKeyBadge(PAK ? 'bad' : 'missing');
+    else setKeyBadge('ok');
+    return res;
+  });
+}
 
 async function loadAll() {
   try {
     const [listRes, statsRes] = await Promise.all([
-      fetch(`${API}/api/queue`),
-      fetch(`${API}/api/queue/stats`),
+      authFetch(`${API}/api/queue`),
+      authFetch(`${API}/api/queue/stats`),
     ]);
     if (listRes.ok) entries = await listRes.json();
 
@@ -77,7 +102,7 @@ function renderDone(items) {
 async function dequeueNext() {
   document.getElementById('btnNext').disabled = true;
   try {
-    const r = await fetch(`${API}/api/queue/next`, { method: 'POST' });
+    const r = await authFetch(`${API}/api/queue/next`, { method: 'POST' });
     const data = await r.json();
     if (r.ok) {
       addEvent(`🎰 ${data.slot.name} → #${data.entry.id} (${data.entry.user_name})`, 'start');
@@ -94,7 +119,7 @@ async function dequeueNext() {
 
 async function completeEntry(id) {
   try {
-    const r = await fetch(`${API}/api/queue/${id}/complete`, { method: 'POST' });
+    const r = await authFetch(`${API}/api/queue/${id}/complete`, { method: 'POST' });
     if (r.ok) addEvent(`✔ #${id} завершён`, 'complete');
     else addEvent(`❌ Complete #${id}: ${r.status}`, 'error');
     await loadAll();
@@ -105,7 +130,7 @@ async function completeEntry(id) {
 
 async function cancelEntry(id) {
   try {
-    const r = await fetch(`${API}/api/queue/${id}/cancel`, { method: 'POST' });
+    const r = await authFetch(`${API}/api/queue/${id}/cancel`, { method: 'POST' });
     if (r.ok) addEvent(`✕ #${id} отменён`, 'error');
     else addEvent(`❌ Cancel #${id}: ${r.status}`, 'error');
     await loadAll();
@@ -128,7 +153,7 @@ async function enqueueEntry() {
   if (!name) return;
   document.getElementById('btnEnqueue').disabled = true;
   try {
-    const r = await fetch(`${API}/api/queue/anonymous`, {
+    const r = await authFetch(`${API}/api/queue/anonymous`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name }),
@@ -164,14 +189,14 @@ document.getElementById('btnToggleLog').addEventListener('click', () => {
 loadAll();
 setInterval(loadAll, 10000);
 
-const wsDot = document.getElementById('sseDot');
+const connDot = document.getElementById('connDot');
 let ws = null;
 
 function connectWs() {
   ws = new WebSocket(`ws://localhost:3000/ws`);
-  ws.onopen = () => { wsDot.className = 'sse-dot connected'; };
+  ws.onopen = () => { connDot.className = 'conn-dot connected'; };
   ws.onclose = () => {
-    wsDot.className = 'sse-dot disconnected';
+    connDot.className = 'conn-dot disconnected';
     setTimeout(connectWs, 3000);
   };
   ws.onerror = () => { ws.close(); };

@@ -82,7 +82,7 @@ impl AppState {
             platform_repo,
             queue_repo,
             queue_service,
-            config: Config::load(),
+            config: Config::test_config(),
             random,
             event_publisher,
             guest_user_id: Arc::new(OnceLock::new()),

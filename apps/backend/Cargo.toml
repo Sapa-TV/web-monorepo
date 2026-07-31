@@ -26,3 +26,4 @@ utoipa-axum = { workspace = true }
 utoipa-redoc = { workspace = true, features = ["axum"] }
 utoipa-swagger-ui = { workspace = true, features = ["axum"] }
 futures-util = { workspace = true }
+dotenvy = { workspace = true }
