@@ -154,6 +154,7 @@ pub async fn delete_rarity(
     components(schemas(RarityResponse, CreateRarityRequest, UpdateRarityRequest,))
 )]
 #[non_exhaustive]
+#[allow(dead_code)]
 pub(crate) struct RaritiesApiDoc;
 
 pub fn router() -> axum::Router<AppState> {

@@ -11,13 +11,6 @@ pub struct InMemoryRarityRepository {
 }
 
 impl InMemoryRarityRepository {
-    pub fn new() -> Self {
-        Self {
-            rarities: Mutex::new(Vec::new()),
-            next_id: AtomicU32::new(1),
-        }
-    }
-
     pub fn new_seeded() -> Self {
         let rarities = vec![
             Rarity::new(

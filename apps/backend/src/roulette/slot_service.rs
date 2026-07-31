@@ -2,6 +2,7 @@ use super::repository::RouletteSlotRepository;
 use crate::error::RepositoryError;
 use crate::roulette::rarity::RarityId;
 use serde::{Deserialize, Serialize};
+use std::fmt::{self, Display};
 use utoipa::ToSchema;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
@@ -13,9 +14,11 @@ impl RouletteSlotId {
     pub(crate) fn new(id: u32) -> Self {
         Self(id)
     }
+}
 
-    pub(crate) fn value(&self) -> u32 {
-        self.0
+impl Display for RouletteSlotId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
@@ -181,7 +184,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_add_and_get_slots() {
-        let repo = InMemoryRouletteSlotRepository::new();
+        let repo = InMemoryRouletteSlotRepository::seed(vec![]);
         let mut slot_service = RouletteSlotService::build(repo).await.unwrap();
 
         slot_service
@@ -200,7 +203,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_delete_slot() {
-        let repo = InMemoryRouletteSlotRepository::new();
+        let repo = InMemoryRouletteSlotRepository::seed(vec![]);
         let mut slot_service = RouletteSlotService::build(repo).await.unwrap();
 
         slot_service
@@ -220,7 +223,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_edit_slot() {
-        let repo = InMemoryRouletteSlotRepository::new();
+        let repo = InMemoryRouletteSlotRepository::seed(vec![]);
         let mut slot_service = RouletteSlotService::build(repo).await.unwrap();
 
         slot_service

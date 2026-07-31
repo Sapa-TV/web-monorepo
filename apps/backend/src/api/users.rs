@@ -388,6 +388,7 @@ pub async fn list_platforms(
     ))
 )]
 #[non_exhaustive]
+#[allow(dead_code)]
 pub(crate) struct UsersApiDoc;
 
 pub fn router() -> axum::Router<AppState> {
@@ -412,7 +413,6 @@ pub fn router() -> axum::Router<AppState> {
 
 #[cfg(test)]
 mod tests {
-    use axum::Router;
     use serde_json::Value;
     use tower::ServiceExt;
 
@@ -484,7 +484,7 @@ mod tests {
                 .unwrap(),
         )
         .unwrap();
-        assert_eq!(body["id"], user.id.value());
+        assert_eq!(body["id"], serde_json::to_value(user.id).unwrap());
         assert_eq!(body["display_name"], "Viewer");
     }
 
@@ -537,7 +537,7 @@ mod tests {
             .oneshot(
                 axum::http::Request::builder()
                     .method("GET")
-                    .uri(&format!("/api/users/{}", user.id.value()))
+                    .uri(format!("/api/users/{}", user.id))
                     .body(axum::body::Body::empty())
                     .unwrap(),
             )
@@ -577,7 +577,7 @@ mod tests {
             .oneshot(
                 axum::http::Request::builder()
                     .method("PATCH")
-                    .uri(&format!("/api/users/{}", user.id.value()))
+                    .uri(format!("/api/users/{}", user.id))
                     .header("content-type", "application/json")
                     .body(axum::body::Body::from(r#"{"display_name":"NewName"}"#))
                     .unwrap(),
@@ -606,7 +606,7 @@ mod tests {
             .oneshot(
                 axum::http::Request::builder()
                     .method("DELETE")
-                    .uri(&format!("/api/users/{}", user.id.value()))
+                    .uri(format!("/api/users/{}", user.id))
                     .body(axum::body::Body::empty())
                     .unwrap(),
             )
@@ -646,7 +646,7 @@ mod tests {
             .oneshot(
                 axum::http::Request::builder()
                     .method("POST")
-                    .uri(&format!("/api/users/{}/platforms", user.id.value()))
+                    .uri(format!("/api/users/{}/platforms", user.id))
                     .header("content-type", "application/json")
                     .body(axum::body::Body::from(
                         r#"{"platform":"twitch","platform_user_id":"123","platform_username":"tw_user"}"#,
@@ -684,7 +684,7 @@ mod tests {
             .oneshot(
                 axum::http::Request::builder()
                     .method("POST")
-                    .uri(&format!("/api/users/{}/platforms", user.id.value()))
+                    .uri(format!("/api/users/{}/platforms", user.id))
                     .header("content-type", "application/json")
                     .body(axum::body::Body::from(
                         r#"{"platform":"twitch","platform_user_id":"123","platform_username":"other"}"#,
@@ -708,7 +708,7 @@ mod tests {
             .oneshot(
                 axum::http::Request::builder()
                     .method("POST")
-                    .uri(&format!("/api/users/{}/platforms", user.id.value()))
+                    .uri(format!("/api/users/{}/platforms", user.id))
                     .header("content-type", "application/json")
                     .body(axum::body::Body::from(
                         r#"{"platform":"unknown","platform_user_id":"123","platform_username":"u"}"#,
@@ -742,7 +742,7 @@ mod tests {
             .oneshot(
                 axum::http::Request::builder()
                     .method("PATCH")
-                    .uri(&format!("/api/users/{}/platforms/twitch", user.id.value()))
+                    .uri(format!("/api/users/{}/platforms/twitch", user.id))
                     .header("content-type", "application/json")
                     .body(axum::body::Body::from(
                         r#"{"platform_username":"new_name"}"#,
@@ -778,7 +778,7 @@ mod tests {
             .oneshot(
                 axum::http::Request::builder()
                     .method("DELETE")
-                    .uri(&format!("/api/users/{}/platforms/twitch", user.id.value()))
+                    .uri(format!("/api/users/{}/platforms/twitch", user.id))
                     .body(axum::body::Body::empty())
                     .unwrap(),
             )
@@ -806,7 +806,7 @@ mod tests {
             .oneshot(
                 axum::http::Request::builder()
                     .method("DELETE")
-                    .uri(&format!("/api/users/{}/platforms/twitch", user.id.value()))
+                    .uri(format!("/api/users/{}/platforms/twitch", user.id))
                     .body(axum::body::Body::empty())
                     .unwrap(),
             )
@@ -827,7 +827,7 @@ mod tests {
             .oneshot(
                 axum::http::Request::builder()
                     .method("DELETE")
-                    .uri(&format!("/api/users/{}/platforms/unknown", user.id.value()))
+                    .uri(format!("/api/users/{}/platforms/unknown", user.id))
                     .body(axum::body::Body::empty())
                     .unwrap(),
             )
@@ -910,7 +910,7 @@ mod tests {
             .oneshot(
                 axum::http::Request::builder()
                     .method("POST")
-                    .uri(&format!("/api/users/{user_id}/platforms"))
+                    .uri(format!("/api/users/{user_id}/platforms"))
                     .header("content-type", "application/json")
                     .body(axum::body::Body::from(
                         r#"{"platform":"twitch","platform_user_id":"123","platform_username":"tw_user"}"#,

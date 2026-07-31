@@ -1,5 +1,6 @@
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
+use std::fmt::{self, Display};
 use utoipa::ToSchema;
 
 use crate::roulette::slot_service::RouletteSlotId;
@@ -14,9 +15,11 @@ impl QueueEntryId {
     pub(crate) const fn new(id: u32) -> Self {
         Self(id)
     }
+}
 
-    pub(crate) const fn value(&self) -> u32 {
-        self.0
+impl Display for QueueEntryId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 

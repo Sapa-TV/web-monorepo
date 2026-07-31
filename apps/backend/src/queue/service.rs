@@ -100,14 +100,18 @@ impl QueueService {
             .map(|r| r.display_name.clone())
             .ok_or(QueueServiceError::RarityNotFound)?;
 
-        self.event_publisher
+        if let Err(e) = self
+            .event_publisher
             .publish_spin(SpinEvent::Started {
                 entry_id: entry.id,
                 slot_name: slot.name.clone(),
                 slot_rarity,
                 user_name: entry.user_name.clone(),
             })
-            .await?;
+            .await
+        {
+            tracing::warn!("failed to publish spin_started event: {e}");
+        }
 
         Ok((entry, slot))
     }
@@ -129,11 +133,15 @@ impl QueueService {
             .await?
             .ok_or(QueueServiceError::NotFound)?;
 
-        self.event_publisher
+        if let Err(e) = self
+            .event_publisher
             .publish_spin(SpinEvent::Completed {
                 entry_id: updated.id,
             })
-            .await?;
+            .await
+        {
+            tracing::warn!("failed to publish spin_completed event: {e}");
+        }
 
         Ok(())
     }
@@ -168,10 +176,13 @@ impl QueueService {
             .unwrap_or(Utc::now().naive_utc());
         let entries = self.queue_repo.mark_timed_out(cutoff).await?;
         for entry in entries {
-            let _ = self
+            if let Err(e) = self
                 .event_publisher
                 .publish_spin(SpinEvent::Error { entry_id: entry.id })
-                .await;
+                .await
+            {
+                tracing::warn!("failed to publish spin_error event for entry {}: {e}", entry.id);
+            }
         }
         Ok(())
     }

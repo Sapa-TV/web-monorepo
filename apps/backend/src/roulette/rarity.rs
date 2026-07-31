@@ -1,3 +1,4 @@
+use std::fmt::{self, Display};
 use std::future::Future;
 
 use serde::{Deserialize, Serialize};
@@ -14,9 +15,11 @@ impl RarityId {
     pub(crate) const fn new(id: u32) -> Self {
         Self(id)
     }
+}
 
-    pub(crate) const fn value(&self) -> u32 {
-        self.0
+impl Display for RarityId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 

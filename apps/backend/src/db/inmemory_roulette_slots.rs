@@ -20,13 +20,6 @@ const SEEDED_SLOTS: &[(&str, u32, u64, &str)] = &[
 ];
 
 impl InMemoryRouletteSlotRepository {
-    pub fn new() -> Self {
-        Self {
-            slots: Mutex::new(Vec::new()),
-            next_id: AtomicU32::new(1),
-        }
-    }
-
     pub fn new_seeded() -> Self {
         let slots: Vec<RouletteSlot> = SEEDED_SLOTS
             .iter()
@@ -115,26 +108,26 @@ mod tests {
 
     #[tokio::test]
     async fn test_save_assigns_id() {
-        let repo = InMemoryRouletteSlotRepository::new();
+        let repo = InMemoryRouletteSlotRepository::seed(vec![]);
         let slot = make_slot("test");
-        assert_eq!(slot.id.value(), 0);
+        assert_eq!(slot.id, RouletteSlotId::new(0));
 
         let saved = repo.save(slot).await.unwrap();
-        assert_eq!(saved.id.value(), 1);
+        assert_eq!(saved.id, RouletteSlotId::new(1));
     }
 
     #[tokio::test]
     async fn test_save_increments_id() {
-        let repo = InMemoryRouletteSlotRepository::new();
+        let repo = InMemoryRouletteSlotRepository::seed(vec![]);
         let saved_1 = repo.save(make_slot("a")).await.unwrap();
         let saved_2 = repo.save(make_slot("b")).await.unwrap();
-        assert_eq!(saved_1.id.value(), 1);
-        assert_eq!(saved_2.id.value(), 2);
+        assert_eq!(saved_1.id, RouletteSlotId::new(1));
+        assert_eq!(saved_2.id, RouletteSlotId::new(2));
     }
 
     #[tokio::test]
     async fn test_load_all_returns_saved_slots() {
-        let repo = InMemoryRouletteSlotRepository::new();
+        let repo = InMemoryRouletteSlotRepository::seed(vec![]);
         repo.save(make_slot("a")).await.unwrap();
         repo.save(make_slot("b")).await.unwrap();
         repo.save(make_slot("c")).await.unwrap();
@@ -145,7 +138,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_update_existing_slot() {
-        let repo = InMemoryRouletteSlotRepository::new();
+        let repo = InMemoryRouletteSlotRepository::seed(vec![]);
         let saved = repo.save(make_slot("original")).await.unwrap();
 
         let updated = RouletteSlot::new(saved.id, "updated", COMMON, 99, "new action");
@@ -160,7 +153,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_update_nonexistent_returns_none() {
-        let repo = InMemoryRouletteSlotRepository::new();
+        let repo = InMemoryRouletteSlotRepository::seed(vec![]);
         let slot = RouletteSlot::new(RouletteSlotId::new(999), "ghost", COMMON, 10, "action");
         let result = repo.update(slot).await.unwrap();
         assert!(result.is_none());
@@ -168,7 +161,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_delete_existing_slot() {
-        let repo = InMemoryRouletteSlotRepository::new();
+        let repo = InMemoryRouletteSlotRepository::seed(vec![]);
         let saved = repo.save(make_slot("to_delete")).await.unwrap();
         assert_eq!(repo.load_all().await.unwrap().len(), 1);
 
@@ -178,7 +171,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_delete_nonexistent_returns_false() {
-        let repo = InMemoryRouletteSlotRepository::new();
+        let repo = InMemoryRouletteSlotRepository::seed(vec![]);
         let result = repo.delete(RouletteSlotId::new(42)).await.unwrap();
         assert!(!result);
     }
@@ -189,8 +182,8 @@ mod tests {
         let repo = InMemoryRouletteSlotRepository::seed(slots);
         let all = repo.load_all().await.unwrap();
         assert_eq!(all.len(), 2);
-        assert_eq!(all[0].id.value(), 1);
-        assert_eq!(all[1].id.value(), 2);
+        assert_eq!(all[0].id, RouletteSlotId::new(1));
+        assert_eq!(all[1].id, RouletteSlotId::new(2));
         assert_eq!(all[0].name, "preloaded_a");
     }
 
@@ -200,7 +193,7 @@ mod tests {
         let repo = InMemoryRouletteSlotRepository::seed(slots);
 
         let saved = repo.save(make_slot("new")).await.unwrap();
-        assert_eq!(saved.id.value(), 2);
+        assert_eq!(saved.id, RouletteSlotId::new(2));
     }
 
     #[tokio::test]
@@ -210,7 +203,7 @@ mod tests {
         let repo = InMemoryRouletteSlotRepository::seed(vec![s1, s2]);
 
         let all = repo.load_all().await.unwrap();
-        assert_eq!(all[0].id.value(), 1);
-        assert_eq!(all[1].id.value(), 2);
+        assert_eq!(all[0].id, RouletteSlotId::new(1));
+        assert_eq!(all[1].id, RouletteSlotId::new(2));
     }
 }

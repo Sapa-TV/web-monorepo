@@ -4,7 +4,6 @@ use thiserror::Error;
 
 use super::RepositoryError;
 use super::api::ApiError;
-use super::event::EventError;
 
 #[derive(Debug, Error)]
 #[non_exhaustive]
@@ -27,19 +26,11 @@ pub enum QueueServiceError {
     RarityNotFound,
     #[error("{0}")]
     Repo(RepositoryError),
-    #[error("{0}")]
-    Event(EventError),
 }
 
 impl From<RepositoryError> for QueueServiceError {
     fn from(e: RepositoryError) -> Self {
         QueueServiceError::Repo(e)
-    }
-}
-
-impl From<EventError> for QueueServiceError {
-    fn from(e: EventError) -> Self {
-        QueueServiceError::Event(e)
     }
 }
 
@@ -59,7 +50,6 @@ impl From<QueueServiceError> for ApiError {
             QueueServiceError::NoSlots
             | QueueServiceError::UserNotFound
             | QueueServiceError::RarityNotFound => StatusCode::UNPROCESSABLE_ENTITY,
-            QueueServiceError::Event(_) => StatusCode::INTERNAL_SERVER_ERROR,
         };
         ApiError::new(status, e.to_string())
     }

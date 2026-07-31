@@ -88,7 +88,6 @@ pub struct QueueIdParam {
 
 #[cfg(test)]
 mod tests {
-    use axum::Router;
     use tower::ServiceExt;
 
     use crate::api::queue::EnqueueRequest;

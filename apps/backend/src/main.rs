@@ -1,6 +1,7 @@
 #![feature(sync_nonpoison)]
 #![feature(nonpoison_mutex)]
 #![deny(clippy::exhaustive_structs)]
+#![deny(clippy::new_ret_no_self)]
 
 mod api;
 mod config;
@@ -66,6 +67,8 @@ async fn timeout_task(state: AppState) {
     let mut interval = tokio::time::interval(timeout);
     loop {
         interval.tick().await;
-        let _ = state.queue_service.mark_timed_out().await;
+        if let Err(e) = state.queue_service.mark_timed_out().await {
+            tracing::error!("mark_timed_out failed: {e}");
+        }
     }
 }

@@ -24,7 +24,12 @@ impl BroadcastEventPublisher {
 
 impl SpinEventPublisher for BroadcastEventPublisher {
     async fn publish_spin(&self, event: SpinEvent) -> Result<(), EventError> {
-        let _ = self.tx.send(Arc::new(event));
-        Ok(())
+        match self.tx.send(Arc::new(event)) {
+            Ok(_) => Ok(()),
+            Err(_) => {
+                tracing::warn!("spin event dropped: no subscribers");
+                Err(EventError::Publish("no subscribers".to_string()))
+            }
+        }
     }
 }

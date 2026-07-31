@@ -61,8 +61,8 @@ impl AppState {
 #[cfg(test)]
 impl AppState {
     pub fn new_test_state(random: StandartRandomProvider) -> Self {
-        let slot_repo = Arc::new(InMemoryRouletteSlotRepository::new());
-        let rarity_repo = Arc::new(InMemoryRarityRepository::new());
+        let slot_repo = Arc::new(InMemoryRouletteSlotRepository::seed(vec![]));
+        let rarity_repo = Arc::new(InMemoryRarityRepository::seed(vec![]));
         let user_repo = Arc::new(InMemoryUserRepository::new());
         let platform_repo = Arc::new(InMemoryPlatformRepository::new_seeded());
         let queue_repo = Arc::new(InMemoryQueueRepository::new());

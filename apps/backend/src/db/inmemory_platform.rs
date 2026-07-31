@@ -28,11 +28,6 @@ impl PlatformRepository for InMemoryPlatformRepository {
         Ok(platforms.iter().find(|p| p.name == name).cloned())
     }
 
-    async fn find_by_id(&self, id: PlatformId) -> Result<Option<Platform>, RepositoryError> {
-        let platforms = self.platforms.lock();
-        Ok(platforms.iter().find(|p| p.id == id).cloned())
-    }
-
     async fn load_all(&self) -> Result<Vec<Platform>, RepositoryError> {
         Ok(self.platforms.lock().clone())
     }
@@ -54,21 +49,6 @@ mod tests {
     async fn find_by_name_not_found() {
         let repo = InMemoryPlatformRepository::new_seeded();
         let result = repo.find_by_name("unknown").await.unwrap();
-        assert!(result.is_none());
-    }
-
-    #[tokio::test]
-    async fn find_by_id_found() {
-        let repo = InMemoryPlatformRepository::new_seeded();
-        let result = repo.find_by_id(PlatformId::new(1)).await.unwrap();
-        assert!(result.is_some());
-        assert_eq!(result.unwrap().id, PlatformId::new(1));
-    }
-
-    #[tokio::test]
-    async fn find_by_id_not_found() {
-        let repo = InMemoryPlatformRepository::new_seeded();
-        let result = repo.find_by_id(PlatformId::new(999)).await.unwrap();
         assert!(result.is_none());
     }
 

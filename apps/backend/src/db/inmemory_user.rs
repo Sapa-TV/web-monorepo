@@ -208,7 +208,7 @@ mod tests {
         let repo = InMemoryUserRepository::new();
         let user = repo.create("Viewer").await.unwrap();
         assert_eq!(user.display_name, "Viewer");
-        assert_eq!(user.id.value(), 1);
+        assert_eq!(user.id, UserId::new(1));
     }
 
     #[tokio::test]

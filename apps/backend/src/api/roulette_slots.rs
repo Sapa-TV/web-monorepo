@@ -55,6 +55,7 @@ pub struct SlotIdParam {
     ))
 )]
 #[non_exhaustive]
+#[allow(dead_code)]
 pub(crate) struct SlotsApiDoc;
 
 impl From<RouletteSlot> for RouletteSlotResponse {
@@ -161,9 +162,17 @@ pub async fn delete_slot(
     Ok(StatusCode::NO_CONTENT)
 }
 
+pub fn router() -> axum::Router<AppState> {
+    use axum::routing::{delete, get, post, put};
+    axum::Router::new()
+        .route("/api/slots", get(list_slots))
+        .route("/api/slots", post(create_slot))
+        .route("/api/slots/{id}", put(update_slot))
+        .route("/api/slots/{id}", delete(delete_slot))
+}
+
 #[cfg(test)]
 mod tests {
-    use axum::Router;
     use serde_json::Value;
     use tower::ServiceExt;
 
@@ -248,7 +257,7 @@ mod tests {
             .oneshot(
                 axum::http::Request::builder()
                     .method("PUT")
-                    .uri(&format!("/api/slots/{}", saved.id.value()))
+                    .uri(format!("/api/slots/{}", saved.id))
                     .header("content-type", "application/json")
                     .body(axum::body::Body::from(
                         r#"{"name":"updated","rarity_id":1,"weight":99,"action":"new_act"}"#,
@@ -312,7 +321,7 @@ mod tests {
             .oneshot(
                 axum::http::Request::builder()
                     .method("DELETE")
-                    .uri(&format!("/api/slots/{}", saved.id.value()))
+                    .uri(format!("/api/slots/{}", saved.id))
                     .body(axum::body::Body::empty())
                     .unwrap(),
             )
@@ -340,13 +349,4 @@ mod tests {
 
         assert_eq!(response.status(), 404);
     }
-}
-
-pub fn router() -> axum::Router<AppState> {
-    use axum::routing::{delete, get, post, put};
-    axum::Router::new()
-        .route("/api/slots", get(list_slots))
-        .route("/api/slots", post(create_slot))
-        .route("/api/slots/{id}", put(update_slot))
-        .route("/api/slots/{id}", delete(delete_slot))
 }

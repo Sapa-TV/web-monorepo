@@ -42,6 +42,7 @@ pub fn protected_router() -> axum::Router<AppState> {
         .merge(queue::router())
 }
 
+#[cfg(test)]
 pub fn router(state: AppState) -> axum::Router {
     public_router().merge(protected_router()).with_state(state)
 }

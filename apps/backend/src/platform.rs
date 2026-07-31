@@ -1,3 +1,4 @@
+use std::fmt::{self, Display};
 use std::future::Future;
 
 use serde::{Deserialize, Serialize};
@@ -14,9 +15,11 @@ impl PlatformId {
     pub(crate) const fn new(id: u32) -> Self {
         Self(id)
     }
+}
 
-    pub(crate) const fn value(&self) -> u32 {
-        self.0
+impl Display for PlatformId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
@@ -40,10 +43,6 @@ pub trait PlatformRepository: Send + Sync {
     fn find_by_name(
         &self,
         name: &str,
-    ) -> impl Future<Output = Result<Option<Platform>, RepositoryError>> + Send;
-    fn find_by_id(
-        &self,
-        id: PlatformId,
     ) -> impl Future<Output = Result<Option<Platform>, RepositoryError>> + Send;
     fn load_all(&self) -> impl Future<Output = Result<Vec<Platform>, RepositoryError>> + Send;
 }

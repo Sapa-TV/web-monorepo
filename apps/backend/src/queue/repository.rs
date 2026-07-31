@@ -39,11 +39,6 @@ pub trait QueueRepository: Send + Sync {
 
     fn count_by_status(&self) -> impl Future<Output = Result<QueueStats, RepositoryError>> + Send;
 
-    fn find_timed_out(
-        &self,
-        cutoff: NaiveDateTime,
-    ) -> impl Future<Output = Result<Vec<QueueEntry>, RepositoryError>> + Send;
-
     fn mark_timed_out(
         &self,
         cutoff: NaiveDateTime,

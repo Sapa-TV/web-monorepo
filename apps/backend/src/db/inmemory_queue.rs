@@ -122,18 +122,6 @@ impl QueueRepository for InMemoryQueueRepository {
         Ok(stats)
     }
 
-    async fn find_timed_out(
-        &self,
-        cutoff: NaiveDateTime,
-    ) -> Result<Vec<QueueEntry>, RepositoryError> {
-        let entries = self.entries.lock();
-        Ok(entries
-            .iter()
-            .filter(|e| e.status == QueueStatus::Spinning && e.updated_at < cutoff)
-            .cloned()
-            .collect())
-    }
-
     async fn mark_timed_out(
         &self,
         cutoff: NaiveDateTime,
