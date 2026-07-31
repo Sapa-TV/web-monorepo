@@ -6,6 +6,20 @@ use crate::error::RepositoryError;
 use crate::queue::entry::{QueueEntry, QueueEntryId, QueueStats, QueueStatus};
 use crate::roulette::slot_service::RouletteSlotId;
 
+#[non_exhaustive]
+pub enum DequeueOutcome {
+    Picked(QueueEntry),
+    AlreadyActive,
+    Empty,
+}
+
+#[non_exhaustive]
+pub enum StatusUpdateOutcome {
+    Updated(QueueEntry),
+    NotFound,
+    StatusMismatch,
+}
+
 pub trait QueueRepository: Send + Sync {
     fn enqueue(
         &self,
@@ -16,9 +30,10 @@ pub trait QueueRepository: Send + Sync {
     fn peek_next(&self)
     -> impl Future<Output = Result<Option<QueueEntry>, RepositoryError>> + Send;
 
-    fn dequeue_next(
+    fn dequeue_next_with_slot(
         &self,
-    ) -> impl Future<Output = Result<Option<QueueEntry>, RepositoryError>> + Send;
+        slot_id: RouletteSlotId,
+    ) -> impl Future<Output = Result<DequeueOutcome, RepositoryError>> + Send;
 
     fn list(
         &self,
@@ -30,12 +45,12 @@ pub trait QueueRepository: Send + Sync {
         id: QueueEntryId,
     ) -> impl Future<Output = Result<Option<QueueEntry>, RepositoryError>> + Send;
 
-    fn update_status(
+    fn update_status_if(
         &self,
         id: QueueEntryId,
+        expected: QueueStatus,
         status: QueueStatus,
-        result_slot_id: Option<RouletteSlotId>,
-    ) -> impl Future<Output = Result<Option<QueueEntry>, RepositoryError>> + Send;
+    ) -> impl Future<Output = Result<StatusUpdateOutcome, RepositoryError>> + Send;
 
     fn count_by_status(&self) -> impl Future<Output = Result<QueueStats, RepositoryError>> + Send;
 

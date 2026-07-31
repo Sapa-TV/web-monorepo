@@ -5,7 +5,7 @@ use chrono::{NaiveDateTime, Utc};
 
 use crate::error::RepositoryError;
 use crate::queue::entry::{QueueEntry, QueueEntryId, QueueStats, QueueStatus};
-use crate::queue::repository::QueueRepository;
+use crate::queue::repository::{DequeueOutcome, QueueRepository, StatusUpdateOutcome};
 use crate::roulette::slot_service::RouletteSlotId;
 use crate::user::UserId;
 
@@ -56,8 +56,15 @@ impl QueueRepository for InMemoryQueueRepository {
             .cloned())
     }
 
-    async fn dequeue_next(&self) -> Result<Option<QueueEntry>, RepositoryError> {
+    async fn dequeue_next_with_slot(
+        &self,
+        slot_id: RouletteSlotId,
+    ) -> Result<DequeueOutcome, RepositoryError> {
         let mut entries = self.entries.lock();
+        if entries.iter().any(|e| e.status == QueueStatus::Spinning) {
+            return Ok(DequeueOutcome::AlreadyActive);
+        }
+
         let pos = entries
             .iter()
             .position(|e| e.status == QueueStatus::Error)
@@ -67,14 +74,15 @@ impl QueueRepository for InMemoryQueueRepository {
                     .position(|e| e.status == QueueStatus::Pending)
             });
 
-        if let Some(pos) = pos {
-            let entry = &mut entries[pos];
-            entry.status = QueueStatus::Spinning;
-            entry.updated_at = Utc::now().naive_utc();
-            Ok(Some(entry.clone()))
-        } else {
-            Ok(None)
-        }
+        let Some(pos) = pos else {
+            return Ok(DequeueOutcome::Empty);
+        };
+
+        let entry = &mut entries[pos];
+        entry.status = QueueStatus::Spinning;
+        entry.result_slot_id = Some(slot_id);
+        entry.updated_at = Utc::now().naive_utc();
+        Ok(DequeueOutcome::Picked(entry.clone()))
     }
 
     async fn list(&self, status: Option<QueueStatus>) -> Result<Vec<QueueEntry>, RepositoryError> {
@@ -90,21 +98,22 @@ impl QueueRepository for InMemoryQueueRepository {
         Ok(entries.iter().find(|e| e.id == id).cloned())
     }
 
-    async fn update_status(
+    async fn update_status_if(
         &self,
         id: QueueEntryId,
+        expected: QueueStatus,
         status: QueueStatus,
-        result_slot_id: Option<RouletteSlotId>,
-    ) -> Result<Option<QueueEntry>, RepositoryError> {
+    ) -> Result<StatusUpdateOutcome, RepositoryError> {
         let mut entries = self.entries.lock();
-        if let Some(entry) = entries.iter_mut().find(|e| e.id == id) {
-            entry.status = status;
-            entry.result_slot_id = result_slot_id;
-            entry.updated_at = Utc::now().naive_utc();
-            Ok(Some(entry.clone()))
-        } else {
-            Ok(None)
+        let Some(entry) = entries.iter_mut().find(|e| e.id == id) else {
+            return Ok(StatusUpdateOutcome::NotFound);
+        };
+        if entry.status != expected {
+            return Ok(StatusUpdateOutcome::StatusMismatch);
         }
+        entry.status = status;
+        entry.updated_at = Utc::now().naive_utc();
+        Ok(StatusUpdateOutcome::Updated(entry.clone()))
     }
 
     async fn count_by_status(&self) -> Result<QueueStats, RepositoryError> {

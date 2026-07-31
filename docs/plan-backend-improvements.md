@@ -19,19 +19,27 @@
 
 Решение: выбор entry + roll + запись `result_slot_id` внутри одного лока/транзакции; `AlreadyActive` — результат конкурентного выбора, а не предпроверка.
 
+**Сделано:** `QueueRepository::dequeue_next_with_slot(slot_id)` — выбор entry + установка `Spinning` + запись `slot_id` в одном захвате лока репо (`DequeueOutcome::Picked/AlreadyActive/Empty`). `QueueService::dequeue_next` сначала `roll()`, затем атомарно выставляет статус. Орфана нет: `NoSlots` — до записи статуса.
+
 ### 1.2 CAS-семантика статусов
 
 `complete`/`cancel` (`queue/service.rs:95-142`) — get-then-update. В гонке двойной `complete` пройдёт (оба прочитают `Spinning`).
 
 Решение: `update_status` внутри репо проверяет ожидаемый статус (compare-and-swap) и возвращает конфликт.
 
+**Сделано:** `update_status_if(id, expected, status)` → `StatusUpdateOutcome::Updated/NotFound/StatusMismatch`. `complete` требует `Spinning` (гот. гонка → один успешен, другой `NotSpinning`); `cancel` допускает `Pending|Error`.
+
 ### 1.3 `mark_timed_out` vs `dequeue`
 
 Timeout-задача может перевести в `Error` entry, который параллельно декивается. Закрыть тем же локом/транзакцией.
 
+**Сделано:** покрыто дизайном из 1.1 — `mark_timed_out` и `dequeue_next_with_slot` используют один и тот же лок репо, гонки нет. Логически не пересекаются: timeout трогает только `Spinning`, деqueue — только `Error`/`Pending`. Для sqlite (п. 2) потребуется транзакция.
+
 ### 1.4 Case-sensitive статус в query
 
 `QueueStatus` сериализуется как есть (`Pending`/`Spinning`), а фронтенд по плану шлёт `?status=pending` → `400`. Либо `#[serde(rename_all = "lowercase")]`, либо слать `Pending`.
+
+**Сделано:** фронтенд (`panel.js`) читает статусы только из JSON-ответа, где важно `Spinning` (uppercase) — сериализацию не меняли. Вместо этого кастомный `Deserialize` для `QueueStatus`: query-параметр принимается case-insensitive (`pending`/`Pending`/`SPINNING`). Serialize остаётся uppercase. Тест `list_status_query_is_case_insensitive`.
 
 ---
 
@@ -79,14 +87,15 @@ Timeout-задача может перевести в `Error` entry, котор�
 
 В `apps/backend/src/api/queue.rs`, модуль `tests`:
 
-| Тест                                  | Поведение                                                | Статус                                                 |
-| ------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------ |
-| `dequeue_next_parallel_only_one_spin` | два параллельных `next` → ровно один 200, другой 409     | `#[ignore]` — сейчас двойной спин                      |
-| `dequeue_next_no_slots_no_orphan`     | `next` без слотов → 422, в очереди нет `Spinning`        | `#[ignore]` — сейчас entry застревает в `Spinning`     |
-| `complete_parallel_only_one_success`  | два параллельных `complete` → ровно один 200, другой 409 | `#[ignore]` — сейчас оба проходят                      |
-| `slot_created_via_api_used_in_roll`   | `POST /api/slots` → следующий `roll` видит слот          | проходит (валидирует общий `Arc<RouletteSlotService>`) |
+| Тест                                    | Что проверяет                                     | Покрывает |
+| --------------------------------------- | ------------------------------------------------- | --------- |
+| `dequeue_next_parallel_only_one_spin`   | два `next` параллельно → один 200, второй 409     | 1.1       |
+| `dequeue_next_no_slots_no_orphan`       | `next` без слотов → 422, орфанов в `Spinning` нет | 1.1       |
+| `complete_parallel_only_one_success`    | два `complete` параллельно → один 200, второй 409 | 1.2       |
+| `slot_created_via_api_used_in_roll`     | созданный через API слот виден в `roll`           | —         |
+| `list_status_query_is_case_insensitive` | `?status=pending\|Pending` → 200                  | 1.4       |
 
-`#[ignore]` сняты по мере реализации пунктов 1.1-1.2.
+`#[ignore]` сняты по мере реализации пунктов 1.1-1.2 (сейчас все сняты).
 
 ---
 

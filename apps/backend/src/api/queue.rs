@@ -160,7 +160,11 @@ mod tests {
 
         state
             .queue_repo
-            .update_status(QueueEntryId::new(1), QueueStatus::Error, None)
+            .update_status_if(
+                QueueEntryId::new(1),
+                QueueStatus::Spinning,
+                QueueStatus::Error,
+            )
             .await
             .unwrap();
 
@@ -311,7 +315,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     async fn dequeue_next_parallel_only_one_spin() {
         let state = test_state().await;
 
@@ -375,7 +378,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     async fn dequeue_next_no_slots_no_orphan() {
         let state = test_state().await;
         let app = router(state.clone());
@@ -431,7 +433,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     async fn complete_parallel_only_one_success() {
         let state = test_state().await;
 
@@ -582,6 +583,48 @@ mod tests {
         )
         .unwrap();
         assert_eq!(body["slot"]["name"], "api_slot");
+    }
+
+    #[tokio::test]
+    async fn list_status_query_is_case_insensitive() {
+        let state = test_state().await;
+        let app = router(state.clone());
+
+        let user_id = setup_user(&state).await;
+        let resp = app
+            .clone()
+            .oneshot(
+                axum::http::Request::builder()
+                    .method("POST")
+                    .uri("/api/queue")
+                    .header("content-type", "application/json")
+                    .body(axum::body::Body::from(
+                        serde_json::to_string(&enqueue_body(user_id)).unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), 200);
+
+        for status in ["pending", "Pending", "spinning", "Spinning"] {
+            let resp = app
+                .clone()
+                .oneshot(
+                    axum::http::Request::builder()
+                        .method("GET")
+                        .uri(format!("/api/queue?status={status}"))
+                        .body(axum::body::Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(
+                resp.status(),
+                200,
+                "status query {status} should be accepted"
+            );
+        }
     }
 }
 

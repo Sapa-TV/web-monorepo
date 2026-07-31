@@ -23,7 +23,7 @@ impl Display for QueueEntryId {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, ToSchema)]
 #[non_exhaustive]
 pub enum QueueStatus {
     Pending,
@@ -31,6 +31,25 @@ pub enum QueueStatus {
     Completed,
     Error,
     Cancelled,
+}
+
+impl<'de> Deserialize<'de> for QueueStatus {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let value = String::deserialize(deserializer)?;
+        match value.to_ascii_lowercase().as_str() {
+            "pending" => Ok(Self::Pending),
+            "spinning" => Ok(Self::Spinning),
+            "completed" => Ok(Self::Completed),
+            "error" => Ok(Self::Error),
+            "cancelled" => Ok(Self::Cancelled),
+            _ => Err(serde::de::Error::custom(format!(
+                "unknown queue status: {value}"
+            ))),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

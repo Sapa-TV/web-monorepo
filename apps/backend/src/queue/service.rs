@@ -10,7 +10,7 @@ use crate::error::QueueServiceError;
 use crate::event::BroadcastEventPublisher;
 use crate::queue::entry::{QueueEntry, QueueEntryId, QueueStatus};
 use crate::queue::events::{SpinEvent, SpinEventPublisher};
-use crate::queue::repository::QueueRepository;
+use crate::queue::repository::{DequeueOutcome, QueueRepository, StatusUpdateOutcome};
 use crate::random::StandartRandomProvider;
 use crate::roulette::machine::RouletteService;
 use crate::roulette::rarity::RarityRepository;
@@ -44,30 +44,13 @@ impl QueueService {
     }
 
     pub async fn dequeue_next(&self) -> Result<(QueueEntry, RouletteSlot), QueueServiceError> {
-        let active = self
-            .queue_repo
-            .list(Some(QueueStatus::Spinning))
-            .await?
-            .into_iter()
-            .next();
-
-        if active.is_some() {
-            return Err(QueueServiceError::AlreadyActive);
-        }
-
-        let entry = self
-            .queue_repo
-            .dequeue_next()
-            .await?
-            .ok_or(QueueServiceError::QueueEmpty)?;
-
         let slot = self.roulette.roll().ok_or(QueueServiceError::NoSlots)?;
 
-        let entry = self
-            .queue_repo
-            .update_status(entry.id, QueueStatus::Spinning, Some(slot.id))
-            .await?
-            .ok_or(QueueServiceError::NotFound)?;
+        let entry = match self.queue_repo.dequeue_next_with_slot(slot.id).await? {
+            DequeueOutcome::Picked(entry) => entry,
+            DequeueOutcome::AlreadyActive => return Err(QueueServiceError::AlreadyActive),
+            DequeueOutcome::Empty => return Err(QueueServiceError::QueueEmpty),
+        };
 
         let rarities = self.rarity_repo.load_all().await?;
         let slot_rarity = rarities
@@ -93,21 +76,15 @@ impl QueueService {
     }
 
     pub async fn complete(&self, id: QueueEntryId) -> Result<(), QueueServiceError> {
-        let entry = self
+        let updated = match self
             .queue_repo
-            .get_by_id(id)
+            .update_status_if(id, QueueStatus::Spinning, QueueStatus::Completed)
             .await?
-            .ok_or(QueueServiceError::NotFound)?;
-
-        if entry.status != QueueStatus::Spinning {
-            return Err(QueueServiceError::NotSpinning);
-        }
-
-        let updated = self
-            .queue_repo
-            .update_status(id, QueueStatus::Completed, entry.result_slot_id)
-            .await?
-            .ok_or(QueueServiceError::NotFound)?;
+        {
+            StatusUpdateOutcome::Updated(entry) => entry,
+            StatusUpdateOutcome::NotFound => return Err(QueueServiceError::NotFound),
+            StatusUpdateOutcome::StatusMismatch => return Err(QueueServiceError::NotSpinning),
+        };
 
         if let Err(e) = self
             .event_publisher
@@ -133,10 +110,15 @@ impl QueueService {
             return Err(QueueServiceError::NotCancellable);
         }
 
-        self.queue_repo
-            .update_status(id, QueueStatus::Cancelled, entry.result_slot_id)
+        match self
+            .queue_repo
+            .update_status_if(id, entry.status, QueueStatus::Cancelled)
             .await?
-            .ok_or(QueueServiceError::NotFound)?;
+        {
+            StatusUpdateOutcome::Updated(_) => {}
+            StatusUpdateOutcome::NotFound => return Err(QueueServiceError::NotFound),
+            StatusUpdateOutcome::StatusMismatch => return Err(QueueServiceError::NotCancellable),
+        }
 
         Ok(())
     }
