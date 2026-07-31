@@ -95,7 +95,6 @@ mod tests {
     use crate::queue::entry::{QueueEntryId, QueueStatus};
     use crate::queue::repository::QueueRepository;
     use crate::roulette::rarity::{Rarity, RarityId, RarityRepository};
-    use crate::roulette::repository::RouletteSlotRepository;
     use crate::roulette::slot_service::{RouletteSlot, RouletteSlotId};
     use crate::test_fixtures::test_state;
     use crate::user::UserId;
@@ -114,7 +113,7 @@ mod tests {
 
     #[tokio::test]
     async fn dequeue_next_retries_error_entry() {
-        let state = test_state();
+        let state = test_state().await;
 
         state
             .rarity_repo
@@ -128,8 +127,8 @@ mod tests {
             .await
             .unwrap();
         state
-            .slot_repo
-            .save(RouletteSlot::new(
+            .slot_service
+            .add_slot(RouletteSlot::new(
                 RouletteSlotId::new(0),
                 "test_slot",
                 RarityId::new(1),
@@ -192,7 +191,7 @@ mod tests {
 
     #[tokio::test]
     async fn dequeue_next_returns_409_when_already_active() {
-        let state = test_state();
+        let state = test_state().await;
 
         state
             .rarity_repo
@@ -206,8 +205,8 @@ mod tests {
             .await
             .unwrap();
         state
-            .slot_repo
-            .save(RouletteSlot::new(
+            .slot_service
+            .add_slot(RouletteSlot::new(
                 RouletteSlotId::new(0),
                 "test_slot",
                 RarityId::new(1),
@@ -265,7 +264,7 @@ mod tests {
 
     #[tokio::test]
     async fn dequeue_next_returns_200() {
-        let state = test_state();
+        let state = test_state().await;
 
         state
             .rarity_repo
@@ -279,8 +278,8 @@ mod tests {
             .await
             .unwrap();
         state
-            .slot_repo
-            .save(RouletteSlot::new(
+            .slot_service
+            .add_slot(RouletteSlot::new(
                 RouletteSlotId::new(0),
                 "test_slot",
                 RarityId::new(1),

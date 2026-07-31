@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::roulette::repository::RouletteSlotRepository;
 use crate::roulette::slot_service::{RouletteSlot, RouletteSlotService};
 
@@ -5,21 +7,22 @@ pub trait RandomProvider {
     fn next(&self) -> f64;
 }
 
+#[derive(Clone)]
 #[non_exhaustive]
 pub struct RouletteService<Rand: RandomProvider, Repo: RouletteSlotRepository> {
-    slot_service: RouletteSlotService<Repo>,
+    slot_service: Arc<RouletteSlotService<Repo>>,
     random: Rand,
 }
 
 impl<Rand: RandomProvider, Repo: RouletteSlotRepository> RouletteService<Rand, Repo> {
-    pub fn new(slot_service: RouletteSlotService<Repo>, random: Rand) -> Self {
+    pub fn new(slot_service: Arc<RouletteSlotService<Repo>>, random: Rand) -> Self {
         Self {
             slot_service,
             random,
         }
     }
 
-    pub fn roll(&self) -> Option<&RouletteSlot> {
+    pub fn roll(&self) -> Option<RouletteSlot> {
         let total_weight: u64 = self.slot_service.total_weight();
         let random_value = self.random.next() * total_weight as f64;
 
@@ -85,7 +88,7 @@ mod tests {
         ];
         let repo = InMemoryRouletteSlotRepository::seed(slots);
         let slot_service = RouletteSlotService::build(repo).await.unwrap();
-        let roulette = RouletteService::new(slot_service, mock_random);
+        let roulette = RouletteService::new(Arc::new(slot_service), mock_random);
 
         let winner_slot = roulette.roll().unwrap();
         assert_eq!(winner_slot.name, "Test_Winner".to_string());
@@ -112,7 +115,7 @@ mod tests {
         ];
         let repo = InMemoryRouletteSlotRepository::seed(slots);
         let slot_service = RouletteSlotService::build(repo).await.unwrap();
-        let roulette = RouletteService::new(slot_service, mock_random);
+        let roulette = RouletteService::new(Arc::new(slot_service), mock_random);
 
         let winner_slot = roulette.roll().unwrap();
         assert_eq!(winner_slot.name, "Test_Variant_A".to_string());

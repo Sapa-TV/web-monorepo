@@ -26,7 +26,7 @@ use utoipa_swagger_ui::SwaggerUi;
 use crate::api::ApiDoc;
 use crate::config::Config;
 use crate::random::StandartRandomProvider;
-use crate::state::AppState;
+use crate::state::{AppState, AppStateBuilder};
 
 #[tokio::main]
 async fn main() {
@@ -38,7 +38,10 @@ async fn main() {
         .init();
 
     let config = Config::load();
-    let state = AppState::new(StandartRandomProvider, &config);
+    let state = AppStateBuilder::new(StandartRandomProvider, &config)
+        .build()
+        .await
+        .expect("failed to build app state");
     let cors = CorsLayer::permissive();
 
     let app = api::router_with_auth(state.clone(), |router| {

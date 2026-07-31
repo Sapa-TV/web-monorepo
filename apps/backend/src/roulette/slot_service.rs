@@ -3,6 +3,7 @@ use crate::error::RepositoryError;
 use crate::roulette::rarity::RarityId;
 use serde::{Deserialize, Serialize};
 use std::fmt::{self, Display};
+use std::sync::RwLock;
 use utoipa::ToSchema;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
@@ -57,53 +58,70 @@ impl RouletteSlot {
 #[non_exhaustive]
 pub struct RouletteSlotService<R: RouletteSlotRepository> {
     repo: R,
-    slots: Vec<RouletteSlot>,
+    slots: RwLock<Vec<RouletteSlot>>,
 }
 
 impl<R: RouletteSlotRepository> RouletteSlotService<R> {
     pub async fn build(repo: R) -> Result<Self, RepositoryError> {
         let slots = repo.load_all().await?;
-        Ok(Self { repo, slots })
+        Ok(Self {
+            repo,
+            slots: RwLock::new(slots),
+        })
     }
 
-    pub fn get_slots(&self) -> &[RouletteSlot] {
-        &self.slots
+    pub fn get_slots(&self) -> Vec<RouletteSlot> {
+        self.slots.read().expect("slots lock poisoned").clone()
     }
 
     pub fn total_weight(&self) -> u64 {
-        self.slots.iter().map(|slot| slot.weight).sum()
+        self.slots
+            .read()
+            .expect("slots lock poisoned")
+            .iter()
+            .map(|slot| slot.weight)
+            .sum()
     }
 
-    pub fn get_slot_by_weight(&self, weight: u64) -> Option<&RouletteSlot> {
+    pub fn get_slot_by_weight(&self, weight: u64) -> Option<RouletteSlot> {
+        let slots = self.slots.read().expect("slots lock poisoned");
         let mut current_weight = 0;
-        for slot in &self.slots {
+        for slot in slots.iter() {
             current_weight += slot.weight;
             if weight < current_weight {
-                return Some(slot);
+                return Some(slot.clone());
             }
         }
 
-        self.slots.iter().max_by_key(|slot| slot.weight)
+        slots.iter().max_by_key(|slot| slot.weight).cloned()
     }
 
-    pub async fn add_slot(&mut self, slot: RouletteSlot) -> Result<(), RepositoryError> {
+    pub async fn add_slot(&self, slot: RouletteSlot) -> Result<(), RepositoryError> {
         let saved = self.repo.save(slot).await?;
-        self.slots.push(saved);
+        self.slots.write().expect("slots lock poisoned").push(saved);
         Ok(())
     }
 
-    pub async fn edit_slot(&mut self, slot: RouletteSlot) -> Result<(), RepositoryError> {
+    pub async fn edit_slot(&self, slot: RouletteSlot) -> Result<(), RepositoryError> {
         if let Some(updated) = self.repo.update(slot).await?
-            && let Some(existing) = self.slots.iter_mut().find(|s| s.id == updated.id)
+            && let Some(existing) = self
+                .slots
+                .write()
+                .expect("slots lock poisoned")
+                .iter_mut()
+                .find(|s| s.id == updated.id)
         {
             *existing = updated;
         }
         Ok(())
     }
 
-    pub async fn delete_slot(&mut self, id: RouletteSlotId) -> Result<(), RepositoryError> {
+    pub async fn delete_slot(&self, id: RouletteSlotId) -> Result<(), RepositoryError> {
         self.repo.delete(id).await?;
-        self.slots.retain(|s| s.id != id);
+        self.slots
+            .write()
+            .expect("slots lock poisoned")
+            .retain(|s| s.id != id);
         Ok(())
     }
 }
@@ -185,7 +203,7 @@ mod tests {
     #[tokio::test]
     async fn test_add_and_get_slots() {
         let repo = InMemoryRouletteSlotRepository::seed(vec![]);
-        let mut slot_service = RouletteSlotService::build(repo).await.unwrap();
+        let slot_service = RouletteSlotService::build(repo).await.unwrap();
 
         slot_service
             .add_slot(RouletteSlot::new(
@@ -204,7 +222,7 @@ mod tests {
     #[tokio::test]
     async fn test_delete_slot() {
         let repo = InMemoryRouletteSlotRepository::seed(vec![]);
-        let mut slot_service = RouletteSlotService::build(repo).await.unwrap();
+        let slot_service = RouletteSlotService::build(repo).await.unwrap();
 
         slot_service
             .add_slot(RouletteSlot::new(
@@ -224,7 +242,7 @@ mod tests {
     #[tokio::test]
     async fn test_edit_slot() {
         let repo = InMemoryRouletteSlotRepository::seed(vec![]);
-        let mut slot_service = RouletteSlotService::build(repo).await.unwrap();
+        let slot_service = RouletteSlotService::build(repo).await.unwrap();
 
         slot_service
             .add_slot(RouletteSlot::new(

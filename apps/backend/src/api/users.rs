@@ -422,7 +422,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_user_201() {
-        let state = test_state();
+        let state = test_state().await;
         let app = router(state.clone());
 
         let response = app
@@ -451,7 +451,7 @@ mod tests {
 
     #[tokio::test]
     async fn find_user_by_platform_200() {
-        let state = test_state();
+        let state = test_state().await;
         let app = router(state.clone());
 
         let user = state.user_repo.create("Viewer").await.unwrap();
@@ -490,7 +490,7 @@ mod tests {
 
     #[tokio::test]
     async fn find_user_by_platform_404() {
-        let state = test_state();
+        let state = test_state().await;
         let app = router(state.clone());
 
         let response = app
@@ -509,7 +509,7 @@ mod tests {
 
     #[tokio::test]
     async fn find_user_unknown_platform_400() {
-        let state = test_state();
+        let state = test_state().await;
         let app = router(state.clone());
 
         let response = app
@@ -528,7 +528,7 @@ mod tests {
 
     #[tokio::test]
     async fn get_user_200() {
-        let state = test_state();
+        let state = test_state().await;
         let app = router(state.clone());
 
         let user = state.user_repo.create("Viewer").await.unwrap();
@@ -549,7 +549,7 @@ mod tests {
 
     #[tokio::test]
     async fn get_user_404() {
-        let state = test_state();
+        let state = test_state().await;
         let app = router(state.clone());
 
         let response = app
@@ -568,7 +568,7 @@ mod tests {
 
     #[tokio::test]
     async fn update_user_200() {
-        let state = test_state();
+        let state = test_state().await;
         let app = router(state.clone());
 
         let user = state.user_repo.create("OldName").await.unwrap();
@@ -597,7 +597,7 @@ mod tests {
 
     #[tokio::test]
     async fn delete_user_204() {
-        let state = test_state();
+        let state = test_state().await;
         let app = router(state.clone());
 
         let user = state.user_repo.create("Viewer").await.unwrap();
@@ -618,7 +618,7 @@ mod tests {
 
     #[tokio::test]
     async fn delete_user_404() {
-        let state = test_state();
+        let state = test_state().await;
         let app = router(state.clone());
 
         let response = app
@@ -637,7 +637,7 @@ mod tests {
 
     #[tokio::test]
     async fn link_platform_200() {
-        let state = test_state();
+        let state = test_state().await;
         let app = router(state.clone());
 
         let user = state.user_repo.create("Viewer").await.unwrap();
@@ -669,7 +669,7 @@ mod tests {
 
     #[tokio::test]
     async fn link_platform_409_duplicate() {
-        let state = test_state();
+        let state = test_state().await;
         let app = router(state.clone());
 
         let user = state.user_repo.create("A").await.unwrap();
@@ -699,7 +699,7 @@ mod tests {
 
     #[tokio::test]
     async fn link_platform_400_unknown_platform() {
-        let state = test_state();
+        let state = test_state().await;
         let app = router(state.clone());
 
         let user = state.user_repo.create("Viewer").await.unwrap();
@@ -723,7 +723,7 @@ mod tests {
 
     #[tokio::test]
     async fn update_platform_username_200() {
-        let state = test_state();
+        let state = test_state().await;
         let app = router(state.clone());
 
         let user = state.user_repo.create("Viewer").await.unwrap();
@@ -764,7 +764,7 @@ mod tests {
 
     #[tokio::test]
     async fn delete_platform_200() {
-        let state = test_state();
+        let state = test_state().await;
         let app = router(state.clone());
 
         let user = state.user_repo.create("Viewer").await.unwrap();
@@ -797,7 +797,7 @@ mod tests {
 
     #[tokio::test]
     async fn delete_platform_404_nonexistent_link() {
-        let state = test_state();
+        let state = test_state().await;
         let app = router(state.clone());
 
         let user = state.user_repo.create("Viewer").await.unwrap();
@@ -818,7 +818,7 @@ mod tests {
 
     #[tokio::test]
     async fn delete_platform_400_unknown_platform() {
-        let state = test_state();
+        let state = test_state().await;
         let app = router(state.clone());
 
         let user = state.user_repo.create("Viewer").await.unwrap();
@@ -839,7 +839,7 @@ mod tests {
 
     #[tokio::test]
     async fn list_platforms_200() {
-        let state = test_state();
+        let state = test_state().await;
         let app = router(state.clone());
 
         let response = app
@@ -865,7 +865,7 @@ mod tests {
 
     #[tokio::test]
     async fn full_flow_new_viewer() {
-        let state = test_state();
+        let state = test_state().await;
         let app = router(state.clone());
 
         // 1. Lookup — not found

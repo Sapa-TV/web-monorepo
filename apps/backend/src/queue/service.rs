@@ -12,18 +12,16 @@ use crate::queue::entry::{QueueEntry, QueueEntryId, QueueStatus};
 use crate::queue::events::{SpinEvent, SpinEventPublisher};
 use crate::queue::repository::QueueRepository;
 use crate::random::StandartRandomProvider;
-use crate::roulette::machine::RandomProvider;
+use crate::roulette::machine::RouletteService;
 use crate::roulette::rarity::RarityRepository;
-use crate::roulette::repository::RouletteSlotRepository;
 use crate::roulette::slot_service::RouletteSlot;
 
 #[derive(Clone)]
 #[non_exhaustive]
 pub struct QueueService {
     queue_repo: Arc<InMemoryQueueRepository>,
-    slot_repo: Arc<InMemoryRouletteSlotRepository>,
     rarity_repo: Arc<InMemoryRarityRepository>,
-    random: StandartRandomProvider,
+    roulette: RouletteService<StandartRandomProvider, Arc<InMemoryRouletteSlotRepository>>,
     event_publisher: BroadcastEventPublisher,
     timeout: Duration,
 }
@@ -31,39 +29,18 @@ pub struct QueueService {
 impl QueueService {
     pub fn new(
         queue_repo: Arc<InMemoryQueueRepository>,
-        slot_repo: Arc<InMemoryRouletteSlotRepository>,
         rarity_repo: Arc<InMemoryRarityRepository>,
-        random: StandartRandomProvider,
+        roulette: RouletteService<StandartRandomProvider, Arc<InMemoryRouletteSlotRepository>>,
         event_publisher: BroadcastEventPublisher,
         timeout: Duration,
     ) -> Self {
         Self {
             queue_repo,
-            slot_repo,
             rarity_repo,
-            random,
+            roulette,
             event_publisher,
             timeout,
         }
-    }
-
-    fn pick_slot(&self, slots: &[RouletteSlot]) -> Option<RouletteSlot> {
-        if slots.is_empty() {
-            return None;
-        }
-        let total_weight: u64 = slots.iter().map(|s| s.weight).sum();
-        if total_weight == 0 {
-            return slots.last().cloned();
-        }
-        let threshold = (self.random.next() * total_weight as f64) as u64;
-        let mut cumulative = 0u64;
-        for slot in slots {
-            cumulative += slot.weight;
-            if threshold < cumulative {
-                return Some(slot.clone());
-            }
-        }
-        slots.last().cloned()
     }
 
     pub async fn dequeue_next(&self) -> Result<(QueueEntry, RouletteSlot), QueueServiceError> {
@@ -84,8 +61,7 @@ impl QueueService {
             .await?
             .ok_or(QueueServiceError::QueueEmpty)?;
 
-        let slots = self.slot_repo.load_all().await?;
-        let slot = self.pick_slot(&slots).ok_or(QueueServiceError::NoSlots)?;
+        let slot = self.roulette.roll().ok_or(QueueServiceError::NoSlots)?;
 
         let entry = self
             .queue_repo

@@ -182,7 +182,7 @@ mod tests {
 
     #[tokio::test]
     async fn list_slots_empty() {
-        let state = test_state();
+        let state = test_state().await;
         let app = router(state.clone());
 
         let response = app
@@ -208,7 +208,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_slot_201() {
-        let state = test_state();
+        let state = test_state().await;
         let app = router(state.clone());
 
         let response = app
@@ -238,7 +238,7 @@ mod tests {
 
     #[tokio::test]
     async fn update_slot_200() {
-        let state = test_state();
+        let state = test_state().await;
         let app = router(state.clone());
 
         let saved = state
@@ -280,7 +280,7 @@ mod tests {
 
     #[tokio::test]
     async fn update_slot_404() {
-        let state = test_state();
+        let state = test_state().await;
         let app = router(state.clone());
 
         let response = app
@@ -302,7 +302,7 @@ mod tests {
 
     #[tokio::test]
     async fn delete_slot_204() {
-        let state = test_state();
+        let state = test_state().await;
         let app = router(state.clone());
 
         let saved = state
@@ -333,7 +333,7 @@ mod tests {
 
     #[tokio::test]
     async fn delete_slot_404() {
-        let state = test_state();
+        let state = test_state().await;
         let app = router(state.clone());
 
         let response = app
