@@ -157,7 +157,10 @@ impl QueueService {
                 .publish_spin(SpinEvent::Error { entry_id: entry.id })
                 .await
             {
-                tracing::warn!("failed to publish spin_error event for entry {}: {e}", entry.id);
+                tracing::warn!(
+                    "failed to publish spin_error event for entry {}: {e}",
+                    entry.id
+                );
             }
         }
         Ok(())

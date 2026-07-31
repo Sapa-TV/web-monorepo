@@ -18,7 +18,6 @@ use crate::user::UserId;
 #[derive(Clone)]
 #[non_exhaustive]
 pub struct AppState {
-    pub slot_repo: Arc<InMemoryRouletteSlotRepository>,
     pub slot_service: Arc<RouletteSlotService<Arc<InMemoryRouletteSlotRepository>>>,
     pub rarity_repo: Arc<InMemoryRarityRepository>,
     pub user_repo: Arc<InMemoryUserRepository>,
@@ -78,7 +77,6 @@ impl AppStateBuilder {
         );
 
         Ok(AppState {
-            slot_repo,
             slot_service,
             rarity_repo,
             user_repo,

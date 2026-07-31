@@ -3,7 +3,7 @@ use crate::error::RepositoryError;
 use crate::roulette::rarity::RarityId;
 use serde::{Deserialize, Serialize};
 use std::fmt::{self, Display};
-use std::sync::RwLock;
+use std::sync::nonpoison::RwLock;
 use utoipa::ToSchema;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
@@ -71,20 +71,23 @@ impl<R: RouletteSlotRepository> RouletteSlotService<R> {
     }
 
     pub fn get_slots(&self) -> Vec<RouletteSlot> {
-        self.slots.read().expect("slots lock poisoned").clone()
+        self.slots.read().clone()
+    }
+
+    pub fn get_slot_by_id(&self, id: RouletteSlotId) -> Option<RouletteSlot> {
+        self.slots.read().iter().find(|s| s.id == id).cloned()
+    }
+
+    pub fn get_name(&self, id: RouletteSlotId) -> Option<String> {
+        self.get_slot_by_id(id).map(|s| s.name)
     }
 
     pub fn total_weight(&self) -> u64 {
-        self.slots
-            .read()
-            .expect("slots lock poisoned")
-            .iter()
-            .map(|slot| slot.weight)
-            .sum()
+        self.slots.read().iter().map(|slot| slot.weight).sum()
     }
 
     pub fn get_slot_by_weight(&self, weight: u64) -> Option<RouletteSlot> {
-        let slots = self.slots.read().expect("slots lock poisoned");
+        let slots = self.slots.read();
         let mut current_weight = 0;
         for slot in slots.iter() {
             current_weight += slot.weight;
@@ -96,33 +99,29 @@ impl<R: RouletteSlotRepository> RouletteSlotService<R> {
         slots.iter().max_by_key(|slot| slot.weight).cloned()
     }
 
-    pub async fn add_slot(&self, slot: RouletteSlot) -> Result<(), RepositoryError> {
+    pub async fn add_slot(&self, slot: RouletteSlot) -> Result<RouletteSlot, RepositoryError> {
         let saved = self.repo.save(slot).await?;
-        self.slots.write().expect("slots lock poisoned").push(saved);
-        Ok(())
+        self.slots.write().push(saved.clone());
+        Ok(saved)
     }
 
-    pub async fn edit_slot(&self, slot: RouletteSlot) -> Result<(), RepositoryError> {
-        if let Some(updated) = self.repo.update(slot).await?
-            && let Some(existing) = self
-                .slots
-                .write()
-                .expect("slots lock poisoned")
-                .iter_mut()
-                .find(|s| s.id == updated.id)
-        {
-            *existing = updated;
+    pub async fn edit_slot(
+        &self,
+        slot: RouletteSlot,
+    ) -> Result<Option<RouletteSlot>, RepositoryError> {
+        let Some(updated) = self.repo.update(slot).await? else {
+            return Ok(None);
+        };
+        if let Some(existing) = self.slots.write().iter_mut().find(|s| s.id == updated.id) {
+            *existing = updated.clone();
         }
-        Ok(())
+        Ok(Some(updated))
     }
 
-    pub async fn delete_slot(&self, id: RouletteSlotId) -> Result<(), RepositoryError> {
-        self.repo.delete(id).await?;
-        self.slots
-            .write()
-            .expect("slots lock poisoned")
-            .retain(|s| s.id != id);
-        Ok(())
+    pub async fn delete_slot(&self, id: RouletteSlotId) -> Result<bool, RepositoryError> {
+        let deleted = self.repo.delete(id).await?;
+        self.slots.write().retain(|s| s.id != id);
+        Ok(deleted)
     }
 }
 

@@ -9,7 +9,6 @@ use crate::error::RepositoryError;
 use crate::error::api::ApiError;
 use crate::queue::entry::{QueueEntry, QueueEntryId, QueueStats, QueueStatus};
 use crate::queue::repository::QueueRepository;
-use crate::roulette::repository::RouletteSlotRepository;
 use crate::roulette::slot_service::{RouletteSlot, RouletteSlotId};
 use crate::state::AppState;
 use crate::user::UserId;
@@ -54,17 +53,6 @@ impl From<&QueueEntry> for QueueEntryResponse {
             updated_at: entry.updated_at.and_utc().to_rfc3339(),
         }
     }
-}
-
-async fn resolve_slot_name(
-    slot_id: Option<crate::roulette::slot_service::RouletteSlotId>,
-    slot_repo: &impl RouletteSlotRepository,
-) -> Result<Option<String>, RepositoryError> {
-    let Some(slot_id) = slot_id else {
-        return Ok(None);
-    };
-    let slots = slot_repo.load_all().await?;
-    Ok(slots.into_iter().find(|s| s.id == slot_id).map(|s| s.name))
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -387,14 +375,12 @@ pub async fn list(
     Query(query): Query<ListQuery>,
 ) -> Result<Json<Vec<QueueEntryResponse>>, ApiError> {
     let entries = state.queue_repo.list(query.status).await?;
-    let slots = state.slot_repo.load_all().await?;
     let mut responses = Vec::with_capacity(entries.len());
     for entry in &entries {
         let mut resp = QueueEntryResponse::from(entry);
         resp.slot_name = entry
             .result_slot_id
-            .and_then(|sid| slots.iter().find(|s| s.id == sid))
-            .map(|s| s.name.clone());
+            .and_then(|id| state.slot_service.get_name(id));
         responses.push(resp);
     }
     Ok(Json(responses))
@@ -420,7 +406,9 @@ pub async fn get_by_id(
         .await?
         .ok_or_else(|| ApiError::new(StatusCode::NOT_FOUND, "queue entry not found"))?;
     let mut resp = QueueEntryResponse::from(&entry);
-    resp.slot_name = resolve_slot_name(entry.result_slot_id, &*state.slot_repo).await?;
+    resp.slot_name = entry
+        .result_slot_id
+        .and_then(|id| state.slot_service.get_name(id));
     Ok(Json(resp))
 }
 
@@ -442,7 +430,9 @@ pub async fn peek_next(
         .await?
         .ok_or_else(|| ApiError::new(StatusCode::NOT_FOUND, "no pending or error entries"))?;
     let mut resp = QueueEntryResponse::from(&entry);
-    resp.slot_name = resolve_slot_name(entry.result_slot_id, &*state.slot_repo).await?;
+    resp.slot_name = entry
+        .result_slot_id
+        .and_then(|id| state.slot_service.get_name(id));
     Ok(Json(resp))
 }
 

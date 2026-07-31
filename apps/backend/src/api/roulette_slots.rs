@@ -7,7 +7,6 @@ use utoipa::{IntoParams, ToSchema};
 
 use crate::error::api::ApiError;
 use crate::roulette::rarity::RarityId;
-use crate::roulette::repository::RouletteSlotRepository;
 use crate::roulette::slot_service::{RouletteSlot, RouletteSlotId};
 use crate::state::AppState;
 
@@ -81,7 +80,7 @@ impl From<RouletteSlot> for RouletteSlotResponse {
 pub async fn list_slots(
     State(state): State<AppState>,
 ) -> Result<Json<Vec<RouletteSlotResponse>>, ApiError> {
-    let slots = state.slot_repo.load_all().await?;
+    let slots = state.slot_service.get_slots();
     Ok(Json(slots.into_iter().map(Into::into).collect()))
 }
 
@@ -106,7 +105,7 @@ pub async fn create_slot(
         body.weight,
         &body.action,
     );
-    let saved = state.slot_repo.save(slot).await?;
+    let saved = state.slot_service.add_slot(slot).await?;
     Ok((StatusCode::CREATED, Json(saved.into())))
 }
 
@@ -134,8 +133,8 @@ pub async fn update_slot(
         &body.action,
     );
     let updated = state
-        .slot_repo
-        .update(slot)
+        .slot_service
+        .edit_slot(slot)
         .await?
         .ok_or_else(|| ApiError::new(StatusCode::NOT_FOUND, "slot not found"))?;
     Ok(Json(updated.into()))
@@ -155,7 +154,7 @@ pub async fn delete_slot(
     State(state): State<AppState>,
     Path(params): Path<SlotIdParam>,
 ) -> Result<StatusCode, ApiError> {
-    let deleted = state.slot_repo.delete(params.id).await?;
+    let deleted = state.slot_service.delete_slot(params.id).await?;
     if !deleted {
         return Err(ApiError::new(StatusCode::NOT_FOUND, "slot not found"));
     }
@@ -177,7 +176,8 @@ mod tests {
     use tower::ServiceExt;
 
     use crate::api::router;
-    use crate::roulette::repository::RouletteSlotRepository;
+    use crate::roulette::rarity::RarityId;
+    use crate::roulette::slot_service::{RouletteSlot, RouletteSlotId};
     use crate::test_fixtures::test_state;
 
     #[tokio::test]
@@ -242,11 +242,11 @@ mod tests {
         let app = router(state.clone());
 
         let saved = state
-            .slot_repo
-            .save(crate::roulette::slot_service::RouletteSlot::new(
-                crate::roulette::slot_service::RouletteSlotId::new(0),
+            .slot_service
+            .add_slot(RouletteSlot::new(
+                RouletteSlotId::new(0),
                 "original",
-                crate::roulette::rarity::RarityId::new(1),
+                RarityId::new(1),
                 10,
                 "act",
             ))
@@ -306,11 +306,11 @@ mod tests {
         let app = router(state.clone());
 
         let saved = state
-            .slot_repo
-            .save(crate::roulette::slot_service::RouletteSlot::new(
-                crate::roulette::slot_service::RouletteSlotId::new(0),
+            .slot_service
+            .add_slot(RouletteSlot::new(
+                RouletteSlotId::new(0),
                 "to_delete",
-                crate::roulette::rarity::RarityId::new(1),
+                RarityId::new(1),
                 10,
                 "act",
             ))
