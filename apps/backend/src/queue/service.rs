@@ -15,6 +15,8 @@ use crate::roulette::rarity_service::RarityService;
 use crate::roulette::repository::RouletteSlotRepository;
 use crate::roulette::slot_service::RouletteSlot;
 
+type Roulette<R> = RouletteService<StandartRandomProvider, Arc<R>>;
+
 #[non_exhaustive]
 pub struct QueueService<Q, R, S>
 where
@@ -24,7 +26,7 @@ where
 {
     queue_repo: Arc<Q>,
     rarity_service: Arc<RarityService<Arc<R>>>,
-    roulette: RouletteService<StandartRandomProvider, Arc<S>>,
+    roulette: Roulette<S>,
     event_publisher: BroadcastEventPublisher,
     timeout: Duration,
 }
@@ -55,7 +57,7 @@ where
     pub fn new(
         queue_repo: Arc<Q>,
         rarity_service: Arc<RarityService<Arc<R>>>,
-        roulette: RouletteService<StandartRandomProvider, Arc<S>>,
+        roulette: Roulette<S>,
         event_publisher: BroadcastEventPublisher,
         timeout: Duration,
     ) -> Self {
@@ -153,9 +155,8 @@ where
 
     pub async fn mark_timed_out(&self) -> Result<(), QueueServiceError> {
         let cutoff = Utc::now()
-            .naive_utc()
             .checked_sub_signed(chrono::Duration::seconds(self.timeout.as_secs() as i64))
-            .unwrap_or(Utc::now().naive_utc());
+            .unwrap_or_else(Utc::now);
         let entries = self.queue_repo.mark_timed_out(cutoff).await?;
         for entry in entries {
             if let Err(e) = self

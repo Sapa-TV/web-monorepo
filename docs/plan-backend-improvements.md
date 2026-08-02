@@ -4,7 +4,7 @@
 
 Порядок работ: **1 → 3 → 4** (баги/безопасность/наблюдаемость, низкий риск), затем **п. 8** (WS-auth → WS-complete), далее **2** (перед миграцией на sqlx).
 
-> Статус: 1, 3, 4, 7, п. 8 (WS-auth handshake + WS-диспетчер complete) и п. 2 (generics + `RarityService`) — **сделано**. Осталось: 4 (хвост), 5 (чистка), 6 (пагинация/retention), 9 (единообразие сервисного слоя).
+> Статус: 1, 3, 4, 7, п. 8 (WS-auth handshake + WS-диспетчер complete), п. 2 (generics + `RarityService`) и п. 5 (чистка кода) — **сделано**. Осталось: 4 (хвост), 6 (пагинация/retention), 9 (единообразие сервисного слоя).
 
 ---
 
@@ -90,6 +90,8 @@ Timeout-задача может перевести в `Error` entry, котор�
 - Повторяющиеся generic-типы `RouletteService<StandartRandomProvider, Arc<InMemoryRouletteSlotRepository>>` (queue/service.rs:24, state.rs) — type alias'ы.
 - `StandartRandomProvider` — опечатка в имени; `rand` уже в зависимостях — можно упростить.
 
+**Сделано:** `unreachable!()` убран — `From` реструктурирован в полностью исчерпывающий match без раннего `return` (сообщение берётся до match, `Repo` делегируется `ApiError::from(re)`). `NaiveDateTime` → `DateTime<Utc>` во всех доменных типах (`QueueEntry`, `User`), в `QueueRepository::mark_timed_out` и репо-реализациях (`Utc::now()` без `.naive_utc()`, на границе API `.and_utc()` убран). Type alias `Roulette<R> = RouletteService<StandartRandomProvider, Arc<R>>` в `queue/service.rs`. `StandartRandomProvider`: имя **не** переименовывали (решение принято ранее), уже использует `rand` (`rand::rng().random()`) — упрощать нечего.
+
 ---
 
 ## 6. Рост данных
@@ -172,7 +174,7 @@ Correlation-id не нужен — активный спин всегда оди
 1. Атомарность `dequeue_next` (1.1) + CAS-статусы (1.2) → снять `#[ignore]` с тестов → **сделано**
 2. Constant-time токен, CORS, `/health`, graceful shutdown, TraceLayer (3, 4) → **сделано**
 3. WS-auth (first-message handshake) → WS-диспетчер `complete` + тест эквивалентности (п. 8); REST-complete остаётся резервом → **сделано**
-4. `roulette_timeout_secs` из env, чистка кода (4, 5)
+4. `roulette_timeout_secs` из env, чистка кода (4, 5) → чистка **сделана**; `roulette_timeout_secs` не выносим в env (см. п. 4)
 5. Пагинация/retention очереди (6)
 6. Решение generics vs dyn + `RarityService` перед sqlx (2) → **сделано** (generics + `RarityService`; трейты остались на `impl Future`)
 7. Спрятать `queue_repo` в `QueueService` — все операции через сервис (9), по ходу пагинации/retention (6); `UserService` — когда появятся реальные методы (9)

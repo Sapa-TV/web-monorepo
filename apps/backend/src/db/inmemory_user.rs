@@ -30,7 +30,7 @@ impl InMemoryUserRepository {
 impl UserRepository for InMemoryUserRepository {
     async fn create(&self, display_name: &str) -> Result<User, RepositoryError> {
         let id = self.next_user_id.fetch_add(1, Ordering::Relaxed);
-        let now = Utc::now().naive_utc();
+        let now = Utc::now();
         let user = User {
             id: UserId::new(id),
             display_name: display_name.to_string(),
@@ -103,7 +103,7 @@ impl UserRepository for InMemoryUserRepository {
         {
             let mut users = self.users.lock();
             if let Some(user) = users.iter_mut().find(|u| u.id == user_id) {
-                user.updated_at = Utc::now().naive_utc();
+                user.updated_at = Utc::now();
             }
         }
 
@@ -121,7 +121,7 @@ impl UserRepository for InMemoryUserRepository {
         match user {
             Some(user) => {
                 user.display_name = display_name.to_string();
-                user.updated_at = Utc::now().naive_utc();
+                user.updated_at = Utc::now();
                 Ok(Some(user.clone()))
             }
             None => Ok(None),
@@ -147,7 +147,7 @@ impl UserRepository for InMemoryUserRepository {
 
                 let mut users = self.users.lock();
                 if let Some(user) = users.iter_mut().find(|u| u.id == user_id) {
-                    user.updated_at = Utc::now().naive_utc();
+                    user.updated_at = Utc::now();
                 }
 
                 Ok(Some(result))
@@ -172,7 +172,7 @@ impl UserRepository for InMemoryUserRepository {
 
         let mut users = self.users.lock();
         if let Some(user) = users.iter_mut().find(|u| u.id == user_id) {
-            user.updated_at = Utc::now().naive_utc();
+            user.updated_at = Utc::now();
         }
 
         Ok(true)

@@ -87,8 +87,8 @@ fn to_user_response(user: User, platforms: Vec<UserPlatformResponse>) -> UserRes
         id: user.id,
         display_name: user.display_name,
         platforms,
-        created_at: user.created_at.and_utc().to_rfc3339(),
-        updated_at: user.updated_at.and_utc().to_rfc3339(),
+        created_at: user.created_at.to_rfc3339(),
+        updated_at: user.updated_at.to_rfc3339(),
     }
 }
 

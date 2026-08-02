@@ -49,8 +49,8 @@ impl From<&QueueEntry> for QueueEntryResponse {
             status: entry.status,
             result_slot_id: entry.result_slot_id,
             slot_name: None,
-            created_at: entry.created_at.and_utc().to_rfc3339(),
-            updated_at: entry.updated_at.and_utc().to_rfc3339(),
+            created_at: entry.created_at.to_rfc3339(),
+            updated_at: entry.updated_at.to_rfc3339(),
         }
     }
 }

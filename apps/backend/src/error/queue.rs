@@ -36,13 +36,16 @@ impl From<RepositoryError> for QueueServiceError {
 
 impl From<QueueServiceError> for ApiError {
     fn from(e: QueueServiceError) -> Self {
-        let status = match &e {
-            QueueServiceError::Repo(_) => {
-                return ApiError::from(match e {
-                    QueueServiceError::Repo(re) => re,
-                    _ => unreachable!(),
-                });
-            }
+        match e {
+            QueueServiceError::Repo(re) => ApiError::from(re),
+            e => ApiError::new(e.status_code(), e.to_string()),
+        }
+    }
+}
+
+impl QueueServiceError {
+    fn status_code(&self) -> StatusCode {
+        match self {
             QueueServiceError::NotFound | QueueServiceError::QueueEmpty => StatusCode::NOT_FOUND,
             QueueServiceError::AlreadyActive
             | QueueServiceError::NotSpinning
@@ -50,8 +53,11 @@ impl From<QueueServiceError> for ApiError {
             QueueServiceError::NoSlots
             | QueueServiceError::UserNotFound
             | QueueServiceError::RarityNotFound => StatusCode::UNPROCESSABLE_ENTITY,
-        };
-        ApiError::new(status, e.to_string())
+            QueueServiceError::Repo(RepositoryError::Conflict(_)) => StatusCode::CONFLICT,
+            QueueServiceError::Repo(RepositoryError::Database(_)) => {
+                StatusCode::INTERNAL_SERVER_ERROR
+            }
+        }
     }
 }
 

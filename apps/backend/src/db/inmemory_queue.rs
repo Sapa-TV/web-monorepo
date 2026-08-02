@@ -1,7 +1,7 @@
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::nonpoison::Mutex;
 
-use chrono::{NaiveDateTime, Utc};
+use chrono::{DateTime, Utc};
 
 use crate::error::RepositoryError;
 use crate::queue::entry::{QueueEntry, QueueEntryId, QueueStats, QueueStatus};
@@ -31,7 +31,7 @@ impl QueueRepository for InMemoryQueueRepository {
         user_name: &str,
     ) -> Result<QueueEntry, RepositoryError> {
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
-        let now = Utc::now().naive_utc();
+        let now = Utc::now();
         let entry = QueueEntry::new(
             QueueEntryId::new(id),
             user_id,
@@ -81,7 +81,7 @@ impl QueueRepository for InMemoryQueueRepository {
         let entry = &mut entries[pos];
         entry.status = QueueStatus::Spinning;
         entry.result_slot_id = Some(slot_id);
-        entry.updated_at = Utc::now().naive_utc();
+        entry.updated_at = Utc::now();
         Ok(DequeueOutcome::Picked(entry.clone()))
     }
 
@@ -112,7 +112,7 @@ impl QueueRepository for InMemoryQueueRepository {
             return Ok(StatusUpdateOutcome::StatusMismatch);
         }
         entry.status = status;
-        entry.updated_at = Utc::now().naive_utc();
+        entry.updated_at = Utc::now();
         Ok(StatusUpdateOutcome::Updated(entry.clone()))
     }
 
@@ -133,10 +133,10 @@ impl QueueRepository for InMemoryQueueRepository {
 
     async fn mark_timed_out(
         &self,
-        cutoff: NaiveDateTime,
+        cutoff: DateTime<Utc>,
     ) -> Result<Vec<QueueEntry>, RepositoryError> {
         let mut entries = self.entries.lock();
-        let now = Utc::now().naive_utc();
+        let now = Utc::now();
         let mut result = Vec::new();
         for entry in entries.iter_mut() {
             if entry.status == QueueStatus::Spinning && entry.updated_at < cutoff {

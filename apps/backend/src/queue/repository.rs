@@ -1,6 +1,6 @@
 use std::future::Future;
 
-use chrono::NaiveDateTime;
+use chrono::{DateTime, Utc};
 
 use crate::error::RepositoryError;
 use crate::queue::entry::{QueueEntry, QueueEntryId, QueueStats, QueueStatus};
@@ -56,6 +56,6 @@ pub trait QueueRepository: Send + Sync {
 
     fn mark_timed_out(
         &self,
-        cutoff: NaiveDateTime,
+        cutoff: DateTime<Utc>,
     ) -> impl Future<Output = Result<Vec<QueueEntry>, RepositoryError>> + Send;
 }

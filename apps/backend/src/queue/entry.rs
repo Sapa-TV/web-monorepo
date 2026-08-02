@@ -1,4 +1,4 @@
-use chrono::NaiveDateTime;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::fmt::{self, Display};
 use utoipa::ToSchema;
@@ -60,8 +60,8 @@ pub struct QueueEntry {
     pub user_name: String,
     pub status: QueueStatus,
     pub result_slot_id: Option<RouletteSlotId>,
-    pub created_at: NaiveDateTime,
-    pub updated_at: NaiveDateTime,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl QueueEntry {
@@ -71,8 +71,8 @@ impl QueueEntry {
         user_name: impl Into<String>,
         status: QueueStatus,
         result_slot_id: Option<RouletteSlotId>,
-        created_at: NaiveDateTime,
-        updated_at: NaiveDateTime,
+        created_at: DateTime<Utc>,
+        updated_at: DateTime<Utc>,
     ) -> Self {
         Self {
             id,
