@@ -6,7 +6,7 @@ use utoipa::ToSchema;
 use crate::roulette::slot_service::RouletteSlotId;
 use crate::user::UserId;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, ToSchema)]
 #[serde(transparent)]
 #[non_exhaustive]
 pub struct QueueEntryId(u32);
@@ -106,4 +106,11 @@ impl QueueStats {
             cancelled,
         }
     }
+}
+
+#[derive(Debug, Clone)]
+#[non_exhaustive]
+pub struct QueuePage {
+    pub entries: Vec<QueueEntry>,
+    pub next_cursor: Option<QueueEntryId>,
 }

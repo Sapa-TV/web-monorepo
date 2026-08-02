@@ -4,7 +4,7 @@
 
 Порядок работ: **1 → 3 → 4** (баги/безопасность/наблюдаемость, низкий риск), затем **п. 8** (WS-auth → WS-complete), далее **2** (перед миграцией на sqlx).
 
-> Статус: 1, 3, 4, 7, п. 8 (WS-auth handshake + WS-диспетчер complete), п. 2 (generics + `RarityService`), п. 5 (чистка кода) и п. 9 (`queue_repo` спрятан в `QueueService`) — **сделано**. Осталось: 4 (хвост), 6 (пагинация/retention), 9 (`UserService` — по требованию).
+> Статус: 1, 3, 4, 7, п. 8 (WS-auth handshake + WS-диспетчер complete), п. 2 (generics + `RarityService`), п. 5 (чистка кода), п. 9 (`queue_repo` спрятан в `QueueService`) и п. 6 (пагинация/retention) — **сделано**. Осталось: 4 (хвост), 9 (`UserService` — по требованию).
 
 ---
 
@@ -98,6 +98,13 @@ Timeout-задача может перевести в `Error` entry, котор�
 
 - Очередь никогда не чистится, `/api/queue` без пагинации (api/queue.rs). Добавить лимит/курсор + retention для `Completed`/`Cancelled`.
 
+**Сделано (keyset по `id`, выбран на обсуждении; queue маленькая, но данные живые — offset давал бы дубли/сдвиги):**
+
+- `GET /api/queue?limit&cursor` → `QueueListResponse { entries, next_cursor }`. Keyset по возрастанию `id` (FIFO), `next_cursor = null` когда страница последняя. `QueueService::list(status, cursor, limit)` возвращает `QueuePage`, лимит клампится `[1, 100]`.
+- Retention по времени: `QueueRepository::purge_completed_cancelled(cutoff)` чистит `Completed`/`Cancelled` старше cutoff; `QueueService::purge_expired()` вызывается в таймаут-задаче (main.rs) вместе с `mark_timed_out`.
+- Конфиг: `retention_secs` (по умолчанию 24ч) и `queue_default_limit` (20) — в коде (`config.rs`), без env, как решили.
+- Тесты: репо (`list_is_paginated_by_keyset_cursor`, `list_filters_by_status`, `purge_removes_only_expired_completed_and_cancelled`, `purge_skips_fresh_completed`), HTTP (`list_is_paginated_with_cursor`). Фронтенд: `panel.js` читает `data.entries`.
+
 ---
 
 ## 7. Тесты (покрывают пункты 1)
@@ -177,6 +184,6 @@ Correlation-id не нужен — активный спин всегда оди
 2. Constant-time токен, CORS, `/health`, graceful shutdown, TraceLayer (3, 4) → **сделано**
 3. WS-auth (first-message handshake) → WS-диспетчер `complete` + тест эквивалентности (п. 8); REST-complete остаётся резервом → **сделано**
 4. `roulette_timeout_secs` из env, чистка кода (4, 5) → чистка **сделана**; `roulette_timeout_secs` не выносим в env (см. п. 4)
-5. Пагинация/retention очереди (6)
+5. Пагинация/retention очереди (6) → **сделано** (keyset-курсор по `id` + purge по возрасту, конфиг `retention_secs`/`queue_default_limit` без env)
 6. Решение generics vs dyn + `RarityService` перед sqlx (2) → **сделано** (generics + `RarityService`; трейты остались на `impl Future`)
 7. Спрятать `queue_repo` в `QueueService` — все операции через сервис (9) → **сделано** (`queue_repo` убран из `AppState`, методы на сервисе; `#[cfg(test)]`-доступ к репо для теста); `UserService` — когда появятся реальные методы (9)

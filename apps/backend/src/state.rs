@@ -119,6 +119,7 @@ impl AppStateBuilder {
             roulette,
             event_publisher.clone(),
             std::time::Duration::from_secs(self.config.roulette_timeout_secs),
+            std::time::Duration::from_secs(self.config.retention_secs),
         );
 
         Ok(AppState {

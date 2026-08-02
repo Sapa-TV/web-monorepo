@@ -61,10 +61,19 @@ pub struct NextResponse {
     pub slot: RouletteSlot,
 }
 
+#[derive(Debug, Serialize, ToSchema)]
+#[non_exhaustive]
+pub struct QueueListResponse {
+    pub entries: Vec<QueueEntryResponse>,
+    pub next_cursor: Option<QueueEntryId>,
+}
+
 #[derive(Debug, Deserialize, IntoParams)]
 #[non_exhaustive]
 pub struct ListQuery {
     pub status: Option<QueueStatus>,
+    pub limit: Option<usize>,
+    pub cursor: Option<QueueEntryId>,
 }
 
 #[derive(Debug, Deserialize, IntoParams)]
@@ -418,7 +427,7 @@ mod tests {
                 .unwrap(),
         )
         .unwrap();
-        assert_eq!(body.as_array().unwrap().len(), 0);
+        assert_eq!(body["entries"].as_array().unwrap().len(), 0);
     }
 
     #[tokio::test]
@@ -615,6 +624,74 @@ mod tests {
             );
         }
     }
+
+    #[tokio::test]
+    async fn list_is_paginated_with_cursor() {
+        let state = test_state().await;
+        let app = router(state.clone());
+
+        let user_id = setup_user(&state).await;
+        for _ in 0..3 {
+            let resp = app
+                .clone()
+                .oneshot(
+                    axum::http::Request::builder()
+                        .method("POST")
+                        .uri("/api/queue")
+                        .header("content-type", "application/json")
+                        .body(axum::body::Body::from(
+                            serde_json::to_string(&enqueue_body(user_id)).unwrap(),
+                        ))
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(resp.status(), 200);
+        }
+
+        let first = app
+            .clone()
+            .oneshot(
+                axum::http::Request::builder()
+                    .method("GET")
+                    .uri("/api/queue?limit=2")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(first.status(), 200);
+        let first_body: serde_json::Value = serde_json::from_slice(
+            &axum::body::to_bytes(first.into_body(), usize::MAX)
+                .await
+                .unwrap(),
+        )
+        .unwrap();
+        let entries = first_body["entries"].as_array().unwrap();
+        assert_eq!(entries.len(), 2);
+        let cursor = first_body["next_cursor"].as_u64().unwrap();
+        assert_eq!(cursor, 2);
+
+        let second = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .method("GET")
+                    .uri(format!("/api/queue?limit=2&cursor={cursor}"))
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(second.status(), 200);
+        let second_body: serde_json::Value = serde_json::from_slice(
+            &axum::body::to_bytes(second.into_body(), usize::MAX)
+                .await
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(second_body["entries"].as_array().unwrap().len(), 1);
+        assert!(second_body["next_cursor"].is_null());
+    }
 }
 
 #[utoipa::path(
@@ -673,23 +750,33 @@ pub async fn enqueue_anonymous(
     tag = "queue",
     params(ListQuery),
     responses(
-        (status = 200, description = "List of queue entries", body = Vec<QueueEntryResponse>),
+        (status = 200, description = "Page of queue entries", body = QueueListResponse),
     )
 )]
 pub async fn list(
     State(state): State<AppState>,
     Query(query): Query<ListQuery>,
-) -> Result<Json<Vec<QueueEntryResponse>>, ApiError> {
-    let entries = state.queue_service.list(query.status).await?;
-    let mut responses = Vec::with_capacity(entries.len());
-    for entry in &entries {
-        let mut resp = QueueEntryResponse::from(entry);
-        resp.slot_name = entry
-            .result_slot_id
-            .and_then(|id| state.slot_service.get_name(id));
-        responses.push(resp);
-    }
-    Ok(Json(responses))
+) -> Result<Json<QueueListResponse>, ApiError> {
+    let limit = query.limit.unwrap_or(state.config.queue_default_limit);
+    let page = state
+        .queue_service
+        .list(query.status, query.cursor, limit)
+        .await?;
+    let entries = page
+        .entries
+        .iter()
+        .map(|entry| {
+            let mut resp = QueueEntryResponse::from(entry);
+            resp.slot_name = entry
+                .result_slot_id
+                .and_then(|id| state.slot_service.get_name(id));
+            resp
+        })
+        .collect();
+    Ok(Json(QueueListResponse {
+        entries,
+        next_cursor: page.next_cursor,
+    }))
 }
 
 #[utoipa::path(
@@ -831,6 +918,7 @@ pub async fn stats(State(state): State<AppState>) -> Result<Json<QueueStats>, Ap
     ),
     components(schemas(
         QueueEntryResponse,
+        QueueListResponse,
         QueueStats,
         QueueEntryId,
         QueueStatus,

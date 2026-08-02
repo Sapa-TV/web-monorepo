@@ -32,7 +32,7 @@ async function loadAll() {
       authFetch(`${API}/api/queue`),
       authFetch(`${API}/api/queue/stats`),
     ]);
-    if (listRes.ok) entries = await listRes.json();
+    if (listRes.ok) entries = (await listRes.json()).entries;
 
     const hasSpinning = entries.some(e => e.status === 'Spinning');
     if (!hasSpinning) {

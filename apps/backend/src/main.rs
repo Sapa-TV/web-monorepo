@@ -116,5 +116,8 @@ async fn timeout_task(state: AppState) {
         if let Err(e) = state.queue_service.mark_timed_out().await {
             tracing::error!("mark_timed_out failed: {e}");
         }
+        if let Err(e) = state.queue_service.purge_expired().await {
+            tracing::error!("purge_expired failed: {e}");
+        }
     }
 }

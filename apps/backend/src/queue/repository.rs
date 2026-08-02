@@ -38,6 +38,8 @@ pub trait QueueRepository: Send + Sync {
     fn list(
         &self,
         status: Option<QueueStatus>,
+        cursor: Option<QueueEntryId>,
+        limit: usize,
     ) -> impl Future<Output = Result<Vec<QueueEntry>, RepositoryError>> + Send;
 
     fn get_by_id(
@@ -58,4 +60,9 @@ pub trait QueueRepository: Send + Sync {
         &self,
         cutoff: DateTime<Utc>,
     ) -> impl Future<Output = Result<Vec<QueueEntry>, RepositoryError>> + Send;
+
+    fn purge_completed_cancelled(
+        &self,
+        cutoff: DateTime<Utc>,
+    ) -> impl Future<Output = Result<usize, RepositoryError>> + Send;
 }

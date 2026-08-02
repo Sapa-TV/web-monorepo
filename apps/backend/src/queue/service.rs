@@ -5,7 +5,7 @@ use chrono::Utc;
 
 use crate::error::QueueServiceError;
 use crate::event::BroadcastEventPublisher;
-use crate::queue::entry::{QueueEntry, QueueEntryId, QueueStats, QueueStatus};
+use crate::queue::entry::{QueueEntry, QueueEntryId, QueuePage, QueueStats, QueueStatus};
 use crate::queue::events::{SpinEvent, SpinEventPublisher};
 use crate::queue::repository::{DequeueOutcome, QueueRepository, StatusUpdateOutcome};
 use crate::random::StandartRandomProvider;
@@ -17,6 +17,8 @@ use crate::roulette::slot_service::RouletteSlot;
 use crate::user::UserId;
 
 type Roulette<R> = RouletteService<StandartRandomProvider, Arc<R>>;
+
+const MAX_QUEUE_PAGE_LIMIT: usize = 100;
 
 #[non_exhaustive]
 pub struct QueueService<Q, R, S>
@@ -30,6 +32,7 @@ where
     roulette: Roulette<S>,
     event_publisher: BroadcastEventPublisher,
     timeout: Duration,
+    retention: Duration,
 }
 
 impl<Q, R, S> Clone for QueueService<Q, R, S>
@@ -45,6 +48,7 @@ where
             roulette: self.roulette.clone(),
             event_publisher: self.event_publisher.clone(),
             timeout: self.timeout,
+            retention: self.retention,
         }
     }
 }
@@ -61,6 +65,7 @@ where
         roulette: Roulette<S>,
         event_publisher: BroadcastEventPublisher,
         timeout: Duration,
+        retention: Duration,
     ) -> Self {
         Self {
             queue_repo,
@@ -68,6 +73,7 @@ where
             roulette,
             event_publisher,
             timeout,
+            retention,
         }
     }
 
@@ -189,8 +195,21 @@ where
     pub async fn list(
         &self,
         status: Option<QueueStatus>,
-    ) -> Result<Vec<QueueEntry>, QueueServiceError> {
-        Ok(self.queue_repo.list(status).await?)
+        cursor: Option<QueueEntryId>,
+        limit: usize,
+    ) -> Result<QueuePage, QueueServiceError> {
+        let limit = limit.clamp(1, MAX_QUEUE_PAGE_LIMIT);
+        let mut entries = self.queue_repo.list(status, cursor, limit + 1).await?;
+        let next_cursor = if entries.len() > limit {
+            entries.truncate(limit);
+            entries.last().map(|e| e.id)
+        } else {
+            None
+        };
+        Ok(QueuePage {
+            entries,
+            next_cursor,
+        })
     }
 
     pub async fn get_by_id(
@@ -202,5 +221,12 @@ where
 
     pub async fn count_by_status(&self) -> Result<QueueStats, QueueServiceError> {
         Ok(self.queue_repo.count_by_status().await?)
+    }
+
+    pub async fn purge_expired(&self) -> Result<usize, QueueServiceError> {
+        let cutoff = Utc::now()
+            .checked_sub_signed(chrono::Duration::seconds(self.retention.as_secs() as i64))
+            .unwrap_or(Utc::now());
+        Ok(self.queue_repo.purge_completed_cancelled(cutoff).await?)
     }
 }
