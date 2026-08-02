@@ -4,7 +4,7 @@
 
 Порядок работ: **1 → 3 → 4** (баги/безопасность/наблюдаемость, низкий риск), затем **п. 8** (WS-auth → WS-complete), далее **2** (перед миграцией на sqlx).
 
-> Статус: 1, 3, 4, 7 и п. 8 (WS-auth handshake + WS-диспетчер complete) — **сделано**. Следующий шаг — **п. 2** (перед sqlx).
+> Статус: 1, 3, 4, 7, п. 8 (WS-auth handshake + WS-диспетчер complete) и п. 2 (generics + `RarityService`) — **сделано**. Осталось: 4 (хвост), 5 (чистка), 6 (пагинация/retention), 9 (единообразие сервисного слоя).
 
 ---
 
@@ -47,11 +47,17 @@ Timeout-задача может перевести в `Error` entry, котор�
 
 ## 2. Подготовка к sqlite (ключевое архитектурное решение)
 
-- **`impl Future` в трейтах репозиториев блокирует `dyn`** (queue/repository.rs:9, roulette/repository.rs:7, user/repository.rs:7, roulette/rarity.rs:54). Трейты не object-safe → нельзя `Arc<dyn QueueRepository>`. Выбор перед миграцией:
-  - пробросить generic'и через `QueueService` / `AppState`, либо
-  - перейти на `async_trait` / боксированные фьючеры.
+- **`impl Future` в трейтах репозиториев блокирует `dyn`** (queue/repository.rs:9, roulette/repository.rs:7, user/repository.rs:7, roulette/rarity.rs:54). Трейты не object-safe → нельзя `Arc<dyn QueueRepository>`.
+
+**Сделано (решение: generics, без dyn):** `QueueService<Q, R, S>` и `UniAppState<Q, R, U, P, S>` параметризованы трейтами репозиториев (Q: QueueRepository, R: RarityRepository, U: UserRepository, P: PlatformRepository, S: RouletteSlotRepository). Ручной `Clone` (без лишних bounds на репо). API-слой продолжает использовать `AppState` — это алиас `type AppState = UniAppState<InMemory...>` (`state.rs`), единственная точка замены на sqlite-репо. Трейты остались на `impl Future` (не object-safe) — для generics это не нужно.
+
 - `QueueService` завязан на конкретные `Arc<InMemoryQueueRepository>` / `Arc<InMemoryRarityRepository>` (queue/service.rs:22-24). Типы абстрагировать.
+
+**Сделано:** `QueueService` теперь generic над репо; все зависимости (репо, rarity-service, roulette) передаются в конструктор.
+
 - **Асимметрия: у слотов есть кэш-сервис, у rarities нет.** `list_rarities` и CRUD ходят в репо напрямую (api/rarities.rs:69) — при sqlite это диск на каждый запрос. Сделать `RarityService` с кэшем по аналогии с `RouletteSlotService` (или пересмотреть, нужен ли кэш).
+
+**Сделано:** `RarityService<R>` (`roulette/rarity_service.rs`) — write-through кэш (load_all при build, save/update/delete обновляют кэш), по аналогии с `RouletteSlotService`. `list_rarities`/CRUD ходят в `state.rarity_service`; `QueueService.dequeue_next` берёт display_name редки из кэша (`get_by_id`) вместо `load_all()` на каждый спин. Добавлен blanket-impl `impl<T: RarityRepository> RarityRepository for Arc<T>` (как у слотов).
 
 ---
 
@@ -152,6 +158,15 @@ Correlation-id не нужен — активный спин всегда оди
 
 ---
 
+## 9. Единообразие сервисного слоя
+
+Не должно быть так, что часть операций с одной сущностью идёт через сервис, а часть напрямую через репо.
+
+- **`queue_repo` спрятать в `QueueService`.** Сейчас `queue_repo` торчит в `AppState` (state.rs:38), и хендлеры делятся на два пути: сложное — через `QueueService` (dequeue/complete/cancel/mark_timed_out), простое — через `queue_repo` напрямую (enqueue, list, get_by_id, count_by_status в api/queue.rs). Решение: перенести `enqueue`/`list`/`get_by_id`/`count_by_status` методами `QueueService` (учесть при пагинации из п. 6), поле `queue_repo` из `AppState` убрать.
+- **`UserService` — когда появятся реальные методы.** У `user_repo`/`platform_repo` сейчас сервиса нет (чистый CRUD в репо, бизнес-правила — в хендлерах). Пользователям он, скорее всего, понадобится со своими методами (дедупликация, link-логика, агрегация профиля и т.п.). Вводить по требованию, по аналогии с `QueueService` (сервис — бизнес-правила, репо — хранение), а не заранее ради boilerplate.
+
+---
+
 ## Очередность реализации
 
 1. Атомарность `dequeue_next` (1.1) + CAS-статусы (1.2) → снять `#[ignore]` с тестов → **сделано**
@@ -159,4 +174,5 @@ Correlation-id не нужен — активный спин всегда оди
 3. WS-auth (first-message handshake) → WS-диспетчер `complete` + тест эквивалентности (п. 8); REST-complete остаётся резервом → **сделано**
 4. `roulette_timeout_secs` из env, чистка кода (4, 5)
 5. Пагинация/retention очереди (6)
-6. Решение generics vs dyn + `RarityService` перед sqlx (2)
+6. Решение generics vs dyn + `RarityService` перед sqlx (2) → **сделано** (generics + `RarityService`; трейты остались на `impl Future`)
+7. Спрятать `queue_repo` в `QueueService` — все операции через сервис (9), по ходу пагинации/retention (6); `UserService` — когда появятся реальные методы (9)

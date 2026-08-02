@@ -1,5 +1,6 @@
 use std::fmt::{self, Display};
 use std::future::Future;
+use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -59,4 +60,22 @@ pub trait RarityRepository: Send + Sync {
         rarity: Rarity,
     ) -> impl Future<Output = Result<Option<Rarity>, RepositoryError>> + Send;
     fn delete(&self, id: RarityId) -> impl Future<Output = Result<bool, RepositoryError>> + Send;
+}
+
+impl<T: RarityRepository> RarityRepository for Arc<T> {
+    async fn load_all(&self) -> Result<Vec<Rarity>, RepositoryError> {
+        (**self).load_all().await
+    }
+
+    async fn save(&self, rarity: Rarity) -> Result<Rarity, RepositoryError> {
+        (**self).save(rarity).await
+    }
+
+    async fn update(&self, rarity: Rarity) -> Result<Option<Rarity>, RepositoryError> {
+        (**self).update(rarity).await
+    }
+
+    async fn delete(&self, id: RarityId) -> Result<bool, RepositoryError> {
+        (**self).delete(id).await
+    }
 }

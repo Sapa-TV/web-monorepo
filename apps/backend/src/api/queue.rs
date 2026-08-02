@@ -82,7 +82,7 @@ mod tests {
     use crate::api::router;
     use crate::queue::entry::{QueueEntryId, QueueStatus};
     use crate::queue::repository::QueueRepository;
-    use crate::roulette::rarity::{Rarity, RarityId, RarityRepository};
+    use crate::roulette::rarity::{Rarity, RarityId};
     use crate::roulette::slot_service::{RouletteSlot, RouletteSlotId};
     use crate::test_fixtures::test_state;
     use crate::user::UserId;
@@ -104,7 +104,7 @@ mod tests {
         let state = test_state().await;
 
         state
-            .rarity_repo
+            .rarity_service
             .save(Rarity::new(
                 RarityId::new(1),
                 "common",
@@ -186,7 +186,7 @@ mod tests {
         let state = test_state().await;
 
         state
-            .rarity_repo
+            .rarity_service
             .save(Rarity::new(
                 RarityId::new(1),
                 "common",
@@ -259,7 +259,7 @@ mod tests {
         let state = test_state().await;
 
         state
-            .rarity_repo
+            .rarity_service
             .save(Rarity::new(
                 RarityId::new(1),
                 "common",
@@ -319,7 +319,7 @@ mod tests {
         let state = test_state().await;
 
         state
-            .rarity_repo
+            .rarity_service
             .save(Rarity::new(
                 RarityId::new(1),
                 "common",
@@ -437,7 +437,7 @@ mod tests {
         let state = test_state().await;
 
         state
-            .rarity_repo
+            .rarity_service
             .save(Rarity::new(
                 RarityId::new(1),
                 "common",
@@ -521,7 +521,7 @@ mod tests {
         let app = router(state.clone());
 
         state
-            .rarity_repo
+            .rarity_service
             .save(Rarity::new(
                 RarityId::new(1),
                 "common",

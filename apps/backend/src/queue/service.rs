@@ -3,9 +3,6 @@ use std::time::Duration;
 
 use chrono::Utc;
 
-use crate::db::inmemory_queue::InMemoryQueueRepository;
-use crate::db::inmemory_rarity::InMemoryRarityRepository;
-use crate::db::inmemory_roulette_slots::InMemoryRouletteSlotRepository;
 use crate::error::QueueServiceError;
 use crate::event::BroadcastEventPublisher;
 use crate::queue::entry::{QueueEntry, QueueEntryId, QueueStatus};
@@ -14,29 +11,57 @@ use crate::queue::repository::{DequeueOutcome, QueueRepository, StatusUpdateOutc
 use crate::random::StandartRandomProvider;
 use crate::roulette::machine::RouletteService;
 use crate::roulette::rarity::RarityRepository;
+use crate::roulette::rarity_service::RarityService;
+use crate::roulette::repository::RouletteSlotRepository;
 use crate::roulette::slot_service::RouletteSlot;
 
-#[derive(Clone)]
 #[non_exhaustive]
-pub struct QueueService {
-    queue_repo: Arc<InMemoryQueueRepository>,
-    rarity_repo: Arc<InMemoryRarityRepository>,
-    roulette: RouletteService<StandartRandomProvider, Arc<InMemoryRouletteSlotRepository>>,
+pub struct QueueService<Q, R, S>
+where
+    Q: QueueRepository,
+    R: RarityRepository,
+    S: RouletteSlotRepository,
+{
+    queue_repo: Arc<Q>,
+    rarity_service: Arc<RarityService<Arc<R>>>,
+    roulette: RouletteService<StandartRandomProvider, Arc<S>>,
     event_publisher: BroadcastEventPublisher,
     timeout: Duration,
 }
 
-impl QueueService {
+impl<Q, R, S> Clone for QueueService<Q, R, S>
+where
+    Q: QueueRepository,
+    R: RarityRepository,
+    S: RouletteSlotRepository,
+{
+    fn clone(&self) -> Self {
+        Self {
+            queue_repo: Arc::clone(&self.queue_repo),
+            rarity_service: Arc::clone(&self.rarity_service),
+            roulette: self.roulette.clone(),
+            event_publisher: self.event_publisher.clone(),
+            timeout: self.timeout,
+        }
+    }
+}
+
+impl<Q, R, S> QueueService<Q, R, S>
+where
+    Q: QueueRepository,
+    R: RarityRepository,
+    S: RouletteSlotRepository,
+{
     pub fn new(
-        queue_repo: Arc<InMemoryQueueRepository>,
-        rarity_repo: Arc<InMemoryRarityRepository>,
-        roulette: RouletteService<StandartRandomProvider, Arc<InMemoryRouletteSlotRepository>>,
+        queue_repo: Arc<Q>,
+        rarity_service: Arc<RarityService<Arc<R>>>,
+        roulette: RouletteService<StandartRandomProvider, Arc<S>>,
         event_publisher: BroadcastEventPublisher,
         timeout: Duration,
     ) -> Self {
         Self {
             queue_repo,
-            rarity_repo,
+            rarity_service,
             roulette,
             event_publisher,
             timeout,
@@ -52,11 +77,10 @@ impl QueueService {
             DequeueOutcome::Empty => return Err(QueueServiceError::QueueEmpty),
         };
 
-        let rarities = self.rarity_repo.load_all().await?;
-        let slot_rarity = rarities
-            .iter()
-            .find(|r| r.id == slot.rarity_id)
-            .map(|r| r.display_name.clone())
+        let slot_rarity = self
+            .rarity_service
+            .get_by_id(slot.rarity_id)
+            .map(|r| r.display_name)
             .ok_or(QueueServiceError::RarityNotFound)?;
 
         if let Err(e) = self

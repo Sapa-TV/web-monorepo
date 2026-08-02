@@ -139,7 +139,7 @@ mod tests {
     use crate::api::ws::{ClientMessage, ServerMessage, handle_message};
     use crate::queue::entry::QueueStatus;
     use crate::queue::repository::QueueRepository;
-    use crate::roulette::rarity::{Rarity, RarityId, RarityRepository};
+    use crate::roulette::rarity::{Rarity, RarityId};
     use crate::roulette::slot_service::{RouletteSlot, RouletteSlotId};
     use crate::state::AppState;
     use crate::test_fixtures::test_state;
@@ -147,7 +147,7 @@ mod tests {
 
     async fn setup_spinning(state: &AppState) -> crate::queue::entry::QueueEntryId {
         state
-            .rarity_repo
+            .rarity_service
             .save(Rarity::new(
                 RarityId::new(1),
                 "common",
@@ -247,7 +247,11 @@ mod tests {
             },
         )
         .await;
-        assert!(matches!(reply, ServerMessage::CompleteErr { entry_id, error } if entry_id == ws_entry_id && !error.is_empty()));
+        assert!(matches!(
+            reply,
+            ServerMessage::CompleteErr { entry_id, error }
+            if entry_id == ws_entry_id && !error.is_empty()
+        ));
         let response = app
             .oneshot(
                 axum::http::Request::builder()

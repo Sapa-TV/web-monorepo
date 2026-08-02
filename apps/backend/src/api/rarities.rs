@@ -6,7 +6,7 @@ use utoipa::OpenApi;
 use utoipa::ToSchema;
 
 use crate::error::api::ApiError;
-use crate::roulette::rarity::{Rarity, RarityId, RarityRepository};
+use crate::roulette::rarity::{Rarity, RarityId};
 use crate::state::AppState;
 
 #[derive(Debug, serde::Serialize, ToSchema)]
@@ -66,7 +66,7 @@ pub struct RarityIdParam {
 pub async fn list_rarities(
     State(state): State<AppState>,
 ) -> Result<Json<Vec<RarityResponse>>, ApiError> {
-    let rarities = state.rarity_repo.load_all().await?;
+    let rarities = state.rarity_service.get_all();
     Ok(Json(
         rarities.into_iter().map(RarityResponse::from).collect(),
     ))
@@ -92,7 +92,7 @@ pub async fn create_rarity(
         &body.image,
         &body.color,
     );
-    let saved = state.rarity_repo.save(rarity).await?;
+    let saved = state.rarity_service.save(rarity).await?;
     Ok((StatusCode::CREATED, Json(RarityResponse::from(saved))))
 }
 
@@ -120,7 +120,7 @@ pub async fn update_rarity(
         &body.color,
     );
     let updated = state
-        .rarity_repo
+        .rarity_service
         .update(rarity)
         .await?
         .ok_or_else(|| ApiError::new(StatusCode::NOT_FOUND, "rarity not found"))?;
@@ -141,7 +141,7 @@ pub async fn delete_rarity(
     State(state): State<AppState>,
     Path(params): Path<RarityIdParam>,
 ) -> Result<StatusCode, ApiError> {
-    let deleted = state.rarity_repo.delete(params.id).await?;
+    let deleted = state.rarity_service.delete(params.id).await?;
     if !deleted {
         return Err(ApiError::new(StatusCode::NOT_FOUND, "rarity not found"));
     }

@@ -9,27 +9,71 @@ use crate::db::inmemory_roulette_slots::InMemoryRouletteSlotRepository;
 use crate::db::inmemory_user::InMemoryUserRepository;
 use crate::error::RepositoryError;
 use crate::event::BroadcastEventPublisher;
+use crate::platform::PlatformRepository;
+use crate::queue::repository::QueueRepository;
 use crate::queue::service::QueueService;
 use crate::random::StandartRandomProvider;
 use crate::roulette::machine::RouletteService;
+use crate::roulette::rarity::RarityRepository;
+use crate::roulette::rarity_service::RarityService;
+use crate::roulette::repository::RouletteSlotRepository;
 use crate::roulette::slot_service::RouletteSlotService;
 use crate::stream::StreamStatus;
 use crate::user::UserId;
+use crate::user::repository::UserRepository;
 
-#[derive(Clone)]
 #[non_exhaustive]
-pub struct AppState {
-    pub slot_service: Arc<RouletteSlotService<Arc<InMemoryRouletteSlotRepository>>>,
-    pub rarity_repo: Arc<InMemoryRarityRepository>,
-    pub user_repo: Arc<InMemoryUserRepository>,
-    pub platform_repo: Arc<InMemoryPlatformRepository>,
-    pub queue_repo: Arc<InMemoryQueueRepository>,
-    pub queue_service: QueueService,
+pub struct UniAppState<Q, R, U, P, S>
+where
+    Q: QueueRepository,
+    R: RarityRepository,
+    U: UserRepository,
+    P: PlatformRepository,
+    S: RouletteSlotRepository,
+{
+    pub slot_service: Arc<RouletteSlotService<Arc<S>>>,
+    pub rarity_service: Arc<RarityService<Arc<R>>>,
+    pub user_repo: Arc<U>,
+    pub platform_repo: Arc<P>,
+    pub queue_repo: Arc<Q>,
+    pub queue_service: QueueService<Q, R, S>,
     pub config: Config,
     pub event_publisher: BroadcastEventPublisher,
     pub guest_user_id: Arc<OnceLock<UserId>>,
     pub stream_status: Arc<StreamStatus>,
 }
+
+impl<Q, R, U, P, S> Clone for UniAppState<Q, R, U, P, S>
+where
+    Q: QueueRepository,
+    R: RarityRepository,
+    U: UserRepository,
+    P: PlatformRepository,
+    S: RouletteSlotRepository,
+{
+    fn clone(&self) -> Self {
+        Self {
+            slot_service: Arc::clone(&self.slot_service),
+            rarity_service: Arc::clone(&self.rarity_service),
+            user_repo: Arc::clone(&self.user_repo),
+            platform_repo: Arc::clone(&self.platform_repo),
+            queue_repo: Arc::clone(&self.queue_repo),
+            queue_service: self.queue_service.clone(),
+            config: self.config.clone(),
+            event_publisher: self.event_publisher.clone(),
+            guest_user_id: Arc::clone(&self.guest_user_id),
+            stream_status: Arc::clone(&self.stream_status),
+        }
+    }
+}
+
+pub type AppState = UniAppState<
+    InMemoryQueueRepository,
+    InMemoryRarityRepository,
+    InMemoryUserRepository,
+    InMemoryPlatformRepository,
+    InMemoryRouletteSlotRepository,
+>;
 
 pub struct AppStateBuilder {
     random: StandartRandomProvider,
@@ -69,10 +113,11 @@ impl AppStateBuilder {
         let event_publisher = BroadcastEventPublisher::new();
 
         let slot_service = Arc::new(RouletteSlotService::build(Arc::clone(&slot_repo)).await?);
+        let rarity_service = Arc::new(RarityService::build(Arc::clone(&rarity_repo)).await?);
         let roulette = RouletteService::new(Arc::clone(&slot_service), self.random);
         let queue_service = QueueService::new(
             Arc::clone(&queue_repo),
-            Arc::clone(&rarity_repo),
+            Arc::clone(&rarity_service),
             roulette,
             event_publisher.clone(),
             std::time::Duration::from_secs(self.config.roulette_timeout_secs),
@@ -80,7 +125,7 @@ impl AppStateBuilder {
 
         Ok(AppState {
             slot_service,
-            rarity_repo,
+            rarity_service,
             user_repo,
             platform_repo,
             queue_repo,
