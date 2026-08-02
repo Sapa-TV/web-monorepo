@@ -13,6 +13,7 @@ use crate::queue::service::QueueService;
 use crate::random::StandartRandomProvider;
 use crate::roulette::machine::RouletteService;
 use crate::roulette::slot_service::RouletteSlotService;
+use crate::stream::StreamStatus;
 use crate::user::UserId;
 
 #[derive(Clone)]
@@ -27,6 +28,7 @@ pub struct AppState {
     pub config: Config,
     pub event_publisher: BroadcastEventPublisher,
     pub guest_user_id: Arc<OnceLock<UserId>>,
+    pub stream_status: Arc<StreamStatus>,
 }
 
 pub struct AppStateBuilder {
@@ -86,6 +88,7 @@ impl AppStateBuilder {
             config: self.config,
             event_publisher,
             guest_user_id: Arc::new(OnceLock::new()),
+            stream_status: Arc::new(StreamStatus::new()),
         })
     }
 }

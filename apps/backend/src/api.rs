@@ -2,6 +2,7 @@ pub mod auth;
 pub mod queue;
 pub mod rarities;
 pub mod roulette_slots;
+pub mod stream;
 pub mod users;
 pub mod ws;
 
@@ -20,12 +21,14 @@ use crate::state::AppState;
         (name = "rarities", description = "Rarity management"),
         (name = "roulette", description = "Roulette gameplay"),
         (name = "users", description = "User management"),
-        (name = "queue", description = "Spin queue")
+        (name = "queue", description = "Spin queue"),
+        (name = "stream", description = "Stream status")
     ),
     nest((path = "/", api = rarities::RaritiesApiDoc)),
     nest((path = "/", api = roulette_slots::SlotsApiDoc)),
     nest((path = "/", api = users::UsersApiDoc)),
-    nest((path = "/", api = queue::QueueApiDoc))
+    nest((path = "/", api = queue::QueueApiDoc)),
+    nest((path = "/", api = stream::StreamApiDoc))
 )]
 #[non_exhaustive]
 pub struct ApiDoc;
@@ -35,6 +38,7 @@ pub fn public_router() -> axum::Router<AppState> {
         .route("/health", axum::routing::get(health))
         .route("/version", axum::routing::get(version))
         .merge(ws::router())
+        .merge(stream::public_router())
 }
 
 async fn health() -> &'static str {
@@ -54,6 +58,7 @@ pub fn protected_router() -> axum::Router<AppState> {
         .merge(roulette_slots::router())
         .merge(users::router())
         .merge(queue::router())
+        .merge(stream::protected_router())
 }
 
 #[cfg(test)]

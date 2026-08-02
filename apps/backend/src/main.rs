@@ -14,11 +14,12 @@ mod queue;
 mod random;
 mod roulette;
 mod state;
+mod stream;
 #[cfg(test)]
 mod test_fixtures;
 mod user;
 
-use axum::http::{header, HeaderValue, Method};
+use axum::http::{HeaderValue, Method, header};
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 use tracing::info;
@@ -47,10 +48,7 @@ async fn main() {
         .expect("failed to build app state");
     let cors = match state.config.cors_origins.as_deref() {
         Some(origins) => {
-            let origins: Vec<HeaderValue> = origins
-                .iter()
-                .filter_map(|o| o.parse().ok())
-                .collect();
+            let origins: Vec<HeaderValue> = origins.iter().filter_map(|o| o.parse().ok()).collect();
             CorsLayer::new()
                 .allow_origin(origins)
                 .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
