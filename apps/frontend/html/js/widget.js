@@ -97,19 +97,29 @@ function setError(data) {
 
 let ws = null;
 let wsQueued = false;
+let wsRejected = false;
+let wsRetryMs = 1000;
 
 function connectWs() {
-  if (!keyOk || wsQueued) return;
+  if (!keyOk || wsQueued || wsRejected) return;
   wsQueued = true;
   ws = new WebSocket(`ws://localhost:3000/ws`);
 
   ws.onopen = () => {
     setConn('connected', 'подключено');
+    if (PAK) ws.send(JSON.stringify({ type: 'auth', token: PAK }));
   };
 
   ws.onmessage = e => {
     const d = JSON.parse(e.data);
     switch (d.type) {
+      case 'auth_ok':
+        wsRetryMs = 1000;
+        break;
+      case 'auth_err':
+        wsRejected = true;
+        failAuth();
+        break;
       case 'spin_started':
         setSpinning(d);
         break;
@@ -125,7 +135,10 @@ function connectWs() {
   ws.onclose = () => {
     wsQueued = false;
     setConn('disconnected', 'отключено');
-    if (keyOk) setTimeout(connectWs, 3000);
+    if (keyOk && !wsRejected) {
+      setTimeout(connectWs, wsRetryMs);
+      wsRetryMs = Math.min(wsRetryMs * 2, 15000);
+    }
   };
 
   ws.onerror = () => {

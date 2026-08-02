@@ -191,18 +191,34 @@ setInterval(loadAll, 10000);
 
 const connDot = document.getElementById('connDot');
 let ws = null;
+let wsRejected = false;
+let wsRetryMs = 1000;
 
 function connectWs() {
+  if (wsRejected) return;
   ws = new WebSocket(`ws://localhost:3000/ws`);
-  ws.onopen = () => { connDot.className = 'conn-dot connected'; };
+  ws.onopen = () => {
+    connDot.className = 'conn-dot connected';
+    if (PAK) ws.send(JSON.stringify({ type: 'auth', token: PAK }));
+  };
   ws.onclose = () => {
     connDot.className = 'conn-dot disconnected';
-    setTimeout(connectWs, 3000);
+    if (!wsRejected) {
+      setTimeout(connectWs, wsRetryMs);
+      wsRetryMs = Math.min(wsRetryMs * 2, 15000);
+    }
   };
   ws.onerror = () => { ws.close(); };
   ws.onmessage = e => {
     const d = JSON.parse(e.data);
     switch (d.type) {
+      case 'auth_ok':
+        wsRetryMs = 1000;
+        break;
+      case 'auth_err':
+        wsRejected = true;
+        setKeyBadge(PAK ? 'bad' : 'missing');
+        break;
       case 'spin_started':
         addEvent(`🎰 #${d.entry_id} — ${d.user_name}: ${d.slot_name}`, 'start');
         loadAll();

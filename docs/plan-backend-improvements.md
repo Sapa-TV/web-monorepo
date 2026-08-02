@@ -4,6 +4,8 @@
 
 Порядок работ: **1 → 3 → 4** (баги/безопасность/наблюдаемость, низкий риск), затем **п. 8** (WS-auth → WS-complete), далее **2** (перед миграцией на sqlx).
 
+> Статус: 1, 3, 4, 7 и п. 8 (WS-auth handshake + WS-диспетчер complete) — **сделано**. Следующий шаг — **п. 2** (перед sqlx).
+
 ---
 
 ## 1. Корректность / гонки
@@ -110,6 +112,8 @@ Timeout-задача может перевести в `Error` entry, котор�
 
 Обсуждение 2026-07-31. Решение принято: подтверждение спина идёт по WS, REST остаётся как резервный канал и для тестов.
 
+**Сделано:** first-message handshake `{"type":"auth","token":...}` → `auth_ok`/`auth_err` (constant-time сравнение через `subtle`), после `auth_ok` клиент получает события. WS-диспетчер `handle_message(state, msg) -> ServerMessage` в `api/ws.rs` (`ClientMessage::{Auth,Complete}`, `ServerMessage::{AuthOk,AuthErr,CompleteOk,CompleteErr}`, сериализация через `#[serde(tag="type")]` как у `SpinEvent`). Команда `complete` ходит в `QueueService.complete` (единая точка истины). Тесты: `auth_handshake_validates_token`, `ws_and_rest_complete_are_equivalent` (WS CompleteOk ↔ REST 200 + error-case CompleteErr ↔ 409), `complete_ok_and_err_serialize_with_type_tag`. Frontend (`widget.js`/`panel.js`) отправляет auth-сообщение при подключении; REST-complete остаётся рабочим каналом.
+
 ### Обязательный пререквизит
 
 **WS-auth** — закрыть поток событий (`/ws` сейчас без авторизации, п. 3). Без него команды по WS не вводить. Токен в query (`?token=`) утекает в логи — предпочтителен first-message handshake.
@@ -150,9 +154,9 @@ Correlation-id не нужен — активный спин всегда оди
 
 ## Очередность реализации
 
-1. Атомарность `dequeue_next` (1.1) + CAS-статусы (1.2) → снять `#[ignore]` с тестов
+1. Атомарность `dequeue_next` (1.1) + CAS-статусы (1.2) → снять `#[ignore]` с тестов → **сделано**
 2. Constant-time токен, CORS, `/health`, graceful shutdown, TraceLayer (3, 4) → **сделано**
-3. **WS-auth (first-message handshake)** → WS-диспетчер `complete` + тест эквивалентности (п. 8); REST-complete остаётся резервом
+3. WS-auth (first-message handshake) → WS-диспетчер `complete` + тест эквивалентности (п. 8); REST-complete остаётся резервом → **сделано**
 4. `roulette_timeout_secs` из env, чистка кода (4, 5)
 5. Пагинация/retention очереди (6)
 6. Решение generics vs dyn + `RarityService` перед sqlx (2)
