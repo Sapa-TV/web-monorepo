@@ -4,7 +4,7 @@
 
 Порядок работ: **1 → 3 → 4** (баги/безопасность/наблюдаемость, низкий риск), затем **п. 8** (WS-auth → WS-complete), далее **2** (перед миграцией на sqlx).
 
-> Статус: 1, 3, 4, 7, п. 8 (WS-auth handshake + WS-диспетчер complete), п. 2 (generics + `RarityService`), п. 5 (чистка кода), п. 9 (`queue_repo` спрятан в `QueueService`) и п. 6 (пагинация/retention) — **сделано**. Осталось: 4 (хвост), 9 (`UserService` — по требованию).
+> Статус: 1, 3, 4, 7, п. 8 (WS-auth handshake + WS-диспетчер complete), п. 2 (generics + `RarityService`), п. 5 (чистка кода), п. 9 (`queue_repo` спрятан в `QueueService`), п. 6 (пагинация/retention) и п. 4 (конфиг из `config.toml`) — **сделано**. Осталось: 9 (`UserService` — по требованию).
 
 ---
 
@@ -80,6 +80,8 @@ Timeout-задача может перевести в `Error` entry, котор�
 **Сделано:** `TraceLayer::new_for_http()`, `GET /health` (без авторизации), `GET /version` (без авторизации, версия и git hash), `with_graceful_shutdown` (SIGINT/SIGTERM).
 
 - `roulette_timeout_secs` захардкожен `10` (config.rs:15) — **не** выносить в env (не хотим кучу env-переменных, только то, что реально настраивается). Позже — загрузка конфига из json/yaml-файла через крейт `config` (переезд в п. 2 при sqlite-миграции).
+
+**Сделано:** крейт `config` (добавлен через `cargo add` + `cargo autoinherit`). В файл `config.toml` вынесены только захардкоженные ранее параметры: `roulette_timeout_secs`, `retention_secs`, `queue_default_limit`. `ACCESS_KEY`/`PORT`/`CORS_ORIGINS` остались в env (дефолты в коде, env переопределяет). Порядок источников: дефолты в коде (`Default` + `#[serde(default)]`) → `config.toml` (optional) → env. Кастомный десериализатор для `cors_origins` (массив из файла ИЛИ comma-строка из env). `Config::load()` паникует, если `access_key` пуст.
 
 ---
 
@@ -183,7 +185,7 @@ Correlation-id не нужен — активный спин всегда оди
 1. Атомарность `dequeue_next` (1.1) + CAS-статусы (1.2) → снять `#[ignore]` с тестов → **сделано**
 2. Constant-time токен, CORS, `/health`, graceful shutdown, TraceLayer (3, 4) → **сделано**
 3. WS-auth (first-message handshake) → WS-диспетчер `complete` + тест эквивалентности (п. 8); REST-complete остаётся резервом → **сделано**
-4. `roulette_timeout_secs` из env, чистка кода (4, 5) → чистка **сделана**; `roulette_timeout_secs` не выносим в env (см. п. 4)
+4. `roulette_timeout_secs` из env, чистка кода (4, 5) → чистка **сделана**; п. 4 → **сделано** (конфиг из `config.toml` через крейт `config`: только захардкоженные параметры, `ACCESS_KEY`/`PORT`/`CORS_ORIGINS` остаются в env; defaults → файл → env)
 5. Пагинация/retention очереди (6) → **сделано** (keyset-курсор по `id` + purge по возрасту, конфиг `retention_secs`/`queue_default_limit` без env)
 6. Решение generics vs dyn + `RarityService` перед sqlx (2) → **сделано** (generics + `RarityService`; трейты остались на `impl Future`)
 7. Спрятать `queue_repo` в `QueueService` — все операции через сервис (9) → **сделано** (`queue_repo` убран из `AppState`, методы на сервисе; `#[cfg(test)]`-доступ к репо для теста); `UserService` — когда появятся реальные методы (9)
