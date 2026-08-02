@@ -3,6 +3,7 @@ use axum::extract::State;
 use axum::http::{Request, StatusCode};
 use axum::middleware::Next;
 use axum::response::Response;
+use subtle::ConstantTimeEq;
 
 use crate::state::AppState;
 
@@ -21,7 +22,11 @@ pub async fn require_auth(
         .and_then(|v| v.to_str().ok())
         .and_then(|v| v.strip_prefix("Bearer "));
 
-    if token == Some(state.config.access_key.as_str()) {
+    let authorized = token
+        .map(|t| t.as_bytes().ct_eq(state.config.access_key.as_bytes()).into())
+        .unwrap_or(false);
+
+    if authorized {
         Ok(next.run(req).await)
     } else {
         Err(StatusCode::UNAUTHORIZED)

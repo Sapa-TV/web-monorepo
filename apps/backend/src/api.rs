@@ -31,7 +31,21 @@ use crate::state::AppState;
 pub struct ApiDoc;
 
 pub fn public_router() -> axum::Router<AppState> {
-    axum::Router::new().merge(ws::router())
+    axum::Router::new()
+        .route("/health", axum::routing::get(health))
+        .route("/version", axum::routing::get(version))
+        .merge(ws::router())
+}
+
+async fn health() -> &'static str {
+    "ok"
+}
+
+async fn version() -> axum::Json<serde_json::Value> {
+    axum::Json(serde_json::json!({
+        "version": env!("CARGO_PKG_VERSION"),
+        "git_sha": option_env!("GIT_SHA").unwrap_or("unknown"),
+    }))
 }
 
 pub fn protected_router() -> axum::Router<AppState> {

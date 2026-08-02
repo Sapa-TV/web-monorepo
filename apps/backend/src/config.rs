@@ -4,6 +4,7 @@ pub struct Config {
     pub roulette_timeout_secs: u64,
     pub port: u16,
     pub access_key: String,
+    pub cors_origins: Option<Vec<String>>,
 }
 
 impl Config {
@@ -21,6 +22,15 @@ impl Config {
                 .ok()
                 .filter(|k| !k.is_empty())
                 .expect("ACCESS_KEY env var must be set"),
+            cors_origins: std::env::var("CORS_ORIGINS")
+                .ok()
+                .map(|v| {
+                    v.split(',')
+                        .map(|s| s.trim().to_string())
+                        .filter(|s| !s.is_empty())
+                        .collect()
+                })
+                .filter(|v: &Vec<String>| !v.is_empty()),
         }
     }
 }
@@ -32,6 +42,7 @@ impl Config {
             roulette_timeout_secs: 10,
             port: 3000,
             access_key: "test-key".to_string(),
+            cors_origins: None,
         }
     }
 }

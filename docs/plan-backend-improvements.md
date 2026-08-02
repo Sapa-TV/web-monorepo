@@ -56,15 +56,22 @@ Timeout-задача может перевести в `Error` entry, котор�
 ## 3. Безопасность
 
 - **Сравнение токена не constant-time** (api/auth.rs:24): `token == Some(...)` → timing-атака. Заменить на постоянновременное сравнение (например `subtle`).
+
+**Сделано:** `subtle::ConstantTimeEq` для сравнения токена в `require_auth`.
+
 - `CorsLayer::permissive()` (main.rs:46) — для прод ограничить origin'ы.
-- `/ws` без авторизации — любой подключённый получает все события.
+
+**Сделано:** `CORS_ORIGINS` (env, через запятую) → `CorsLayer` с `allow_origin`/`allow_methods`/`allow_headers`. Если env не задан — остаётся `permissive` (для локалки).
 
 ---
 
 ## 4. Наблюдаемость и сервер
 
 - Нет `TraceLayer` (запросное логирование), нет `/health`, нет graceful shutdown (`SIGTERM` → `with_graceful_shutdown`).
-- `roulette_timeout_secs` захардкожен `10` (config.rs:15) — вынести в env как `PORT`/`ACCESS_KEY`.
+
+**Сделано:** `TraceLayer::new_for_http()`, `GET /health` (без авторизации), `GET /version` (без авторизации, версия и git hash), `with_graceful_shutdown` (SIGINT/SIGTERM).
+
+- `roulette_timeout_secs` захардкожен `10` (config.rs:15) — **не** выносить в env (не хотим кучу env-переменных, только то, что реально настраивается). Позже — загрузка конфига из json/yaml-файла через крейт `config` (переезд в п. 2 при sqlite-миграции).
 
 ---
 
@@ -144,7 +151,7 @@ Correlation-id не нужен — активный спин всегда оди
 ## Очередность реализации
 
 1. Атомарность `dequeue_next` (1.1) + CAS-статусы (1.2) → снять `#[ignore]` с тестов
-2. Constant-time токен, CORS, `/health`, graceful shutdown, TraceLayer (3, 4)
+2. Constant-time токен, CORS, `/health`, graceful shutdown, TraceLayer (3, 4) → **сделано**
 3. **WS-auth (first-message handshake)** → WS-диспетчер `complete` + тест эквивалентности (п. 8); REST-complete остаётся резервом
 4. `roulette_timeout_secs` из env, чистка кода (4, 5)
 5. Пагинация/retention очереди (6)

@@ -18,7 +18,9 @@ mod state;
 mod test_fixtures;
 mod user;
 
+use axum::http::{header, HeaderValue, Method};
 use tower_http::cors::CorsLayer;
+use tower_http::trace::TraceLayer;
 use tracing::info;
 use utoipa::OpenApi;
 use utoipa_redoc::{Redoc, Servable};
@@ -43,7 +45,19 @@ async fn main() {
         .build()
         .await
         .expect("failed to build app state");
-    let cors = CorsLayer::permissive();
+    let cors = match state.config.cors_origins.as_deref() {
+        Some(origins) => {
+            let origins: Vec<HeaderValue> = origins
+                .iter()
+                .filter_map(|o| o.parse().ok())
+                .collect();
+            CorsLayer::new()
+                .allow_origin(origins)
+                .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
+                .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION])
+        }
+        None => CorsLayer::permissive(),
+    };
 
     let app = api::router_with_auth(state.clone(), |router| {
         router.route_layer(axum::middleware::from_fn_with_state(
@@ -52,6 +66,7 @@ async fn main() {
         ))
     })
     .layer(cors)
+    .layer(TraceLayer::new_for_http())
     .merge(SwaggerUi::new("/docs").url("/api-doc/openapi.json", ApiDoc::openapi()))
     .merge(Redoc::with_url("/redoc", ApiDoc::openapi()));
 
@@ -63,7 +78,36 @@ async fn main() {
 
     tokio::spawn(timeout_task(state));
 
-    axum::serve(listener, app).await.expect("server failed");
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
+        .await
+        .expect("server failed");
+}
+
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("failed to install ctrl-c handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("failed to install SIGTERM handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
+
+    info!("shutdown signal received, draining connections");
 }
 
 async fn timeout_task(state: AppState) {
