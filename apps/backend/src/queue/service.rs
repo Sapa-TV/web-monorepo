@@ -5,7 +5,7 @@ use chrono::Utc;
 
 use crate::error::QueueServiceError;
 use crate::event::BroadcastEventPublisher;
-use crate::queue::entry::{QueueEntry, QueueEntryId, QueueStatus};
+use crate::queue::entry::{QueueEntry, QueueEntryId, QueueStats, QueueStatus};
 use crate::queue::events::{SpinEvent, SpinEventPublisher};
 use crate::queue::repository::{DequeueOutcome, QueueRepository, StatusUpdateOutcome};
 use crate::random::StandartRandomProvider;
@@ -14,6 +14,7 @@ use crate::roulette::rarity::RarityRepository;
 use crate::roulette::rarity_service::RarityService;
 use crate::roulette::repository::RouletteSlotRepository;
 use crate::roulette::slot_service::RouletteSlot;
+use crate::user::UserId;
 
 type Roulette<R> = RouletteService<StandartRandomProvider, Arc<R>>;
 
@@ -171,5 +172,35 @@ where
             }
         }
         Ok(())
+    }
+
+    pub async fn enqueue(
+        &self,
+        user_id: UserId,
+        user_name: &str,
+    ) -> Result<QueueEntry, QueueServiceError> {
+        Ok(self.queue_repo.enqueue(user_id, user_name).await?)
+    }
+
+    pub async fn peek_next(&self) -> Result<Option<QueueEntry>, QueueServiceError> {
+        Ok(self.queue_repo.peek_next().await?)
+    }
+
+    pub async fn list(
+        &self,
+        status: Option<QueueStatus>,
+    ) -> Result<Vec<QueueEntry>, QueueServiceError> {
+        Ok(self.queue_repo.list(status).await?)
+    }
+
+    pub async fn get_by_id(
+        &self,
+        id: QueueEntryId,
+    ) -> Result<Option<QueueEntry>, QueueServiceError> {
+        Ok(self.queue_repo.get_by_id(id).await?)
+    }
+
+    pub async fn count_by_status(&self) -> Result<QueueStats, QueueServiceError> {
+        Ok(self.queue_repo.count_by_status().await?)
     }
 }

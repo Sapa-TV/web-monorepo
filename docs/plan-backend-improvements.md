@@ -4,7 +4,7 @@
 
 Порядок работ: **1 → 3 → 4** (баги/безопасность/наблюдаемость, низкий риск), затем **п. 8** (WS-auth → WS-complete), далее **2** (перед миграцией на sqlx).
 
-> Статус: 1, 3, 4, 7, п. 8 (WS-auth handshake + WS-диспетчер complete), п. 2 (generics + `RarityService`) и п. 5 (чистка кода) — **сделано**. Осталось: 4 (хвост), 6 (пагинация/retention), 9 (единообразие сервисного слоя).
+> Статус: 1, 3, 4, 7, п. 8 (WS-auth handshake + WS-диспетчер complete), п. 2 (generics + `RarityService`), п. 5 (чистка кода) и п. 9 (`queue_repo` спрятан в `QueueService`) — **сделано**. Осталось: 4 (хвост), 6 (пагинация/retention), 9 (`UserService` — по требованию).
 
 ---
 
@@ -167,6 +167,8 @@ Correlation-id не нужен — активный спин всегда оди
 - **`queue_repo` спрятать в `QueueService`.** Сейчас `queue_repo` торчит в `AppState` (state.rs:38), и хендлеры делятся на два пути: сложное — через `QueueService` (dequeue/complete/cancel/mark_timed_out), простое — через `queue_repo` напрямую (enqueue, list, get_by_id, count_by_status в api/queue.rs). Решение: перенести `enqueue`/`list`/`get_by_id`/`count_by_status` методами `QueueService` (учесть при пагинации из п. 6), поле `queue_repo` из `AppState` убрать.
 - **`UserService` — когда появятся реальные методы.** У `user_repo`/`platform_repo` сейчас сервиса нет (чистый CRUD в репо, бизнес-правила — в хендлерах). Пользователям он, скорее всего, понадобится со своими методами (дедупликация, link-логика, агрегация профиля и т.п.). Вводить по требованию, по аналогии с `QueueService` (сервис — бизнес-правила, репо — хранение), а не заранее ради boilerplate.
 
+**Сделано (частично):** `queue_repo` убран из `UniAppState`/`Clone`/builder. `QueueService` получил методы-обёртки: `enqueue`, `list`, `get_by_id`, `peek_next`, `count_by_status` (все возвращают `QueueServiceError`, не репо-ошибку). Хендлеры `api/queue.rs` и тесты `api/ws.rs` ходят только через `state.queue_service`. Поведение «деqueue/peek выбирают `Error` раньше `Pending`» покрыто юнит-тестами в `inmemory_queue.rs` (`peek_prefers_error_over_pending`, `dequeue_prefers_error_over_pending`), а HTTP-тест `dequeue_next_retries_error_entry` гоняет `Error` через публичный `mark_timed_out` — доступа к репо нигде нет. Тест-конфиг использует `roulette_timeout_secs: 0` (таймаут влияет только на `mark_timed_out`/`timeout()`, которые вне main.rs вызывает лишь этот тест). `UserService` — отложено до появления реальных методов.
+
 ---
 
 ## Очередность реализации
@@ -177,4 +179,4 @@ Correlation-id не нужен — активный спин всегда оди
 4. `roulette_timeout_secs` из env, чистка кода (4, 5) → чистка **сделана**; `roulette_timeout_secs` не выносим в env (см. п. 4)
 5. Пагинация/retention очереди (6)
 6. Решение generics vs dyn + `RarityService` перед sqlx (2) → **сделано** (generics + `RarityService`; трейты остались на `impl Future`)
-7. Спрятать `queue_repo` в `QueueService` — все операции через сервис (9), по ходу пагинации/retention (6); `UserService` — когда появятся реальные методы (9)
+7. Спрятать `queue_repo` в `QueueService` — все операции через сервис (9) → **сделано** (`queue_repo` убран из `AppState`, методы на сервисе; `#[cfg(test)]`-доступ к репо для теста); `UserService` — когда появятся реальные методы (9)

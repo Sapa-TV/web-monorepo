@@ -21,6 +21,7 @@ pub enum QueueServiceError {
     #[error("no roulette slots configured")]
     NoSlots,
     #[error("user not found")]
+    #[allow(dead_code)]
     UserNotFound,
     #[error("rarity not found")]
     RarityNotFound,

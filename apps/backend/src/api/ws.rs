@@ -138,7 +138,6 @@ mod tests {
     use crate::api::router;
     use crate::api::ws::{ClientMessage, ServerMessage, handle_message};
     use crate::queue::entry::QueueStatus;
-    use crate::queue::repository::QueueRepository;
     use crate::roulette::rarity::{Rarity, RarityId};
     use crate::roulette::slot_service::{RouletteSlot, RouletteSlotId};
     use crate::state::AppState;
@@ -169,7 +168,7 @@ mod tests {
             .await
             .unwrap();
         let user_id = state.user_repo.create("user1").await.unwrap().id;
-        state.queue_repo.enqueue(user_id, "user1").await.unwrap();
+        state.queue_service.enqueue(user_id, "user1").await.unwrap();
         let (entry, _slot) = state.queue_service.dequeue_next().await.unwrap();
         entry.id
     }
@@ -212,7 +211,7 @@ mod tests {
         .await;
         assert!(matches!(reply, ServerMessage::CompleteOk { entry_id } if entry_id == ws_entry_id));
         let entry = state
-            .queue_repo
+            .queue_service
             .get_by_id(ws_entry_id)
             .await
             .unwrap()
@@ -233,7 +232,7 @@ mod tests {
             .unwrap();
         assert_eq!(response.status(), 200);
         let entry = state
-            .queue_repo
+            .queue_service
             .get_by_id(rest_entry_id)
             .await
             .unwrap()

@@ -8,7 +8,6 @@ use crate::error::QueueServiceError;
 use crate::error::RepositoryError;
 use crate::error::api::ApiError;
 use crate::queue::entry::{QueueEntry, QueueEntryId, QueueStats, QueueStatus};
-use crate::queue::repository::QueueRepository;
 use crate::roulette::slot_service::{RouletteSlot, RouletteSlotId};
 use crate::state::AppState;
 use crate::user::UserId;
@@ -80,8 +79,6 @@ mod tests {
 
     use crate::api::queue::EnqueueRequest;
     use crate::api::router;
-    use crate::queue::entry::{QueueEntryId, QueueStatus};
-    use crate::queue::repository::QueueRepository;
     use crate::roulette::rarity::{Rarity, RarityId};
     use crate::roulette::slot_service::{RouletteSlot, RouletteSlotId};
     use crate::test_fixtures::test_state;
@@ -158,15 +155,7 @@ mod tests {
             .unwrap();
         assert_eq!(resp.status(), 200);
 
-        state
-            .queue_repo
-            .update_status_if(
-                QueueEntryId::new(1),
-                QueueStatus::Spinning,
-                QueueStatus::Error,
-            )
-            .await
-            .unwrap();
+        state.queue_service.mark_timed_out().await.unwrap();
 
         let resp = app
             .oneshot(
@@ -642,7 +631,7 @@ pub async fn enqueue(
     Json(body): Json<EnqueueRequest>,
 ) -> Result<(StatusCode, Json<QueueEntryResponse>), ApiError> {
     let entry = state
-        .queue_repo
+        .queue_service
         .enqueue(body.user_id, &body.user_name)
         .await?;
     let resp = QueueEntryResponse::from(&entry);
@@ -673,7 +662,7 @@ pub async fn enqueue_anonymous(
     Json(body): Json<AnonymousEnqueueRequest>,
 ) -> Result<(StatusCode, Json<QueueEntryResponse>), ApiError> {
     let guest_id = guest_user_id(&state).await?;
-    let entry = state.queue_repo.enqueue(guest_id, &body.name).await?;
+    let entry = state.queue_service.enqueue(guest_id, &body.name).await?;
     let resp = QueueEntryResponse::from(&entry);
     Ok((StatusCode::OK, Json(resp)))
 }
@@ -691,7 +680,7 @@ pub async fn list(
     State(state): State<AppState>,
     Query(query): Query<ListQuery>,
 ) -> Result<Json<Vec<QueueEntryResponse>>, ApiError> {
-    let entries = state.queue_repo.list(query.status).await?;
+    let entries = state.queue_service.list(query.status).await?;
     let mut responses = Vec::with_capacity(entries.len());
     for entry in &entries {
         let mut resp = QueueEntryResponse::from(entry);
@@ -718,7 +707,7 @@ pub async fn get_by_id(
     Path(params): Path<QueueIdParam>,
 ) -> Result<Json<QueueEntryResponse>, ApiError> {
     let entry = state
-        .queue_repo
+        .queue_service
         .get_by_id(params.id)
         .await?
         .ok_or_else(|| ApiError::new(StatusCode::NOT_FOUND, "queue entry not found"))?;
@@ -742,7 +731,7 @@ pub async fn peek_next(
     State(state): State<AppState>,
 ) -> Result<Json<QueueEntryResponse>, ApiError> {
     let entry = state
-        .queue_repo
+        .queue_service
         .peek_next()
         .await?
         .ok_or_else(|| ApiError::new(StatusCode::NOT_FOUND, "no pending or error entries"))?;
@@ -823,7 +812,7 @@ pub async fn cancel(
     )
 )]
 pub async fn stats(State(state): State<AppState>) -> Result<Json<QueueStats>, ApiError> {
-    let stats = state.queue_repo.count_by_status().await?;
+    let stats = state.queue_service.count_by_status().await?;
     Ok(Json(stats))
 }
 
@@ -853,6 +842,7 @@ pub async fn stats(State(state): State<AppState>) -> Result<Json<QueueStats>, Ap
     ))
 )]
 #[non_exhaustive]
+#[allow(dead_code)]
 pub(crate) struct QueueApiDoc;
 
 pub fn router() -> axum::Router<AppState> {

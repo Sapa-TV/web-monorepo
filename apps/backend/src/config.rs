@@ -39,7 +39,7 @@ impl Config {
 impl Config {
     pub fn test_config() -> Self {
         Self {
-            roulette_timeout_secs: 10,
+            roulette_timeout_secs: 0,
             port: 3000,
             access_key: "test-key".to_string(),
             cors_origins: None,

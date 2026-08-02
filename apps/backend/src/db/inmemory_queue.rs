@@ -148,3 +148,41 @@ impl QueueRepository for InMemoryQueueRepository {
         Ok(result)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::roulette::slot_service::RouletteSlotId;
+    use crate::user::UserId;
+
+    use super::*;
+
+    async fn repo_with_pending_and_error() -> (InMemoryQueueRepository, QueueEntry) {
+        let repo = InMemoryQueueRepository::new();
+        let first = repo.enqueue(UserId::new(1), "a").await.unwrap();
+        repo.enqueue(UserId::new(2), "b").await.unwrap();
+        repo.update_status_if(first.id, QueueStatus::Pending, QueueStatus::Error)
+            .await
+            .unwrap();
+        (repo, first)
+    }
+
+    #[tokio::test]
+    async fn peek_prefers_error_over_pending() {
+        let (repo, error_entry) = repo_with_pending_and_error().await;
+        let peeked = repo.peek_next().await.unwrap().unwrap();
+        assert_eq!(peeked.id, error_entry.id);
+    }
+
+    #[tokio::test]
+    async fn dequeue_prefers_error_over_pending() {
+        let (repo, error_entry) = repo_with_pending_and_error().await;
+        match repo
+            .dequeue_next_with_slot(RouletteSlotId::new(0))
+            .await
+            .unwrap()
+        {
+            DequeueOutcome::Picked(entry) => assert_eq!(entry.id, error_entry.id),
+            _ => panic!("expected Picked"),
+        }
+    }
+}
