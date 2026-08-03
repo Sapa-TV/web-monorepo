@@ -142,7 +142,6 @@ mod tests {
     use crate::roulette::slot_service::{RouletteSlot, RouletteSlotId};
     use crate::state::AppState;
     use crate::test_fixtures::test_state;
-    use crate::user::repository::UserRepository;
 
     async fn setup_spinning(state: &AppState) -> crate::queue::entry::QueueEntryId {
         state
@@ -167,7 +166,7 @@ mod tests {
             ))
             .await
             .unwrap();
-        let user_id = state.user_repo.create("user1").await.unwrap().id;
+        let user_id = state.user_service.create("user1").await.unwrap().id;
         state.queue_service.enqueue(user_id, "user1").await.unwrap();
         let (entry, _slot) = state.queue_service.dequeue_next().await.unwrap();
         entry.id

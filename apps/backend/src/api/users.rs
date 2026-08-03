@@ -5,9 +5,8 @@ use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, OpenApi, ToSchema};
 
 use crate::error::api::ApiError;
-use crate::platform::{Platform, PlatformId, PlatformRepository};
+use crate::platform::PlatformId;
 use crate::state::AppState;
-use crate::user::repository::UserRepository;
 use crate::user::{User, UserId, UserPlatform, UserPlatformId};
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -92,25 +91,22 @@ fn to_user_response(user: User, platforms: Vec<UserPlatformResponse>) -> UserRes
     }
 }
 
-async fn build_user_response(
-    user_id: UserId,
-    platform_repo: &impl PlatformRepository,
-    user_repo: &impl UserRepository,
-) -> Result<UserResponse, ApiError> {
-    let user = user_repo
-        .get_by_id(user_id)
+async fn build_user_response(state: &AppState, user_id: UserId) -> Result<UserResponse, ApiError> {
+    let user = state
+        .user_service
+        .get_user(user_id)
         .await?
         .ok_or_else(|| ApiError::new(StatusCode::NOT_FOUND, "user not found"))?;
-    let user_platforms = user_repo.get_platforms(user_id).await?;
-    let platforms = resolve_user_platforms(user_platforms, platform_repo).await?;
+    let user_platforms = state.user_service.get_platforms(user_id).await?;
+    let platforms = resolve_user_platforms(user_platforms, state).await?;
     Ok(to_user_response(user, platforms))
 }
 
 async fn resolve_user_platforms(
     user_platforms: Vec<UserPlatform>,
-    platform_repo: &impl PlatformRepository,
+    state: &AppState,
 ) -> Result<Vec<UserPlatformResponse>, ApiError> {
-    let all_platforms = platform_repo.load_all().await?;
+    let all_platforms = state.user_service.list_platforms().await?;
     let mut result = Vec::with_capacity(user_platforms.len());
     for up in user_platforms {
         let platform_name = all_platforms
@@ -128,16 +124,6 @@ async fn resolve_user_platforms(
     Ok(result)
 }
 
-async fn resolve_platform(
-    name: &str,
-    platform_repo: &impl PlatformRepository,
-) -> Result<Platform, ApiError> {
-    platform_repo
-        .find_by_name(name)
-        .await?
-        .ok_or_else(|| ApiError::new(StatusCode::BAD_REQUEST, format!("unknown platform: {name}")))
-}
-
 #[utoipa::path(
     post,
     path = "/api/users",
@@ -151,8 +137,8 @@ pub async fn create_user(
     State(state): State<AppState>,
     Json(body): Json<CreateUserRequest>,
 ) -> Result<(StatusCode, Json<UserResponse>), ApiError> {
-    let user = state.user_repo.create(&body.display_name).await?;
-    let response = build_user_response(user.id, &*state.platform_repo, &*state.user_repo).await?;
+    let user = state.user_service.create(&body.display_name).await?;
+    let response = build_user_response(&state, user.id).await?;
     Ok((StatusCode::CREATED, Json(response)))
 }
 
@@ -171,13 +157,12 @@ pub async fn find_user(
     State(state): State<AppState>,
     Query(query): Query<FindUserQuery>,
 ) -> Result<Json<UserResponse>, ApiError> {
-    let platform = resolve_platform(&query.platform, &*state.platform_repo).await?;
     let user = state
-        .user_repo
-        .find_by_platform(platform.id, &query.platform_user_id)
+        .user_service
+        .find_by_platform(&query.platform, &query.platform_user_id)
         .await?
         .ok_or_else(|| ApiError::new(StatusCode::NOT_FOUND, "user not found"))?;
-    let response = build_user_response(user.id, &*state.platform_repo, &*state.user_repo).await?;
+    let response = build_user_response(&state, user.id).await?;
     Ok(Json(response))
 }
 
@@ -195,7 +180,7 @@ pub async fn get_user(
     State(state): State<AppState>,
     Path(params): Path<UserIdParam>,
 ) -> Result<Json<UserResponse>, ApiError> {
-    let response = build_user_response(params.id, &*state.platform_repo, &*state.user_repo).await?;
+    let response = build_user_response(&state, params.id).await?;
     Ok(Json(response))
 }
 
@@ -215,14 +200,11 @@ pub async fn update_user(
     Path(params): Path<UserIdParam>,
     Json(body): Json<UpdateUserRequest>,
 ) -> Result<Json<UserResponse>, ApiError> {
-    let updated = state
-        .user_repo
-        .update_display_name(params.id, &body.display_name)
+    state
+        .user_service
+        .update_user(params.id, &body.display_name)
         .await?;
-    if updated.is_none() {
-        return Err(ApiError::new(StatusCode::NOT_FOUND, "user not found"));
-    }
-    let response = build_user_response(params.id, &*state.platform_repo, &*state.user_repo).await?;
+    let response = build_user_response(&state, params.id).await?;
     Ok(Json(response))
 }
 
@@ -240,10 +222,7 @@ pub async fn delete_user(
     State(state): State<AppState>,
     Path(params): Path<UserIdParam>,
 ) -> Result<StatusCode, ApiError> {
-    let deleted = state.user_repo.delete_user(params.id).await?;
-    if !deleted {
-        return Err(ApiError::new(StatusCode::NOT_FOUND, "user not found"));
-    }
+    state.user_service.delete_user(params.id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -265,17 +244,16 @@ pub async fn link_platform(
     Path(params): Path<UserIdParam>,
     Json(body): Json<LinkPlatformRequest>,
 ) -> Result<Json<UserResponse>, ApiError> {
-    let platform = resolve_platform(&body.platform, &*state.platform_repo).await?;
     state
-        .user_repo
+        .user_service
         .link_platform(
             params.id,
-            platform.id,
+            &body.platform,
             &body.platform_user_id,
             &body.platform_username,
         )
         .await?;
-    let response = build_user_response(params.id, &*state.platform_repo, &*state.user_repo).await?;
+    let response = build_user_response(&state, params.id).await?;
     Ok(Json(response))
 }
 
@@ -296,18 +274,11 @@ pub async fn update_platform_username(
     Path(params): Path<PlatformNameParam>,
     Json(body): Json<UpdatePlatformRequest>,
 ) -> Result<Json<UserResponse>, ApiError> {
-    let platform = resolve_platform(&params.platform, &*state.platform_repo).await?;
-    let updated = state
-        .user_repo
-        .update_platform_username(params.id, platform.id, &body.platform_username)
+    state
+        .user_service
+        .update_platform_username(params.id, &params.platform, &body.platform_username)
         .await?;
-    if updated.is_none() {
-        return Err(ApiError::new(
-            StatusCode::NOT_FOUND,
-            "platform link not found",
-        ));
-    }
-    let response = build_user_response(params.id, &*state.platform_repo, &*state.user_repo).await?;
+    let response = build_user_response(&state, params.id).await?;
     Ok(Json(response))
 }
 
@@ -326,18 +297,11 @@ pub async fn delete_platform(
     State(state): State<AppState>,
     Path(params): Path<PlatformNameParam>,
 ) -> Result<Json<UserResponse>, ApiError> {
-    let platform = resolve_platform(&params.platform, &*state.platform_repo).await?;
-    let deleted = state
-        .user_repo
-        .delete_platform(params.id, platform.id)
+    state
+        .user_service
+        .delete_platform(params.id, &params.platform)
         .await?;
-    if !deleted {
-        return Err(ApiError::new(
-            StatusCode::NOT_FOUND,
-            "platform link not found",
-        ));
-    }
-    let response = build_user_response(params.id, &*state.platform_repo, &*state.user_repo).await?;
+    let response = build_user_response(&state, params.id).await?;
     Ok(Json(response))
 }
 
@@ -352,7 +316,7 @@ pub async fn delete_platform(
 pub async fn list_platforms(
     State(state): State<AppState>,
 ) -> Result<Json<Vec<PlatformResponse>>, ApiError> {
-    let platforms = state.platform_repo.load_all().await?;
+    let platforms = state.user_service.list_platforms().await?;
     Ok(Json(
         platforms
             .into_iter()
@@ -418,7 +382,6 @@ mod tests {
 
     use crate::api::router;
     use crate::test_fixtures::test_state;
-    use crate::user::repository::UserRepository;
 
     #[tokio::test]
     async fn create_user_201() {
@@ -445,7 +408,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(body["display_name"], "Viewer");
-        assert_eq!(body["id"], 1);
+        assert!(body["id"].as_u64().is_some());
         assert!(body["created_at"].is_string());
     }
 
@@ -454,15 +417,10 @@ mod tests {
         let state = test_state().await;
         let app = router(state.clone());
 
-        let user = state.user_repo.create("Viewer").await.unwrap();
+        let user = state.user_service.create("Viewer").await.unwrap();
         state
-            .user_repo
-            .link_platform(
-                user.id,
-                crate::platform::PlatformId::new(1),
-                "123",
-                "twitch_user",
-            )
+            .user_service
+            .link_platform(user.id, "twitch", "123", "twitch_user")
             .await
             .unwrap();
 
@@ -531,7 +489,7 @@ mod tests {
         let state = test_state().await;
         let app = router(state.clone());
 
-        let user = state.user_repo.create("Viewer").await.unwrap();
+        let user = state.user_service.create("Viewer").await.unwrap();
 
         let response = app
             .oneshot(
@@ -545,6 +503,13 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.status(), 200);
+        let body: Value = serde_json::from_slice(
+            &axum::body::to_bytes(response.into_body(), usize::MAX)
+                .await
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(body["display_name"], "Viewer");
     }
 
     #[tokio::test]
@@ -571,7 +536,7 @@ mod tests {
         let state = test_state().await;
         let app = router(state.clone());
 
-        let user = state.user_repo.create("OldName").await.unwrap();
+        let user = state.user_service.create("OldName").await.unwrap();
 
         let response = app
             .oneshot(
@@ -596,11 +561,31 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn update_user_404() {
+        let state = test_state().await;
+        let app = router(state.clone());
+
+        let response = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .method("PATCH")
+                    .uri("/api/users/999")
+                    .header("content-type", "application/json")
+                    .body(axum::body::Body::from(r#"{"display_name":"NewName"}"#))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), 404);
+    }
+
+    #[tokio::test]
     async fn delete_user_204() {
         let state = test_state().await;
         let app = router(state.clone());
 
-        let user = state.user_repo.create("Viewer").await.unwrap();
+        let user = state.user_service.create("Viewer").await.unwrap();
 
         let response = app
             .oneshot(
@@ -640,7 +625,7 @@ mod tests {
         let state = test_state().await;
         let app = router(state.clone());
 
-        let user = state.user_repo.create("Viewer").await.unwrap();
+        let user = state.user_service.create("Viewer").await.unwrap();
 
         let response = app
             .oneshot(
@@ -668,15 +653,37 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn link_platform_404_nonexistent_user() {
+        let state = test_state().await;
+        let app = router(state.clone());
+
+        let response = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .method("POST")
+                    .uri("/api/users/999/platforms")
+                    .header("content-type", "application/json")
+                    .body(axum::body::Body::from(
+                        r#"{"platform":"twitch","platform_user_id":"123","platform_username":"u"}"#,
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), 404);
+    }
+
+    #[tokio::test]
     async fn link_platform_409_duplicate() {
         let state = test_state().await;
         let app = router(state.clone());
 
-        let user = state.user_repo.create("A").await.unwrap();
+        let user = state.user_service.create("A").await.unwrap();
 
         state
-            .user_repo
-            .link_platform(user.id, crate::platform::PlatformId::new(1), "123", "user")
+            .user_service
+            .link_platform(user.id, "twitch", "123", "user")
             .await
             .unwrap();
 
@@ -702,7 +709,7 @@ mod tests {
         let state = test_state().await;
         let app = router(state.clone());
 
-        let user = state.user_repo.create("Viewer").await.unwrap();
+        let user = state.user_service.create("Viewer").await.unwrap();
 
         let response = app
             .oneshot(
@@ -726,15 +733,10 @@ mod tests {
         let state = test_state().await;
         let app = router(state.clone());
 
-        let user = state.user_repo.create("Viewer").await.unwrap();
+        let user = state.user_service.create("Viewer").await.unwrap();
         state
-            .user_repo
-            .link_platform(
-                user.id,
-                crate::platform::PlatformId::new(1),
-                "123",
-                "old_name",
-            )
+            .user_service
+            .link_platform(user.id, "twitch", "123", "old_name")
             .await
             .unwrap();
 
@@ -763,14 +765,38 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn update_platform_username_404_missing_link() {
+        let state = test_state().await;
+        let app = router(state.clone());
+
+        let user = state.user_service.create("Viewer").await.unwrap();
+
+        let response = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .method("PATCH")
+                    .uri(format!("/api/users/{}/platforms/twitch", user.id))
+                    .header("content-type", "application/json")
+                    .body(axum::body::Body::from(
+                        r#"{"platform_username":"new_name"}"#,
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), 404);
+    }
+
+    #[tokio::test]
     async fn delete_platform_200() {
         let state = test_state().await;
         let app = router(state.clone());
 
-        let user = state.user_repo.create("Viewer").await.unwrap();
+        let user = state.user_service.create("Viewer").await.unwrap();
         state
-            .user_repo
-            .link_platform(user.id, crate::platform::PlatformId::new(1), "123", "user")
+            .user_service
+            .link_platform(user.id, "twitch", "123", "user")
             .await
             .unwrap();
 
@@ -800,7 +826,7 @@ mod tests {
         let state = test_state().await;
         let app = router(state.clone());
 
-        let user = state.user_repo.create("Viewer").await.unwrap();
+        let user = state.user_service.create("Viewer").await.unwrap();
 
         let response = app
             .oneshot(
@@ -821,7 +847,7 @@ mod tests {
         let state = test_state().await;
         let app = router(state.clone());
 
-        let user = state.user_repo.create("Viewer").await.unwrap();
+        let user = state.user_service.create("Viewer").await.unwrap();
 
         let response = app
             .oneshot(

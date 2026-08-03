@@ -5,13 +5,11 @@ use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, OpenApi, ToSchema};
 
 use crate::error::QueueServiceError;
-use crate::error::RepositoryError;
 use crate::error::api::ApiError;
 use crate::queue::entry::{QueueEntry, QueueEntryId, QueueStats, QueueStatus};
 use crate::roulette::slot_service::{RouletteSlot, RouletteSlotId};
 use crate::state::AppState;
 use crate::user::UserId;
-use crate::user::repository::UserRepository;
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[non_exhaustive]
@@ -92,10 +90,9 @@ mod tests {
     use crate::roulette::slot_service::{RouletteSlot, RouletteSlotId};
     use crate::test_fixtures::test_state;
     use crate::user::UserId;
-    use crate::user::repository::UserRepository;
 
     async fn setup_user(state: &crate::state::AppState) -> UserId {
-        state.user_repo.create("user1").await.unwrap().id
+        state.user_service.create("user1").await.unwrap().id
     }
 
     fn enqueue_body(user_id: UserId) -> EnqueueRequest {
@@ -692,6 +689,45 @@ mod tests {
         assert_eq!(second_body["entries"].as_array().unwrap().len(), 1);
         assert!(second_body["next_cursor"].is_null());
     }
+
+    #[tokio::test]
+    async fn enqueue_anonymous_reuses_single_guest() {
+        let state = test_state().await;
+        let app = router(state.clone());
+
+        let enqueue = |app: axum::Router, name: String| async move {
+            app.oneshot(
+                axum::http::Request::builder()
+                    .method("POST")
+                    .uri("/api/queue/anonymous")
+                    .header("content-type", "application/json")
+                    .body(axum::body::Body::from(format!(r#"{{"name":"{name}"}}"#)))
+                    .unwrap(),
+            )
+            .await
+            .unwrap()
+        };
+
+        let first = enqueue(app.clone(), "viewer1".to_string()).await;
+        assert_eq!(first.status(), 200);
+        let first_body: serde_json::Value = serde_json::from_slice(
+            &axum::body::to_bytes(first.into_body(), usize::MAX)
+                .await
+                .unwrap(),
+        )
+        .unwrap();
+
+        let second = enqueue(app, "viewer2".to_string()).await;
+        assert_eq!(second.status(), 200);
+        let second_body: serde_json::Value = serde_json::from_slice(
+            &axum::body::to_bytes(second.into_body(), usize::MAX)
+                .await
+                .unwrap(),
+        )
+        .unwrap();
+
+        assert_eq!(first_body["user_id"], second_body["user_id"]);
+    }
 }
 
 #[utoipa::path(
@@ -715,16 +751,6 @@ pub async fn enqueue(
     Ok((StatusCode::OK, Json(resp)))
 }
 
-async fn guest_user_id(state: &AppState) -> Result<UserId, RepositoryError> {
-    match state.guest_user_id.get() {
-        Some(id) => Ok(*id),
-        None => {
-            let user = state.user_repo.create("guest").await?;
-            Ok(*state.guest_user_id.get_or_init(|| user.id))
-        }
-    }
-}
-
 #[utoipa::path(
     post,
     path = "/api/queue/anonymous",
@@ -738,7 +764,7 @@ pub async fn enqueue_anonymous(
     State(state): State<AppState>,
     Json(body): Json<AnonymousEnqueueRequest>,
 ) -> Result<(StatusCode, Json<QueueEntryResponse>), ApiError> {
-    let guest_id = guest_user_id(&state).await?;
+    let guest_id = state.user_service.guest_user_id().await?;
     let entry = state.queue_service.enqueue(guest_id, &body.name).await?;
     let resp = QueueEntryResponse::from(&entry);
     Ok((StatusCode::OK, Json(resp)))

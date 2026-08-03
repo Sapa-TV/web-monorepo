@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use std::sync::OnceLock;
 
 use crate::config::Config;
 use crate::db::inmemory_platform::InMemoryPlatformRepository;
@@ -19,8 +18,8 @@ use crate::roulette::rarity_service::RarityService;
 use crate::roulette::repository::RouletteSlotRepository;
 use crate::roulette::slot_service::RouletteSlotService;
 use crate::stream::StreamStatus;
-use crate::user::UserId;
 use crate::user::repository::UserRepository;
+use crate::user::service::UserService;
 
 #[non_exhaustive]
 pub struct UniAppState<Q, R, U, P, S>
@@ -33,12 +32,10 @@ where
 {
     pub slot_service: Arc<RouletteSlotService<Arc<S>>>,
     pub rarity_service: Arc<RarityService<Arc<R>>>,
-    pub user_repo: Arc<U>,
-    pub platform_repo: Arc<P>,
+    pub user_service: Arc<UserService<U, P>>,
     pub queue_service: QueueService<Q, R, S>,
     pub config: Config,
     pub event_publisher: BroadcastEventPublisher,
-    pub guest_user_id: Arc<OnceLock<UserId>>,
     pub stream_status: Arc<StreamStatus>,
 }
 
@@ -54,12 +51,10 @@ where
         Self {
             slot_service: Arc::clone(&self.slot_service),
             rarity_service: Arc::clone(&self.rarity_service),
-            user_repo: Arc::clone(&self.user_repo),
-            platform_repo: Arc::clone(&self.platform_repo),
+            user_service: Arc::clone(&self.user_service),
             queue_service: self.queue_service.clone(),
             config: self.config.clone(),
             event_publisher: self.event_publisher.clone(),
-            guest_user_id: Arc::clone(&self.guest_user_id),
             stream_status: Arc::clone(&self.stream_status),
         }
     }
@@ -121,16 +116,15 @@ impl AppStateBuilder {
             std::time::Duration::from_secs(self.config.roulette_timeout_secs),
             std::time::Duration::from_secs(self.config.retention_secs),
         );
+        let user_service = Arc::new(UserService::new(user_repo, platform_repo));
 
         Ok(AppState {
             slot_service,
             rarity_service,
-            user_repo,
-            platform_repo,
+            user_service,
             queue_service,
             config: self.config,
             event_publisher,
-            guest_user_id: Arc::new(OnceLock::new()),
             stream_status: Arc::new(StreamStatus::new()),
         })
     }
