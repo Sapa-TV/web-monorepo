@@ -1,0 +1,20 @@
+[package]
+name = "new_returns_self"
+version = "0.1.0"
+description = "Dylint lint: `new` must return `Self` directly"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+dylint_linting = "6.0"
+
+[dev-dependencies]
+dylint_testing = "6.0"
+
+[workspace]
+
+[package.metadata.rust-analyzer]
+rustc_private = true
