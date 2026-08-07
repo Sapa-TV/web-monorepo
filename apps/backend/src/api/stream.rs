@@ -72,6 +72,9 @@ pub fn protected_router() -> axum::Router<AppState> {
 
 #[cfg(test)]
 mod tests {
+    use axum::body::Body;
+    use axum::body::to_bytes;
+    use axum::http::Request;
     use serde_json::Value;
     use tower::ServiceExt;
 
@@ -85,22 +88,19 @@ mod tests {
 
         let response = app
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("GET")
                     .uri("/api/stream/status")
-                    .body(axum::body::Body::empty())
+                    .body(Body::empty())
                     .unwrap(),
             )
             .await
             .unwrap();
 
         assert_eq!(response.status(), 200);
-        let body: Value = serde_json::from_slice(
-            &axum::body::to_bytes(response.into_body(), usize::MAX)
-                .await
-                .unwrap(),
-        )
-        .unwrap();
+        let body: Value =
+            serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap())
+                .unwrap();
         assert_eq!(body["online"], false);
     }
 
@@ -112,22 +112,19 @@ mod tests {
 
         let response = app
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("GET")
                     .uri("/api/stream/status")
-                    .body(axum::body::Body::empty())
+                    .body(Body::empty())
                     .unwrap(),
             )
             .await
             .unwrap();
 
         assert_eq!(response.status(), 200);
-        let body: Value = serde_json::from_slice(
-            &axum::body::to_bytes(response.into_body(), usize::MAX)
-                .await
-                .unwrap(),
-        )
-        .unwrap();
+        let body: Value =
+            serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap())
+                .unwrap();
         assert_eq!(body["online"], true);
     }
 }

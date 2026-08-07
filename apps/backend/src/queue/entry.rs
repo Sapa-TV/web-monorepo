@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use serde::de::Error;
 use serde::{Deserialize, Serialize};
 use std::fmt::{self, Display};
 use utoipa::ToSchema;
@@ -45,9 +46,7 @@ impl<'de> Deserialize<'de> for QueueStatus {
             "completed" => Ok(Self::Completed),
             "error" => Ok(Self::Error),
             "cancelled" => Ok(Self::Cancelled),
-            _ => Err(serde::de::Error::custom(format!(
-                "unknown queue status: {value}"
-            ))),
+            _ => Err(Error::custom(format!("unknown queue status: {value}"))),
         }
     }
 }

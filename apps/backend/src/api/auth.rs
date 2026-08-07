@@ -1,6 +1,6 @@
 use axum::body::Body;
 use axum::extract::State;
-use axum::http::{Request, StatusCode};
+use axum::http::{Method, Request, StatusCode};
 use axum::middleware::Next;
 use axum::response::Response;
 use subtle::ConstantTimeEq;
@@ -12,7 +12,7 @@ pub async fn require_auth(
     req: Request<Body>,
     next: Next,
 ) -> Result<Response, StatusCode> {
-    if req.method() == axum::http::Method::OPTIONS {
+    if req.method() == Method::OPTIONS {
         return Ok(next.run(req).await);
     }
 

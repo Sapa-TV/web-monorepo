@@ -7,6 +7,7 @@ members = ["apps/backend"]
 [workspace.lints.clippy]
 unwrap_used = "deny"
 let_underscore_must_use = "warn"
+absolute_paths = "deny"
 
 [profile.test]
 rustflags = ["-Awarnings"]
@@ -34,3 +35,8 @@ futures-util = "0.3.33"
 dotenvy = "0.15.7"
 subtle = "2.6.1"
 config = "0.15.25"
+tokio-tungstenite = "0.30.0"
+twitch_api = "0.8.0"
+reqwest = "0.13.4"
+twitch_oauth2 = "0.17.1"
+url = "2.5.8"

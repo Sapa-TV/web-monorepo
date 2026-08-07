@@ -82,16 +82,20 @@ pub struct QueueIdParam {
 
 #[cfg(test)]
 mod tests {
+    use axum::body::Body;
+    use axum::body::to_bytes;
+    use axum::http::Request;
     use tower::ServiceExt;
 
     use crate::api::queue::EnqueueRequest;
     use crate::api::router;
     use crate::roulette::rarity::{Rarity, RarityId};
     use crate::roulette::slot_service::{RouletteSlot, RouletteSlotId};
+    use crate::state::AppState;
     use crate::test_fixtures::test_state;
     use crate::user::UserId;
 
-    async fn setup_user(state: &crate::state::AppState) -> UserId {
+    async fn setup_user(state: &AppState) -> UserId {
         state.user_service.create("user1").await.unwrap().id
     }
 
@@ -135,11 +139,11 @@ mod tests {
         let resp = app
             .clone()
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("POST")
                     .uri("/api/queue")
                     .header("content-type", "application/json")
-                    .body(axum::body::Body::from(
+                    .body(Body::from(
                         serde_json::to_string(&enqueue_body(user_id)).unwrap(),
                     ))
                     .unwrap(),
@@ -151,10 +155,10 @@ mod tests {
         let resp = app
             .clone()
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("POST")
                     .uri("/api/queue/next")
-                    .body(axum::body::Body::empty())
+                    .body(Body::empty())
                     .unwrap(),
             )
             .await
@@ -165,10 +169,10 @@ mod tests {
 
         let resp = app
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("POST")
                     .uri("/api/queue/next")
-                    .body(axum::body::Body::empty())
+                    .body(Body::empty())
                     .unwrap(),
             )
             .await
@@ -209,11 +213,11 @@ mod tests {
         let resp = app
             .clone()
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("POST")
                     .uri("/api/queue")
                     .header("content-type", "application/json")
-                    .body(axum::body::Body::from(
+                    .body(Body::from(
                         serde_json::to_string(&enqueue_body(user_id)).unwrap(),
                     ))
                     .unwrap(),
@@ -225,10 +229,10 @@ mod tests {
         let resp = app
             .clone()
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("POST")
                     .uri("/api/queue/next")
-                    .body(axum::body::Body::empty())
+                    .body(Body::empty())
                     .unwrap(),
             )
             .await
@@ -237,10 +241,10 @@ mod tests {
 
         let resp = app
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("POST")
                     .uri("/api/queue/next")
-                    .body(axum::body::Body::empty())
+                    .body(Body::empty())
                     .unwrap(),
             )
             .await
@@ -282,11 +286,11 @@ mod tests {
         let resp = app
             .clone()
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("POST")
                     .uri("/api/queue")
                     .header("content-type", "application/json")
-                    .body(axum::body::Body::from(
+                    .body(Body::from(
                         serde_json::to_string(&enqueue_body(user_id)).unwrap(),
                     ))
                     .unwrap(),
@@ -297,10 +301,10 @@ mod tests {
 
         let resp = app
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("POST")
                     .uri("/api/queue/next")
-                    .body(axum::body::Body::empty())
+                    .body(Body::empty())
                     .unwrap(),
             )
             .await
@@ -344,11 +348,11 @@ mod tests {
             let resp = app
                 .clone()
                 .oneshot(
-                    axum::http::Request::builder()
+                    Request::builder()
                         .method("POST")
                         .uri("/api/queue")
                         .header("content-type", "application/json")
-                        .body(axum::body::Body::from(
+                        .body(Body::from(
                             serde_json::to_string(&enqueue_body(user)).unwrap(),
                         ))
                         .unwrap(),
@@ -359,10 +363,10 @@ mod tests {
         }
 
         let make_next = || {
-            axum::http::Request::builder()
+            Request::builder()
                 .method("POST")
                 .uri("/api/queue/next")
-                .body(axum::body::Body::empty())
+                .body(Body::empty())
                 .unwrap()
         };
 
@@ -381,11 +385,11 @@ mod tests {
         let resp = app
             .clone()
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("POST")
                     .uri("/api/queue")
                     .header("content-type", "application/json")
-                    .body(axum::body::Body::from(
+                    .body(Body::from(
                         serde_json::to_string(&enqueue_body(user_id)).unwrap(),
                     ))
                     .unwrap(),
@@ -397,10 +401,10 @@ mod tests {
         let resp = app
             .clone()
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("POST")
                     .uri("/api/queue/next")
-                    .body(axum::body::Body::empty())
+                    .body(Body::empty())
                     .unwrap(),
             )
             .await
@@ -409,21 +413,17 @@ mod tests {
 
         let resp = app
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("GET")
                     .uri("/api/queue?status=Spinning")
-                    .body(axum::body::Body::empty())
+                    .body(Body::empty())
                     .unwrap(),
             )
             .await
             .unwrap();
         assert_eq!(resp.status(), 200);
-        let body: serde_json::Value = serde_json::from_slice(
-            &axum::body::to_bytes(resp.into_body(), usize::MAX)
-                .await
-                .unwrap(),
-        )
-        .unwrap();
+        let body: serde_json::Value =
+            serde_json::from_slice(&to_bytes(resp.into_body(), usize::MAX).await.unwrap()).unwrap();
         assert_eq!(body["entries"].as_array().unwrap().len(), 0);
     }
 
@@ -460,11 +460,11 @@ mod tests {
         let resp = app
             .clone()
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("POST")
                     .uri("/api/queue")
                     .header("content-type", "application/json")
-                    .body(axum::body::Body::from(
+                    .body(Body::from(
                         serde_json::to_string(&enqueue_body(user_id)).unwrap(),
                     ))
                     .unwrap(),
@@ -472,21 +472,17 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.status(), 200);
-        let body: serde_json::Value = serde_json::from_slice(
-            &axum::body::to_bytes(resp.into_body(), usize::MAX)
-                .await
-                .unwrap(),
-        )
-        .unwrap();
+        let body: serde_json::Value =
+            serde_json::from_slice(&to_bytes(resp.into_body(), usize::MAX).await.unwrap()).unwrap();
         let entry_id = body["id"].as_u64().unwrap();
 
         let resp = app
             .clone()
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("POST")
                     .uri("/api/queue/next")
-                    .body(axum::body::Body::empty())
+                    .body(Body::empty())
                     .unwrap(),
             )
             .await
@@ -494,10 +490,10 @@ mod tests {
         assert_eq!(resp.status(), 200);
 
         let complete = |id: u64| {
-            axum::http::Request::builder()
+            Request::builder()
                 .method("POST")
                 .uri(format!("/api/queue/{id}/complete"))
-                .body(axum::body::Body::empty())
+                .body(Body::empty())
                 .unwrap()
         };
 
@@ -530,11 +526,11 @@ mod tests {
         let resp = app
             .clone()
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("POST")
                     .uri("/api/slots")
                     .header("content-type", "application/json")
-                    .body(axum::body::Body::from(
+                    .body(Body::from(
                         r#"{"name":"api_slot","rarity_id":1,"weight":100,"action":"act"}"#,
                     ))
                     .unwrap(),
@@ -547,11 +543,11 @@ mod tests {
         let resp = app
             .clone()
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("POST")
                     .uri("/api/queue")
                     .header("content-type", "application/json")
-                    .body(axum::body::Body::from(
+                    .body(Body::from(
                         serde_json::to_string(&enqueue_body(user_id)).unwrap(),
                     ))
                     .unwrap(),
@@ -562,21 +558,17 @@ mod tests {
 
         let resp = app
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("POST")
                     .uri("/api/queue/next")
-                    .body(axum::body::Body::empty())
+                    .body(Body::empty())
                     .unwrap(),
             )
             .await
             .unwrap();
         assert_eq!(resp.status(), 200);
-        let body: serde_json::Value = serde_json::from_slice(
-            &axum::body::to_bytes(resp.into_body(), usize::MAX)
-                .await
-                .unwrap(),
-        )
-        .unwrap();
+        let body: serde_json::Value =
+            serde_json::from_slice(&to_bytes(resp.into_body(), usize::MAX).await.unwrap()).unwrap();
         assert_eq!(body["slot"]["name"], "api_slot");
     }
 
@@ -589,11 +581,11 @@ mod tests {
         let resp = app
             .clone()
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("POST")
                     .uri("/api/queue")
                     .header("content-type", "application/json")
-                    .body(axum::body::Body::from(
+                    .body(Body::from(
                         serde_json::to_string(&enqueue_body(user_id)).unwrap(),
                     ))
                     .unwrap(),
@@ -606,10 +598,10 @@ mod tests {
             let resp = app
                 .clone()
                 .oneshot(
-                    axum::http::Request::builder()
+                    Request::builder()
                         .method("GET")
                         .uri(format!("/api/queue?status={status}"))
-                        .body(axum::body::Body::empty())
+                        .body(Body::empty())
                         .unwrap(),
                 )
                 .await
@@ -632,11 +624,11 @@ mod tests {
             let resp = app
                 .clone()
                 .oneshot(
-                    axum::http::Request::builder()
+                    Request::builder()
                         .method("POST")
                         .uri("/api/queue")
                         .header("content-type", "application/json")
-                        .body(axum::body::Body::from(
+                        .body(Body::from(
                             serde_json::to_string(&enqueue_body(user_id)).unwrap(),
                         ))
                         .unwrap(),
@@ -649,21 +641,18 @@ mod tests {
         let first = app
             .clone()
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("GET")
                     .uri("/api/queue?limit=2")
-                    .body(axum::body::Body::empty())
+                    .body(Body::empty())
                     .unwrap(),
             )
             .await
             .unwrap();
         assert_eq!(first.status(), 200);
-        let first_body: serde_json::Value = serde_json::from_slice(
-            &axum::body::to_bytes(first.into_body(), usize::MAX)
-                .await
-                .unwrap(),
-        )
-        .unwrap();
+        let first_body: serde_json::Value =
+            serde_json::from_slice(&to_bytes(first.into_body(), usize::MAX).await.unwrap())
+                .unwrap();
         let entries = first_body["entries"].as_array().unwrap();
         assert_eq!(entries.len(), 2);
         let cursor = first_body["next_cursor"].as_u64().unwrap();
@@ -671,21 +660,18 @@ mod tests {
 
         let second = app
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("GET")
                     .uri(format!("/api/queue?limit=2&cursor={cursor}"))
-                    .body(axum::body::Body::empty())
+                    .body(Body::empty())
                     .unwrap(),
             )
             .await
             .unwrap();
         assert_eq!(second.status(), 200);
-        let second_body: serde_json::Value = serde_json::from_slice(
-            &axum::body::to_bytes(second.into_body(), usize::MAX)
-                .await
-                .unwrap(),
-        )
-        .unwrap();
+        let second_body: serde_json::Value =
+            serde_json::from_slice(&to_bytes(second.into_body(), usize::MAX).await.unwrap())
+                .unwrap();
         assert_eq!(second_body["entries"].as_array().unwrap().len(), 1);
         assert!(second_body["next_cursor"].is_null());
     }
@@ -697,11 +683,11 @@ mod tests {
 
         let enqueue = |app: axum::Router, name: String| async move {
             app.oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("POST")
                     .uri("/api/queue/anonymous")
                     .header("content-type", "application/json")
-                    .body(axum::body::Body::from(format!(r#"{{"name":"{name}"}}"#)))
+                    .body(Body::from(format!(r#"{{"name":"{name}"}}"#)))
                     .unwrap(),
             )
             .await
@@ -710,21 +696,15 @@ mod tests {
 
         let first = enqueue(app.clone(), "viewer1".to_string()).await;
         assert_eq!(first.status(), 200);
-        let first_body: serde_json::Value = serde_json::from_slice(
-            &axum::body::to_bytes(first.into_body(), usize::MAX)
-                .await
-                .unwrap(),
-        )
-        .unwrap();
+        let first_body: serde_json::Value =
+            serde_json::from_slice(&to_bytes(first.into_body(), usize::MAX).await.unwrap())
+                .unwrap();
 
         let second = enqueue(app, "viewer2".to_string()).await;
         assert_eq!(second.status(), 200);
-        let second_body: serde_json::Value = serde_json::from_slice(
-            &axum::body::to_bytes(second.into_body(), usize::MAX)
-                .await
-                .unwrap(),
-        )
-        .unwrap();
+        let second_body: serde_json::Value =
+            serde_json::from_slice(&to_bytes(second.into_body(), usize::MAX).await.unwrap())
+                .unwrap();
 
         assert_eq!(first_body["user_id"], second_body["user_id"]);
     }
@@ -959,7 +939,7 @@ pub async fn stats(State(state): State<AppState>) -> Result<Json<QueueStats>, Ap
 #[allow(dead_code)]
 pub(crate) struct QueueApiDoc;
 
-pub fn router() -> axum::Router<AppState> {
+pub fn protected_router() -> axum::Router<AppState> {
     use axum::routing::{get, post};
     axum::Router::new()
         .route("/api/queue", post(enqueue))

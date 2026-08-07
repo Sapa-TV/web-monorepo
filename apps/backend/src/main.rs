@@ -4,11 +4,13 @@
 #![deny(clippy::exhaustive_structs)]
 #![deny(clippy::new_ret_no_self)]
 
+mod admin;
 mod api;
 mod config;
 mod db;
 mod error;
 mod event;
+mod ingress;
 mod platform;
 mod queue;
 mod random;
@@ -19,7 +21,13 @@ mod stream;
 mod test_fixtures;
 mod user;
 
+use std::future::pending;
+
 use axum::http::{HeaderValue, Method, header};
+use axum::middleware::from_fn_with_state;
+use tokio::net::TcpListener;
+use tokio::signal::ctrl_c;
+use tokio::time;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 use tracing::info;
@@ -28,7 +36,10 @@ use utoipa_redoc::{Redoc, Servable};
 use utoipa_swagger_ui::SwaggerUi;
 
 use crate::api::ApiDoc;
+use crate::api::auth::require_auth;
 use crate::config::Config;
+use crate::ingress::PlatformService;
+use crate::ingress::twitch::TwitchPlatformService;
 use crate::random::StandartRandomProvider;
 use crate::state::{AppState, AppStateBuilder};
 
@@ -46,6 +57,17 @@ async fn main() {
         .build()
         .await
         .expect("failed to build app state");
+
+    if let Some(twitch) = &config.twitch {
+        let service = TwitchPlatformService::new(twitch.clone());
+        let sink = state.ingress.sink();
+        tracing::info!("starting {} ingress", service.kind().as_name());
+        tokio::spawn(async move {
+            if let Err(e) = service.run(sink).await {
+                tracing::error!("twitch ingress stopped: {e}");
+            }
+        });
+    }
     let cors = match state.config.cors_origins.as_deref() {
         Some(origins) => {
             let origins: Vec<HeaderValue> = origins.iter().filter_map(|o| o.parse().ok()).collect();
@@ -58,10 +80,7 @@ async fn main() {
     };
 
     let app = api::router_with_auth(state.clone(), |router| {
-        router.route_layer(axum::middleware::from_fn_with_state(
-            state.clone(),
-            crate::api::auth::require_auth,
-        ))
+        router.route_layer(from_fn_with_state(state.clone(), require_auth))
     })
     .layer(cors)
     .layer(TraceLayer::new_for_http())
@@ -69,9 +88,7 @@ async fn main() {
     .merge(Redoc::with_url("/redoc", ApiDoc::openapi()));
 
     let addr = format!("0.0.0.0:{}", config.port);
-    let listener = tokio::net::TcpListener::bind(&addr)
-        .await
-        .expect("failed to bind");
+    let listener = TcpListener::bind(&addr).await.expect("failed to bind");
     info!("listening on http://{}", addr);
 
     tokio::spawn(timeout_task(state));
@@ -84,9 +101,7 @@ async fn main() {
 
 async fn shutdown_signal() {
     let ctrl_c = async {
-        tokio::signal::ctrl_c()
-            .await
-            .expect("failed to install ctrl-c handler");
+        ctrl_c().await.expect("failed to install ctrl-c handler");
     };
 
     #[cfg(unix)]
@@ -98,7 +113,7 @@ async fn shutdown_signal() {
     };
 
     #[cfg(not(unix))]
-    let terminate = std::future::pending::<()>();
+    let terminate = pending::<()>();
 
     tokio::select! {
         _ = ctrl_c => {},
@@ -110,7 +125,7 @@ async fn shutdown_signal() {
 
 async fn timeout_task(state: AppState) {
     let timeout = state.queue_service.timeout();
-    let mut interval = tokio::time::interval(timeout);
+    let mut interval = time::interval(timeout);
     loop {
         interval.tick().await;
         if let Err(e) = state.queue_service.mark_timed_out().await {

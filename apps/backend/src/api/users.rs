@@ -355,7 +355,7 @@ pub async fn list_platforms(
 #[allow(dead_code)]
 pub(crate) struct UsersApiDoc;
 
-pub fn router() -> axum::Router<AppState> {
+pub fn protected_router() -> axum::Router<AppState> {
     use axum::routing::{delete, get, patch, post};
     axum::Router::new()
         .route("/api/users", post(create_user))
@@ -377,6 +377,9 @@ pub fn router() -> axum::Router<AppState> {
 
 #[cfg(test)]
 mod tests {
+    use axum::body::Body;
+    use axum::body::to_bytes;
+    use axum::http::Request;
     use serde_json::Value;
     use tower::ServiceExt;
 
@@ -390,23 +393,20 @@ mod tests {
 
         let response = app
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("POST")
                     .uri("/api/users")
                     .header("content-type", "application/json")
-                    .body(axum::body::Body::from(r#"{"display_name":"Viewer"}"#))
+                    .body(Body::from(r#"{"display_name":"Viewer"}"#))
                     .unwrap(),
             )
             .await
             .unwrap();
 
         assert_eq!(response.status(), 201);
-        let body: Value = serde_json::from_slice(
-            &axum::body::to_bytes(response.into_body(), usize::MAX)
-                .await
-                .unwrap(),
-        )
-        .unwrap();
+        let body: Value =
+            serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap())
+                .unwrap();
         assert_eq!(body["display_name"], "Viewer");
         assert!(body["id"].as_u64().is_some());
         assert!(body["created_at"].is_string());
@@ -426,22 +426,19 @@ mod tests {
 
         let response = app
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("GET")
                     .uri("/api/users?platform=twitch&platform_user_id=123")
-                    .body(axum::body::Body::empty())
+                    .body(Body::empty())
                     .unwrap(),
             )
             .await
             .unwrap();
 
         assert_eq!(response.status(), 200);
-        let body: Value = serde_json::from_slice(
-            &axum::body::to_bytes(response.into_body(), usize::MAX)
-                .await
-                .unwrap(),
-        )
-        .unwrap();
+        let body: Value =
+            serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap())
+                .unwrap();
         assert_eq!(body["id"], serde_json::to_value(user.id).unwrap());
         assert_eq!(body["display_name"], "Viewer");
     }
@@ -453,10 +450,10 @@ mod tests {
 
         let response = app
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("GET")
                     .uri("/api/users?platform=twitch&platform_user_id=nonexistent")
-                    .body(axum::body::Body::empty())
+                    .body(Body::empty())
                     .unwrap(),
             )
             .await
@@ -472,10 +469,10 @@ mod tests {
 
         let response = app
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("GET")
                     .uri("/api/users?platform=unknown&platform_user_id=123")
-                    .body(axum::body::Body::empty())
+                    .body(Body::empty())
                     .unwrap(),
             )
             .await
@@ -493,22 +490,19 @@ mod tests {
 
         let response = app
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("GET")
                     .uri(format!("/api/users/{}", user.id))
-                    .body(axum::body::Body::empty())
+                    .body(Body::empty())
                     .unwrap(),
             )
             .await
             .unwrap();
 
         assert_eq!(response.status(), 200);
-        let body: Value = serde_json::from_slice(
-            &axum::body::to_bytes(response.into_body(), usize::MAX)
-                .await
-                .unwrap(),
-        )
-        .unwrap();
+        let body: Value =
+            serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap())
+                .unwrap();
         assert_eq!(body["display_name"], "Viewer");
     }
 
@@ -519,10 +513,10 @@ mod tests {
 
         let response = app
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("GET")
                     .uri("/api/users/999")
-                    .body(axum::body::Body::empty())
+                    .body(Body::empty())
                     .unwrap(),
             )
             .await
@@ -540,23 +534,20 @@ mod tests {
 
         let response = app
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("PATCH")
                     .uri(format!("/api/users/{}", user.id))
                     .header("content-type", "application/json")
-                    .body(axum::body::Body::from(r#"{"display_name":"NewName"}"#))
+                    .body(Body::from(r#"{"display_name":"NewName"}"#))
                     .unwrap(),
             )
             .await
             .unwrap();
 
         assert_eq!(response.status(), 200);
-        let body: Value = serde_json::from_slice(
-            &axum::body::to_bytes(response.into_body(), usize::MAX)
-                .await
-                .unwrap(),
-        )
-        .unwrap();
+        let body: Value =
+            serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap())
+                .unwrap();
         assert_eq!(body["display_name"], "NewName");
     }
 
@@ -567,11 +558,11 @@ mod tests {
 
         let response = app
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("PATCH")
                     .uri("/api/users/999")
                     .header("content-type", "application/json")
-                    .body(axum::body::Body::from(r#"{"display_name":"NewName"}"#))
+                    .body(Body::from(r#"{"display_name":"NewName"}"#))
                     .unwrap(),
             )
             .await
@@ -589,10 +580,10 @@ mod tests {
 
         let response = app
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("DELETE")
                     .uri(format!("/api/users/{}", user.id))
-                    .body(axum::body::Body::empty())
+                    .body(Body::empty())
                     .unwrap(),
             )
             .await
@@ -608,10 +599,10 @@ mod tests {
 
         let response = app
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("DELETE")
                     .uri("/api/users/999")
-                    .body(axum::body::Body::empty())
+                    .body(Body::empty())
                     .unwrap(),
             )
             .await
@@ -629,11 +620,11 @@ mod tests {
 
         let response = app
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("POST")
                     .uri(format!("/api/users/{}/platforms", user.id))
                     .header("content-type", "application/json")
-                    .body(axum::body::Body::from(
+                    .body(Body::from(
                         r#"{"platform":"twitch","platform_user_id":"123","platform_username":"tw_user"}"#,
                     ))
                     .unwrap(),
@@ -642,12 +633,9 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.status(), 200);
-        let body: Value = serde_json::from_slice(
-            &axum::body::to_bytes(response.into_body(), usize::MAX)
-                .await
-                .unwrap(),
-        )
-        .unwrap();
+        let body: Value =
+            serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap())
+                .unwrap();
         assert_eq!(body["platforms"].as_array().unwrap().len(), 1);
         assert_eq!(body["platforms"][0]["platform"], "twitch");
     }
@@ -659,11 +647,11 @@ mod tests {
 
         let response = app
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("POST")
                     .uri("/api/users/999/platforms")
                     .header("content-type", "application/json")
-                    .body(axum::body::Body::from(
+                    .body(Body::from(
                         r#"{"platform":"twitch","platform_user_id":"123","platform_username":"u"}"#,
                     ))
                     .unwrap(),
@@ -689,11 +677,11 @@ mod tests {
 
         let response = app
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("POST")
                     .uri(format!("/api/users/{}/platforms", user.id))
                     .header("content-type", "application/json")
-                    .body(axum::body::Body::from(
+                    .body(Body::from(
                         r#"{"platform":"twitch","platform_user_id":"123","platform_username":"other"}"#,
                     ))
                     .unwrap(),
@@ -713,11 +701,11 @@ mod tests {
 
         let response = app
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("POST")
                     .uri(format!("/api/users/{}/platforms", user.id))
                     .header("content-type", "application/json")
-                    .body(axum::body::Body::from(
+                    .body(Body::from(
                         r#"{"platform":"unknown","platform_user_id":"123","platform_username":"u"}"#,
                     ))
                     .unwrap(),
@@ -742,25 +730,20 @@ mod tests {
 
         let response = app
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("PATCH")
                     .uri(format!("/api/users/{}/platforms/twitch", user.id))
                     .header("content-type", "application/json")
-                    .body(axum::body::Body::from(
-                        r#"{"platform_username":"new_name"}"#,
-                    ))
+                    .body(Body::from(r#"{"platform_username":"new_name"}"#))
                     .unwrap(),
             )
             .await
             .unwrap();
 
         assert_eq!(response.status(), 200);
-        let body: Value = serde_json::from_slice(
-            &axum::body::to_bytes(response.into_body(), usize::MAX)
-                .await
-                .unwrap(),
-        )
-        .unwrap();
+        let body: Value =
+            serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap())
+                .unwrap();
         assert_eq!(body["platforms"][0]["platform_username"], "new_name");
     }
 
@@ -773,13 +756,11 @@ mod tests {
 
         let response = app
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("PATCH")
                     .uri(format!("/api/users/{}/platforms/twitch", user.id))
                     .header("content-type", "application/json")
-                    .body(axum::body::Body::from(
-                        r#"{"platform_username":"new_name"}"#,
-                    ))
+                    .body(Body::from(r#"{"platform_username":"new_name"}"#))
                     .unwrap(),
             )
             .await
@@ -802,22 +783,19 @@ mod tests {
 
         let response = app
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("DELETE")
                     .uri(format!("/api/users/{}/platforms/twitch", user.id))
-                    .body(axum::body::Body::empty())
+                    .body(Body::empty())
                     .unwrap(),
             )
             .await
             .unwrap();
 
         assert_eq!(response.status(), 200);
-        let body: Value = serde_json::from_slice(
-            &axum::body::to_bytes(response.into_body(), usize::MAX)
-                .await
-                .unwrap(),
-        )
-        .unwrap();
+        let body: Value =
+            serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap())
+                .unwrap();
         assert!(body["platforms"].as_array().unwrap().is_empty());
     }
 
@@ -830,10 +808,10 @@ mod tests {
 
         let response = app
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("DELETE")
                     .uri(format!("/api/users/{}/platforms/twitch", user.id))
-                    .body(axum::body::Body::empty())
+                    .body(Body::empty())
                     .unwrap(),
             )
             .await
@@ -851,10 +829,10 @@ mod tests {
 
         let response = app
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("DELETE")
                     .uri(format!("/api/users/{}/platforms/unknown", user.id))
-                    .body(axum::body::Body::empty())
+                    .body(Body::empty())
                     .unwrap(),
             )
             .await
@@ -870,22 +848,19 @@ mod tests {
 
         let response = app
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("GET")
                     .uri("/api/platforms")
-                    .body(axum::body::Body::empty())
+                    .body(Body::empty())
                     .unwrap(),
             )
             .await
             .unwrap();
 
         assert_eq!(response.status(), 200);
-        let body: Value = serde_json::from_slice(
-            &axum::body::to_bytes(response.into_body(), usize::MAX)
-                .await
-                .unwrap(),
-        )
-        .unwrap();
+        let body: Value =
+            serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap())
+                .unwrap();
         assert_eq!(body.as_array().unwrap().len(), 3);
     }
 
@@ -898,10 +873,10 @@ mod tests {
         let response = app
             .clone()
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("GET")
                     .uri("/api/users?platform=twitch&platform_user_id=123")
-                    .body(axum::body::Body::empty())
+                    .body(Body::empty())
                     .unwrap(),
             )
             .await
@@ -912,33 +887,30 @@ mod tests {
         let response = app
             .clone()
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("POST")
                     .uri("/api/users")
                     .header("content-type", "application/json")
-                    .body(axum::body::Body::from(r#"{"display_name":"Viewer"}"#))
+                    .body(Body::from(r#"{"display_name":"Viewer"}"#))
                     .unwrap(),
             )
             .await
             .unwrap();
         assert_eq!(response.status(), 201);
-        let user_body: Value = serde_json::from_slice(
-            &axum::body::to_bytes(response.into_body(), usize::MAX)
-                .await
-                .unwrap(),
-        )
-        .unwrap();
+        let user_body: Value =
+            serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap())
+                .unwrap();
         let user_id = user_body["id"].as_u64().unwrap();
 
         // 3. Link platform
         let response = app
             .clone()
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("POST")
                     .uri(format!("/api/users/{user_id}/platforms"))
                     .header("content-type", "application/json")
-                    .body(axum::body::Body::from(
+                    .body(Body::from(
                         r#"{"platform":"twitch","platform_user_id":"123","platform_username":"tw_user"}"#,
                     ))
                     .unwrap(),
@@ -950,10 +922,10 @@ mod tests {
         // 4. Lookup — found now
         let response = app
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("GET")
                     .uri("/api/users?platform=twitch&platform_user_id=123")
-                    .body(axum::body::Body::empty())
+                    .body(Body::empty())
                     .unwrap(),
             )
             .await

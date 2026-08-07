@@ -1,5 +1,7 @@
 use std::sync::Arc;
+use std::time::Duration;
 
+use crate::admin::auth::AdminAuthService;
 use crate::config::Config;
 use crate::db::inmemory_platform::InMemoryPlatformRepository;
 use crate::db::inmemory_queue::InMemoryQueueRepository;
@@ -8,6 +10,7 @@ use crate::db::inmemory_roulette_slots::InMemoryRouletteSlotRepository;
 use crate::db::inmemory_user::InMemoryUserRepository;
 use crate::error::RepositoryError;
 use crate::event::BroadcastEventPublisher;
+use crate::ingress::{EventIngress, spawn_logging_handler};
 use crate::platform::PlatformRepository;
 use crate::queue::repository::QueueRepository;
 use crate::queue::service::QueueService;
@@ -37,6 +40,8 @@ where
     pub config: Config,
     pub event_publisher: BroadcastEventPublisher,
     pub stream_status: Arc<StreamStatus>,
+    pub ingress: Arc<EventIngress>,
+    pub admin_auth: Arc<AdminAuthService>,
 }
 
 impl<Q, R, U, P, S> Clone for UniAppState<Q, R, U, P, S>
@@ -56,6 +61,8 @@ where
             config: self.config.clone(),
             event_publisher: self.event_publisher.clone(),
             stream_status: Arc::clone(&self.stream_status),
+            ingress: Arc::clone(&self.ingress),
+            admin_auth: Arc::clone(&self.admin_auth),
         }
     }
 }
@@ -104,6 +111,8 @@ impl AppStateBuilder {
         let platform_repo = Arc::new(InMemoryPlatformRepository::new_seeded());
         let queue_repo = Arc::new(InMemoryQueueRepository::new());
         let event_publisher = BroadcastEventPublisher::new();
+        let ingress = Arc::new(EventIngress::new());
+        spawn_logging_handler(ingress.subscribe());
 
         let slot_service = Arc::new(RouletteSlotService::build(Arc::clone(&slot_repo)).await?);
         let rarity_service = Arc::new(RarityService::build(Arc::clone(&rarity_repo)).await?);
@@ -113,10 +122,11 @@ impl AppStateBuilder {
             Arc::clone(&rarity_service),
             roulette,
             event_publisher.clone(),
-            std::time::Duration::from_secs(self.config.roulette_timeout_secs),
-            std::time::Duration::from_secs(self.config.retention_secs),
+            Duration::from_secs(self.config.roulette_timeout_secs),
+            Duration::from_secs(self.config.retention_secs),
         );
         let user_service = Arc::new(UserService::new(user_repo, platform_repo));
+        let admin_auth = Arc::new(AdminAuthService::new(self.config.twitch.clone()));
 
         Ok(AppState {
             slot_service,
@@ -126,6 +136,8 @@ impl AppStateBuilder {
             config: self.config,
             event_publisher,
             stream_status: Arc::new(StreamStatus::new()),
+            ingress,
+            admin_auth,
         })
     }
 }

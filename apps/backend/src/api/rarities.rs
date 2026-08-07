@@ -157,7 +157,7 @@ pub async fn delete_rarity(
 #[allow(dead_code)]
 pub(crate) struct RaritiesApiDoc;
 
-pub fn router() -> axum::Router<AppState> {
+pub fn protected_router() -> axum::Router<AppState> {
     use axum::routing::{delete, get, post, put};
     axum::Router::new()
         .route("/api/rarities", get(list_rarities))

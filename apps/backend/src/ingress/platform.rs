@@ -1,0 +1,12 @@
+use tokio::sync::mpsc;
+
+use crate::error::ingress::PlatformError;
+use crate::ingress::event::{PlatformEvent, PlatformKind};
+
+pub type EventSink = mpsc::Sender<PlatformEvent>;
+
+pub trait PlatformService: Send + Sync {
+    fn kind(&self) -> PlatformKind;
+
+    async fn run(&self, sink: EventSink) -> Result<(), PlatformError>;
+}

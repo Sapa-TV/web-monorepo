@@ -161,7 +161,7 @@ pub async fn delete_slot(
     Ok(StatusCode::NO_CONTENT)
 }
 
-pub fn router() -> axum::Router<AppState> {
+pub fn protected_router() -> axum::Router<AppState> {
     use axum::routing::{delete, get, post, put};
     axum::Router::new()
         .route("/api/slots", get(list_slots))
@@ -172,6 +172,9 @@ pub fn router() -> axum::Router<AppState> {
 
 #[cfg(test)]
 mod tests {
+    use axum::body::Body;
+    use axum::body::to_bytes;
+    use axum::http::Request;
     use serde_json::Value;
     use tower::ServiceExt;
 
@@ -187,22 +190,19 @@ mod tests {
 
         let response = app
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("GET")
                     .uri("/api/slots")
-                    .body(axum::body::Body::empty())
+                    .body(Body::empty())
                     .unwrap(),
             )
             .await
             .unwrap();
 
         assert_eq!(response.status(), 200);
-        let body: Value = serde_json::from_slice(
-            &axum::body::to_bytes(response.into_body(), usize::MAX)
-                .await
-                .unwrap(),
-        )
-        .unwrap();
+        let body: Value =
+            serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap())
+                .unwrap();
         assert_eq!(body.as_array().unwrap().len(), 0);
     }
 
@@ -213,11 +213,11 @@ mod tests {
 
         let response = app
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("POST")
                     .uri("/api/slots")
                     .header("content-type", "application/json")
-                    .body(axum::body::Body::from(
+                    .body(Body::from(
                         r#"{"name":"test","rarity_id":1,"weight":10,"action":"act"}"#,
                     ))
                     .unwrap(),
@@ -226,12 +226,9 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.status(), 201);
-        let body: Value = serde_json::from_slice(
-            &axum::body::to_bytes(response.into_body(), usize::MAX)
-                .await
-                .unwrap(),
-        )
-        .unwrap();
+        let body: Value =
+            serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap())
+                .unwrap();
         assert_eq!(body["name"], "test");
         assert_eq!(body["id"], 1);
     }
@@ -255,11 +252,11 @@ mod tests {
 
         let response = app
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("PUT")
                     .uri(format!("/api/slots/{}", saved.id))
                     .header("content-type", "application/json")
-                    .body(axum::body::Body::from(
+                    .body(Body::from(
                         r#"{"name":"updated","rarity_id":1,"weight":99,"action":"new_act"}"#,
                     ))
                     .unwrap(),
@@ -268,12 +265,9 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.status(), 200);
-        let body: Value = serde_json::from_slice(
-            &axum::body::to_bytes(response.into_body(), usize::MAX)
-                .await
-                .unwrap(),
-        )
-        .unwrap();
+        let body: Value =
+            serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap())
+                .unwrap();
         assert_eq!(body["name"], "updated");
         assert_eq!(body["weight"], 99);
     }
@@ -285,11 +279,11 @@ mod tests {
 
         let response = app
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("PUT")
                     .uri("/api/slots/999")
                     .header("content-type", "application/json")
-                    .body(axum::body::Body::from(
+                    .body(Body::from(
                         r#"{"name":"nonexistent","rarity_id":1,"weight":1,"action":"act"}"#,
                     ))
                     .unwrap(),
@@ -319,10 +313,10 @@ mod tests {
 
         let response = app
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("DELETE")
                     .uri(format!("/api/slots/{}", saved.id))
-                    .body(axum::body::Body::empty())
+                    .body(Body::empty())
                     .unwrap(),
             )
             .await
@@ -338,10 +332,10 @@ mod tests {
 
         let response = app
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("DELETE")
                     .uri("/api/slots/999")
-                    .body(axum::body::Body::empty())
+                    .body(Body::empty())
                     .unwrap(),
             )
             .await

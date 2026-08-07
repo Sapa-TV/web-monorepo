@@ -5,6 +5,7 @@ use chrono::{DateTime, Utc};
 use crate::error::RepositoryError;
 use crate::queue::entry::{QueueEntry, QueueEntryId, QueueStats, QueueStatus};
 use crate::roulette::slot_service::RouletteSlotId;
+use crate::user::UserId;
 
 #[non_exhaustive]
 pub enum DequeueOutcome {
@@ -23,7 +24,7 @@ pub enum StatusUpdateOutcome {
 pub trait QueueRepository: Send + Sync {
     fn enqueue(
         &self,
-        user_id: crate::user::UserId,
+        user_id: UserId,
         user_name: &str,
     ) -> impl Future<Output = Result<QueueEntry, RepositoryError>> + Send;
 

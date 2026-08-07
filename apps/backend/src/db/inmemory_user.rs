@@ -196,6 +196,9 @@ impl UserRepository for InMemoryUserRepository {
 
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+    use tokio::time::sleep;
+
     use crate::platform::PlatformId;
 
     use super::*;
@@ -433,7 +436,7 @@ mod tests {
             .unwrap();
         let before_delete = repo.get_by_id(user.id).await.unwrap().unwrap().updated_at;
 
-        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        sleep(Duration::from_millis(10)).await;
         repo.delete_platform(user.id, TWITCH).await.unwrap();
 
         let fetched = repo.get_by_id(user.id).await.unwrap().unwrap();

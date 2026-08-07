@@ -1,6 +1,7 @@
 use axum::extract::State;
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::response::IntoResponse;
+use axum::routing::get;
 use better_tokio_select::tokio_select;
 use serde::{Deserialize, Serialize};
 use subtle::ConstantTimeEq;
@@ -126,24 +127,26 @@ async fn handle_socket(mut socket: WebSocket, state: AppState) {
     tracing::debug!("ws client disconnected");
 }
 
-pub fn router() -> axum::Router<AppState> {
-    axum::Router::new().route("/ws", axum::routing::get(ws_handler))
+pub fn public_router() -> axum::Router<AppState> {
+    axum::Router::new().route("/ws", get(ws_handler))
 }
 
 #[cfg(test)]
 mod tests {
+    use axum::body::Body;
+    use axum::http::Request;
     use serde_json::Value;
     use tower::ServiceExt;
 
     use crate::api::router;
     use crate::api::ws::{ClientMessage, ServerMessage, handle_message};
-    use crate::queue::entry::QueueStatus;
+    use crate::queue::entry::{QueueEntryId, QueueStatus};
     use crate::roulette::rarity::{Rarity, RarityId};
     use crate::roulette::slot_service::{RouletteSlot, RouletteSlotId};
     use crate::state::AppState;
     use crate::test_fixtures::test_state;
 
-    async fn setup_spinning(state: &AppState) -> crate::queue::entry::QueueEntryId {
+    async fn setup_spinning(state: &AppState) -> QueueEntryId {
         state
             .rarity_service
             .save(Rarity::new(
@@ -221,10 +224,10 @@ mod tests {
         let response = app
             .clone()
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("POST")
                     .uri(format!("/api/queue/{rest_entry_id}/complete"))
-                    .body(axum::body::Body::empty())
+                    .body(Body::empty())
                     .unwrap(),
             )
             .await
@@ -252,10 +255,10 @@ mod tests {
         ));
         let response = app
             .oneshot(
-                axum::http::Request::builder()
+                Request::builder()
                     .method("POST")
                     .uri(format!("/api/queue/{ws_entry_id}/complete"))
-                    .body(axum::body::Body::empty())
+                    .body(Body::empty())
                     .unwrap(),
             )
             .await
@@ -266,14 +269,14 @@ mod tests {
     #[tokio::test]
     async fn complete_ok_and_err_serialize_with_type_tag() {
         let ok = ServerMessage::CompleteOk {
-            entry_id: crate::queue::entry::QueueEntryId::new(7),
+            entry_id: QueueEntryId::new(7),
         };
         let json: Value = serde_json::to_value(&ok).unwrap();
         assert_eq!(json["type"], "complete_ok");
         assert_eq!(json["entry_id"], 7);
 
         let err = ServerMessage::CompleteErr {
-            entry_id: crate::queue::entry::QueueEntryId::new(7),
+            entry_id: QueueEntryId::new(7),
             error: "nope".to_string(),
         };
         let json: Value = serde_json::to_value(&err).unwrap();
