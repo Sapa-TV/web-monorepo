@@ -9,12 +9,8 @@ unwrap_used = "deny"
 let_underscore_must_use = "warn"
 absolute_paths = "deny"
 
-[workspace.metadata.dylint]
-libraries = [{ path = "lints", pattern = "*" }]
-
 [workspace.lints.rust.unexpected_cfgs]
 level = "warn"
-check-cfg = ["cfg(dylint_lib, values(any()))"]
 
 [profile.test]
 rustflags = ["-Awarnings"]

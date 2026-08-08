@@ -1,0 +1,133 @@
+id: new-returns-self
+snapshots:
+  ? |-
+    impl Foo {
+      fn new() -> Arc<Self> {
+      Arc::new(Self)
+      }
+    }
+  : labels:
+    - source: |-
+        fn new() -> Arc<Self> {
+          Arc::new(Self)
+          }
+      style: primary
+      start: 13
+      end: 57
+    - source: |-
+        impl Foo {
+          fn new() -> Arc<Self> {
+          Arc::new(Self)
+          }
+        }
+      style: secondary
+      start: 0
+      end: 59
+  ? |-
+    impl Foo {
+      fn new() -> Box<Self> {
+      Box::new(Self)
+      }
+    }
+  : labels:
+    - source: |-
+        fn new() -> Box<Self> {
+          Box::new(Self)
+          }
+      style: primary
+      start: 13
+      end: 57
+    - source: |-
+        impl Foo {
+          fn new() -> Box<Self> {
+          Box::new(Self)
+          }
+        }
+      style: secondary
+      start: 0
+      end: 59
+  ? |-
+    impl Foo {
+      fn new() -> Option<Self> {
+      None
+      }
+    }
+  : labels:
+    - source: |-
+        fn new() -> Option<Self> {
+          None
+          }
+      style: primary
+      start: 13
+      end: 50
+    - source: |-
+        impl Foo {
+          fn new() -> Option<Self> {
+          None
+          }
+        }
+      style: secondary
+      start: 0
+      end: 52
+  ? |-
+    impl Foo {
+      fn new() -> Result<Self, ()> {
+      Ok(Self)
+      }
+    }
+  : labels:
+    - source: |-
+        fn new() -> Result<Self, ()> {
+          Ok(Self)
+          }
+      style: primary
+      start: 13
+      end: 58
+    - source: |-
+        impl Foo {
+          fn new() -> Result<Self, ()> {
+          Ok(Self)
+          }
+        }
+      style: secondary
+      start: 0
+      end: 60
+  ? |-
+    impl Foo {
+      fn new() -> impl Debug {
+      Self
+      }
+    }
+  : labels:
+    - source: |-
+        fn new() -> impl Debug {
+          Self
+          }
+      style: primary
+      start: 13
+      end: 48
+    - source: |-
+        impl Foo {
+          fn new() -> impl Debug {
+          Self
+          }
+        }
+      style: secondary
+      start: 0
+      end: 50
+  ? |-
+    impl Foo {
+      fn new() {}
+    }
+  : labels:
+    - source: fn new() {}
+      style: primary
+      start: 13
+      end: 24
+    - source: |-
+        impl Foo {
+          fn new() {}
+        }
+      style: secondary
+      start: 0
+      end: 26

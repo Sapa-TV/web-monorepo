@@ -1,0 +1,15 @@
+id: non-exhaustive-api-structs
+valid:
+  # marked non_exhaustive
+  - "#[non_exhaustive]\npub struct Marked {\n  pub value: u8,\n}"
+  # private field -> not exhaustive
+  - "pub struct MixedField {\n  value: u8,\n  pub other: String,\n}"
+  # targeted, has non_exhaustive above with intermediate attrs
+  - "#[derive(OpenApi)]\n#[non_exhaustive]\n#[allow(dead_code)]\npub struct ApiDoc;\n"
+invalid:
+  # unit struct without attribute
+  - "pub struct Unit;"
+  # tuple struct with all pub fields
+  - "pub struct Tuple(pub u8);"
+  # all public fields, no attribute
+  - "pub struct AllPublic {\n  pub value: u8,\n  pub other: String,\n}"

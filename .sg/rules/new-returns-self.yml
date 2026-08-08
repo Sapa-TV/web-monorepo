@@ -1,0 +1,18 @@
+language: Rust
+id: new-returns-self
+message: "`new` must return `Self` directly (no Option/Result/Box/Arc/impl)"
+severity: error
+rule:
+  all:
+    - inside:
+        kind: impl_item
+        stopBy: end
+    - any:
+        - all:
+            - pattern: "fn new($$$ARGS) -> $RET { $$$BODY }"
+            - not:
+                pattern: "fn new($$$ARGS) -> Self { $$$BODY }"
+        - pattern: "fn new($$$ARGS) { $$$BODY }"
+files:
+  - "apps/**/*.rs"
+  - "tools/**/*.rs"

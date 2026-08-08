@@ -3,11 +3,6 @@
 #![feature(nonpoison_rwlock)]
 #![deny(clippy::exhaustive_structs)]
 #![deny(clippy::new_ret_no_self)]
-#![cfg_attr(dylint_lib = "new_returns_self", deny(new_returns_self))]
-#![cfg_attr(
-    dylint_lib = "non_exhaustive_api_structs",
-    deny(non_exhaustive_api_structs)
-)]
 
 pub mod admin;
 pub mod api;

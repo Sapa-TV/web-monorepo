@@ -1,0 +1,30 @@
+language: Rust
+id: non-exhaustive-api-structs
+message: "hand-written `pub` struct in `api` module must be `#[non_exhaustive]`"
+severity: error
+rule:
+  all:
+    - any:
+        - pattern: "pub struct $NAME;"
+        - pattern: "pub struct $NAME($$$FIELDS);"
+        - pattern: "pub struct $NAME { $$$FIELDS }"
+    - regex: "^pub struct"
+    - not:
+        follows:
+          pattern: "#[non_exhaustive]"
+          stopBy:
+            not:
+              any:
+                - kind: attribute_item
+                - kind: line_comment
+                - kind: block_comment
+    - not:
+        has:
+          kind: field_declaration
+          stopBy: end
+          not:
+            has:
+              kind: visibility_modifier
+files:
+  - "apps/backend/src/api.rs"
+  - "apps/backend/src/api/**/*.rs"

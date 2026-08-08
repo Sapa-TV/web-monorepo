@@ -1,0 +1,19 @@
+id: new-returns-self
+valid:
+  # returns Self directly
+  - "impl Foo {\n  fn new() -> Self {\n    Self\n  }\n}"
+  # different method name, any return
+  - "impl Foo {\n  fn make() -> Option<Self> {\n    None\n  }\n}"
+invalid:
+  # unit return (no arrow)
+  - "impl Foo {\n  fn new() {}\n}"
+  # Option<Self>
+  - "impl Foo {\n  fn new() -> Option<Self> {\n  None\n  }\n}"
+  # Result<Self, _>
+  - "impl Foo {\n  fn new() -> Result<Self, ()> {\n  Ok(Self)\n  }\n}"
+  # Box<Self>
+  - "impl Foo {\n  fn new() -> Box<Self> {\n  Box::new(Self)\n  }\n}"
+  # Arc<Self>
+  - "impl Foo {\n  fn new() -> Arc<Self> {\n  Arc::new(Self)\n  }\n}"
+  # impl Trait
+  - "impl Foo {\n  fn new() -> impl Debug {\n  Self\n  }\n}"

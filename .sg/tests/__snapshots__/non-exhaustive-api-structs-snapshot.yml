@@ -1,0 +1,28 @@
+id: non-exhaustive-api-structs
+snapshots:
+  ? |-
+    pub struct AllPublic {
+      pub value: u8,
+      pub other: String,
+    }
+  : labels:
+    - source: |-
+        pub struct AllPublic {
+          pub value: u8,
+          pub other: String,
+        }
+      style: primary
+      start: 0
+      end: 62
+  pub struct Tuple(pub u8);:
+    labels:
+    - source: pub struct Tuple(pub u8);
+      style: primary
+      start: 0
+      end: 25
+  pub struct Unit;:
+    labels:
+    - source: pub struct Unit;
+      style: primary
+      start: 0
+      end: 16

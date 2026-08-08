@@ -2,7 +2,8 @@
 #   just          — list recipes
 #   just run      — run the backend
 #   just gen      — generate OpenAPI spec to generated/openapi.json
-#   just dylint   — run custom dylint lints (own code only, no deps)
+#   just lint     — run custom ast-grep lints (own code only)
+#   just lint-test — run ast-grep rule tests
 
 set dotenv-load
 
@@ -18,6 +19,10 @@ run:
 gen path='generated/openapi.json':
     cargo run -p gen-openapi -- {{path}}
 
-# Custom dylint lints, only own code, all targets
-dylint:
-    cargo dylint --all --no-deps -- --all-targets
+# Custom ast-grep lints, only own code, all targets
+lint:
+    pnpm exec ast-grep scan
+
+# Run ast-grep rule test suites
+lint-test:
+    pnpm exec ast-grep test
