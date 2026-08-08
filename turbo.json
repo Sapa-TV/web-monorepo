@@ -16,6 +16,17 @@
       "dependsOn": ["^build", "codegen"],
       "outputs": [".svelte-kit/**", "build/**", "dist/**"]
     },
+    "check": {
+      "dependsOn": ["codegen"],
+      "outputs": [".svelte-kit/**"]
+    },
+    "lint": {
+      "dependsOn": ["^lint", "build"],
+      "cache": true
+    },
+    "test": {
+      "dependsOn": ["build"]
+    },
     "dev": {
       "cache": false,
       "persistent": true

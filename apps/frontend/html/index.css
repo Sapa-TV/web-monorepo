@@ -1,0 +1,13 @@
+.material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+body {
+    font-family: 'Inter', sans-serif;
+}
+h1, h2, h3 {
+    font-family: 'Manrope', sans-serif;
+}
+.glass-effect {
+    background: rgba(239, 248, 255, 0.4);
+    backdrop-filter: blur(20px);
+}
