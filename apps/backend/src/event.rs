@@ -22,6 +22,12 @@ impl BroadcastEventPublisher {
     }
 }
 
+impl Default for BroadcastEventPublisher {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SpinEventPublisher for BroadcastEventPublisher {
     async fn publish_spin(&self, event: SpinEvent) -> Result<(), EventError> {
         match self.tx.send(Arc::new(event)) {

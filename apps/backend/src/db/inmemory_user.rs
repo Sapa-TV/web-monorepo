@@ -27,6 +27,12 @@ impl InMemoryUserRepository {
     }
 }
 
+impl Default for InMemoryUserRepository {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl UserRepository for InMemoryUserRepository {
     async fn create(&self, display_name: &str) -> Result<User, RepositoryError> {
         let id = self.next_user_id.fetch_add(1, Ordering::Relaxed);

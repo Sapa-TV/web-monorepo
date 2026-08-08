@@ -1,3 +1,5 @@
+#![allow(clippy::exhaustive_structs)]
+
 pub mod admin;
 pub mod auth;
 pub mod queue;
@@ -8,6 +10,7 @@ pub mod users;
 pub mod ws;
 
 use axum::routing::get;
+use utoipa::openapi::OpenApi as OpenApiSchema;
 use utoipa::Modify;
 use utoipa::OpenApi;
 
@@ -16,7 +19,7 @@ use crate::state::AppState;
 struct MergeSubdocs;
 
 impl Modify for MergeSubdocs {
-    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+    fn modify(&self, openapi: &mut OpenApiSchema) {
         openapi.merge(rarities::RaritiesApiDoc::openapi());
         openapi.merge(roulette_slots::SlotsApiDoc::openapi());
         openapi.merge(users::UsersApiDoc::openapi());

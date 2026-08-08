@@ -47,6 +47,12 @@ impl EventIngress {
     }
 }
 
+impl Default for EventIngress {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub fn spawn_logging_handler(rx: broadcast::Receiver<Arc<PlatformEvent>>) {
     tokio::spawn(async move {
         let mut rx = rx;

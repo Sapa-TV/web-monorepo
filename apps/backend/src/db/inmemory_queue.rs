@@ -24,6 +24,12 @@ impl InMemoryQueueRepository {
     }
 }
 
+impl Default for InMemoryQueueRepository {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl QueueRepository for InMemoryQueueRepository {
     async fn enqueue(
         &self,

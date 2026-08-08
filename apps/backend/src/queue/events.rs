@@ -1,3 +1,5 @@
+use std::future::Future;
+
 use serde::Serialize;
 
 use crate::error::event::EventError;
@@ -21,5 +23,8 @@ pub enum SpinEvent {
 }
 
 pub trait SpinEventPublisher: Send + Sync {
-    async fn publish_spin(&self, event: SpinEvent) -> Result<(), EventError>;
+    fn publish_spin(
+        &self,
+        event: SpinEvent,
+    ) -> impl Future<Output = Result<(), EventError>> + Send;
 }

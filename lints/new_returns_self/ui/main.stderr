@@ -1,0 +1,40 @@
+warning: `new` must return `Self` directly (no Option/Result/Box/Arc/impl)
+  --> $DIR/main.rs:18:17
+   |
+LL |     fn new() -> Option<Self> {
+   |                 ^^^^^^^^^^^^
+   |
+   = note: `#[warn(new_returns_self)]` on by default
+
+warning: `new` must return `Self` directly (no Option/Result/Box/Arc/impl)
+  --> $DIR/main.rs:26:17
+   |
+LL |     fn new() -> Result<Self, ()> {
+   |                 ^^^^^^^^^^^^^^^^
+
+warning: `new` must return `Self` directly (no Option/Result/Box/Arc/impl)
+  --> $DIR/main.rs:34:17
+   |
+LL |     fn new() -> Box<Self> {
+   |                 ^^^^^^^^^
+
+warning: `new` must return `Self` directly (no Option/Result/Box/Arc/impl)
+  --> $DIR/main.rs:42:17
+   |
+LL |     fn new() -> Arc<Self> {
+   |                 ^^^^^^^^^
+
+warning: `new` must return `Self` directly (no Option/Result/Box/Arc/impl)
+  --> $DIR/main.rs:51:17
+   |
+LL |     fn new() -> impl Debug {
+   |                 ^^^^^^^^^^
+
+warning: `new` must return `Self` directly (no Option/Result/Box/Arc/impl)
+  --> $DIR/main.rs:59:13
+   |
+LL |     fn new() {}
+   |             ^
+
+warning: 6 warnings emitted
+
