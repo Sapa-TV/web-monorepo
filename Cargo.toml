@@ -2,7 +2,7 @@ cargo-features = ["profile-rustflags"]
 
 [workspace]
 resolver = "2"
-members = ["apps/backend"]
+members = ["apps/backend", "tools/gen-openapi"]
 
 [workspace.lints.clippy]
 unwrap_used = "deny"
@@ -47,3 +47,4 @@ twitch_api = "0.8.0"
 reqwest = "0.13.4"
 twitch_oauth2 = "0.17.1"
 url = "2.5.8"
+backend = { version = "0.1.0", path = 'apps\backend' }

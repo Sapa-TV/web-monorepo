@@ -1,31 +1,18 @@
-#![feature(sync_nonpoison)]
-#![feature(nonpoison_mutex)]
-#![feature(nonpoison_rwlock)]
 #![deny(clippy::exhaustive_structs)]
 #![deny(clippy::new_ret_no_self)]
 #![cfg_attr(dylint_lib = "new_returns_self", deny(new_returns_self))]
-
-mod admin;
-mod api;
-mod config;
-mod db;
-mod error;
-mod event;
-mod ingress;
-mod platform;
-mod queue;
-mod random;
-mod roulette;
-mod state;
-mod stream;
-#[cfg(test)]
-mod test_fixtures;
-mod user;
 
 use std::future::pending;
 
 use axum::http::{HeaderValue, Method, header};
 use axum::middleware::from_fn_with_state;
+use backend::api::{self, ApiDoc};
+use backend::api::auth::require_auth;
+use backend::config::Config;
+use backend::ingress::PlatformService;
+use backend::ingress::twitch::TwitchPlatformService;
+use backend::random::StandartRandomProvider;
+use backend::state::{AppState, AppStateBuilder};
 use tokio::net::TcpListener;
 use tokio::signal::ctrl_c;
 use tokio::time;
@@ -35,14 +22,6 @@ use tracing::info;
 use utoipa::OpenApi;
 use utoipa_redoc::{Redoc, Servable};
 use utoipa_swagger_ui::SwaggerUi;
-
-use crate::api::ApiDoc;
-use crate::api::auth::require_auth;
-use crate::config::Config;
-use crate::ingress::PlatformService;
-use crate::ingress::twitch::TwitchPlatformService;
-use crate::random::StandartRandomProvider;
-use crate::state::{AppState, AppStateBuilder};
 
 #[tokio::main]
 async fn main() {
@@ -54,7 +33,7 @@ async fn main() {
         .init();
 
     let config = Config::load();
-    let state = AppStateBuilder::new(StandartRandomProvider, &config)
+    let state = AppStateBuilder::new(StandartRandomProvider::new(), &config)
         .build()
         .await
         .expect("failed to build app state");
@@ -137,5 +116,3 @@ async fn timeout_task(state: AppState) {
         }
     }
 }
-
-

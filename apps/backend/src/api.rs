@@ -8,9 +8,23 @@ pub mod users;
 pub mod ws;
 
 use axum::routing::get;
+use utoipa::Modify;
 use utoipa::OpenApi;
 
 use crate::state::AppState;
+
+struct MergeSubdocs;
+
+impl Modify for MergeSubdocs {
+    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+        openapi.merge(rarities::RaritiesApiDoc::openapi());
+        openapi.merge(roulette_slots::SlotsApiDoc::openapi());
+        openapi.merge(users::UsersApiDoc::openapi());
+        openapi.merge(queue::QueueApiDoc::openapi());
+        openapi.merge(stream::StreamApiDoc::openapi());
+        openapi.merge(admin::twitch::AdminTwitchApiDoc::openapi());
+    }
+}
 
 #[derive(OpenApi)]
 #[openapi(
@@ -27,12 +41,7 @@ use crate::state::AppState;
         (name = "stream", description = "Stream status"),
         (name = "admin", description = "Administrative endpoints")
     ),
-    nest((path = "/", api = rarities::RaritiesApiDoc)),
-    nest((path = "/", api = roulette_slots::SlotsApiDoc)),
-    nest((path = "/", api = users::UsersApiDoc)),
-    nest((path = "/", api = queue::QueueApiDoc)),
-    nest((path = "/", api = stream::StreamApiDoc)),
-    nest((path = "/", api = admin::twitch::AdminTwitchApiDoc))
+    modifiers(&MergeSubdocs)
 )]
 #[non_exhaustive]
 pub struct ApiDoc;
