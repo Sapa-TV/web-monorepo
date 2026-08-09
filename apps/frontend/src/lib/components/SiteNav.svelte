@@ -1,0 +1,141 @@
+<script lang="ts">
+	import { onMount } from "svelte";
+	import { page } from "$app/state";
+	import DonateToggle from "./DonateToggle.svelte";
+
+	let isStream = $derived(page.url.pathname === "/stream");
+
+	let dark = $state<"light" | "dark">(
+		typeof document !== "undefined"
+			? document.documentElement.dataset.theme === "dark"
+				? "dark"
+				: "light"
+			: "light",
+	);
+
+	onMount(() => {
+		const stored = localStorage.getItem("theme");
+		const prefersDark = window.matchMedia(
+			"(prefers-color-scheme: dark)",
+		).matches;
+		dark = stored
+			? stored === "dark"
+				? "dark"
+				: "light"
+			: prefersDark
+				? "dark"
+				: "light";
+	});
+
+	$effect(() => {
+		if (typeof document === "undefined") return;
+		document.documentElement.dataset.theme =
+			dark === "dark" ? "dark" : "light";
+		try {
+			localStorage.setItem("theme", dark === "dark" ? "dark" : "light");
+		} catch {
+			/* приватный режим — игнорируем */
+		}
+	});
+</script>
+
+<nav class="site-nav" aria-label="Навигация по сайту">
+	<div class="site-nav-inner">
+		<a class="brand" href="/">
+			<span class="brand-badge" aria-hidden="true">ST</span>
+			<span>Sapa TV</span>
+			{#if isStream}
+				<span class="badge-live"><span class="live-dot"></span>LIVE</span>
+			{/if}
+		</a>
+
+		<div class="nav-actions">
+			<a class="nav-link" href="/links">
+				<svg
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					aria-hidden="true"
+				>
+					<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+					<path
+						d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"
+					/>
+				</svg>
+				Каталог
+			</a>
+			<DonateToggle />
+			<button
+				class="theme-toggle"
+				type="button"
+				onclick={() => (dark = dark === "dark" ? "light" : "dark")}
+			>
+				{#if dark}
+					<svg
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.8"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+					>
+						<circle cx="12" cy="12" r="4" />
+						<path
+							d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4m11.4-11.4 1.4-1.4"
+						/>
+					</svg>
+				{:else}
+					<svg
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.8"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+					>
+						<path d="M21 12.8A8.9 8.9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z" />
+					</svg>
+				{/if}
+			</button>
+		</div>
+	</div>
+</nav>
+
+<style>
+	.badge-live {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		background-color: var(--error, #e64040);
+		color: var(--on-error, #ffffff);
+		padding: 0.15rem 0.6rem;
+		border-radius: 6px;
+		font-weight: 700;
+		font-size: 0.72rem;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+	}
+
+	.live-dot {
+		width: 0.4rem;
+		height: 0.4rem;
+		border-radius: 50%;
+		background: currentColor;
+		animation: pulse 1.6s ease-in-out infinite;
+	}
+
+	@keyframes pulse {
+		0%,
+		100% {
+			opacity: 1;
+		}
+		50% {
+			opacity: 0.3;
+		}
+	}
+</style>

@@ -8,6 +8,24 @@ declare global {
 		// interface PageState {}
 		// interface Platform {}
 	}
+
+	interface Window {
+		mpegts?: {
+			isSupported(): boolean;
+			createPlayer(
+				_config: { type: "flv"; isLive: boolean; url: string },
+				_opts?: {
+					enableStashBuffer?: boolean;
+					liveBufferLatencyChasing?: boolean;
+				},
+			): {
+				attachMediaElement(_element: HTMLVideoElement): void;
+				load(): void;
+				play(): Promise<void>;
+				destroy(): void;
+			};
+		};
+	}
 }
 
 export {};
