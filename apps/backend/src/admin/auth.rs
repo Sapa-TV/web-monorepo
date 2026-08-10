@@ -7,7 +7,7 @@ use axum::http::StatusCode;
 use twitch_oauth2::{CsrfToken, Scope, TwitchToken, UserTokenBuilder};
 
 use crate::config::TwitchConfig;
-use crate::ingress::twitch_auth::TwitchTokenRepository;
+use crate::platform::{PlatformCredentialRepository, PlatformId};
 
 const ADMIN_SCOPES: &[Scope] = &[Scope::ChatRead, Scope::UserBot, Scope::ChannelBot];
 
@@ -42,7 +42,7 @@ impl From<AdminAuthError> for StatusCode {
 #[non_exhaustive]
 pub struct AdminAuthService<R>
 where
-    R: TwitchTokenRepository,
+    R: PlatformCredentialRepository,
 {
     config: Option<Arc<TwitchConfig>>,
     pending_csrf: Mutex<BTreeMap<String, Instant>>,
@@ -51,7 +51,7 @@ where
 
 impl<R> AdminAuthService<R>
 where
-    R: TwitchTokenRepository,
+    R: PlatformCredentialRepository,
 {
     pub fn new(config: Option<Arc<TwitchConfig>>, token_repo: Arc<R>) -> Self {
         Self {
@@ -98,7 +98,7 @@ where
             return Err(AdminAuthError::Exchange);
         };
         self.token_repo
-            .save(refresh_token.secret())
+            .save_credential(PlatformId::TWITCH, refresh_token.secret())
             .await
             .map_err(|_| AdminAuthError::Persist)?;
         Ok(exchanged_of(&token))
@@ -143,7 +143,7 @@ where
     pub async fn is_ingress_credentials_configured(&self) -> Result<bool, AdminAuthError> {
         Ok(self
             .token_repo
-            .load()
+            .load_credential(PlatformId::TWITCH)
             .await
             .map_err(|_| AdminAuthError::Persist)?
             .is_some())
@@ -151,7 +151,7 @@ where
 
     pub async fn revoke_ingress_credentials(&self) -> Result<(), AdminAuthError> {
         self.token_repo
-            .clear()
+            .clear_credential(PlatformId::TWITCH)
             .await
             .map_err(|_| AdminAuthError::Persist)
     }
@@ -175,7 +175,7 @@ fn exchanged_of(token: &twitch_oauth2::UserToken) -> ExchangedToken {
 mod tests {
     use std::time::{Duration, Instant};
 
-    use crate::db::inmemory_twitch_auth::InMemoryTwitchTokenRepository;
+    use crate::db::inmemory_platform_credential::InMemoryPlatformCredentialRepository;
 
     use super::*;
 
@@ -192,8 +192,8 @@ mod tests {
 
     fn test_service(
         config: Option<Arc<TwitchConfig>>,
-    ) -> AdminAuthService<InMemoryTwitchTokenRepository> {
-        AdminAuthService::new(config, Arc::new(InMemoryTwitchTokenRepository::new()))
+    ) -> AdminAuthService<InMemoryPlatformCredentialRepository> {
+        AdminAuthService::new(config, Arc::new(InMemoryPlatformCredentialRepository::new()))
     }
 
     #[test]
