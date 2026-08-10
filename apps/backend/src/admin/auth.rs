@@ -46,18 +46,18 @@ where
 {
     config: Option<Arc<TwitchConfig>>,
     pending_csrf: Mutex<BTreeMap<String, Instant>>,
-    token_repo: Arc<R>,
+    credentials_repo: Arc<R>,
 }
 
 impl<R> AdminAuthService<R>
 where
     R: PlatformCredentialRepository,
 {
-    pub fn new(config: Option<Arc<TwitchConfig>>, token_repo: Arc<R>) -> Self {
+    pub fn new(config: Option<Arc<TwitchConfig>>, credentials_repo: Arc<R>) -> Self {
         Self {
             config,
             pending_csrf: Mutex::new(BTreeMap::new()),
-            token_repo,
+            credentials_repo,
         }
     }
 
@@ -97,7 +97,7 @@ where
         let Some(refresh_token) = token.refresh_token.as_ref() else {
             return Err(AdminAuthError::Exchange);
         };
-        self.token_repo
+        self.credentials_repo
             .save_credential(PlatformId::TWITCH, refresh_token.secret())
             .await
             .map_err(|_| AdminAuthError::Persist)?;
@@ -142,7 +142,7 @@ where
 
     pub async fn is_ingress_credentials_configured(&self) -> Result<bool, AdminAuthError> {
         Ok(self
-            .token_repo
+            .credentials_repo
             .load_credential(PlatformId::TWITCH)
             .await
             .map_err(|_| AdminAuthError::Persist)?
@@ -150,7 +150,7 @@ where
     }
 
     pub async fn revoke_ingress_credentials(&self) -> Result<(), AdminAuthError> {
-        self.token_repo
+        self.credentials_repo
             .clear_credential(PlatformId::TWITCH)
             .await
             .map_err(|_| AdminAuthError::Persist)
@@ -193,7 +193,10 @@ mod tests {
     fn test_service(
         config: Option<Arc<TwitchConfig>>,
     ) -> AdminAuthService<InMemoryPlatformCredentialRepository> {
-        AdminAuthService::new(config, Arc::new(InMemoryPlatformCredentialRepository::new()))
+        AdminAuthService::new(
+            config,
+            Arc::new(InMemoryPlatformCredentialRepository::new()),
+        )
     }
 
     #[test]

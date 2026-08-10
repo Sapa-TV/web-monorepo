@@ -116,12 +116,14 @@
 
 ### 7. Вайринг
 
+> `token_repo` переименован в `credentials_repo` (во всём коде).
+
 - `src/state.rs`:
   - generic-параметр `T: PlatformCredentialRepository`, поле `admin_auth: Arc<AdminAuthService<T>>`;
   - `AppState` alias — `InMemoryPlatformCredentialRepository`;
-  - `AppStateBuilder::new(random, config, token_repo: Arc<InMemoryPlatformCredentialRepository>)`.
+  - `AppStateBuilder::new(random, config, credentials_repo: Arc<InMemoryPlatformCredentialRepository>)`.
 - `src/main.rs`:
-  - `token_repo = Arc::new(InMemoryPlatformCredentialRepository::new())`, передать в builder и в `TwitchPlatformService::new(twitch.clone(), Arc::clone(&token_repo))`;
+  - `credentials_repo = Arc::new(InMemoryPlatformCredentialRepository::new())`, передать в builder и в `TwitchPlatformService::new(twitch.clone(), Arc::clone(&credentials_repo))`;
   - лог: `service.platform().as_name()`.
 - `src/test_fixtures.rs`: `Arc::new(InMemoryPlatformCredentialRepository::new())`.
 - После замены всех использований удалить старый модуль: файл `src/db/inmemory_twitch_auth.rs` и `pub mod inmemory_twitch_auth;` из `src/db.rs`.

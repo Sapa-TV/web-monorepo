@@ -35,10 +35,10 @@ impl<R> TwitchPlatformService<R>
 where
     R: PlatformCredentialRepository,
 {
-    pub fn new(config: Arc<TwitchConfig>, token_repo: Arc<R>) -> Self {
+    pub fn new(config: Arc<TwitchConfig>, credentials_repo: Arc<R>) -> Self {
         Self {
             config: Arc::clone(&config),
-            auth: Arc::new(TwitchAuthService::new(config, token_repo)),
+            auth: Arc::new(TwitchAuthService::new(config, credentials_repo)),
             platform: PlatformId::TWITCH,
         }
     }
@@ -165,7 +165,12 @@ fn chat_event_from(
     user_name: &str,
     text: &str,
 ) -> PlatformEvent {
-    PlatformEvent::chat_message(platform, user_id.to_owned(), user_name.to_owned(), text.to_owned())
+    PlatformEvent::chat_message(
+        platform,
+        user_id.to_owned(),
+        user_name.to_owned(),
+        text.to_owned(),
+    )
 }
 
 #[cfg(test)]

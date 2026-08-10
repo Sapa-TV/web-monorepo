@@ -7,17 +7,16 @@ use crate::admin::service::AdminService;
 use crate::config::Config;
 use crate::db::inmemory_admin::InMemoryAdminRepository;
 use crate::db::inmemory_platform::InMemoryPlatformRepository;
+use crate::db::inmemory_platform_credential::InMemoryPlatformCredentialRepository;
 use crate::db::inmemory_queue::InMemoryQueueRepository;
 use crate::db::inmemory_rarity::InMemoryRarityRepository;
 use crate::db::inmemory_roulette_slots::InMemoryRouletteSlotRepository;
 use crate::db::inmemory_session::InMemorySessionRepository;
-use crate::db::inmemory_twitch_auth::InMemoryTwitchTokenRepository;
 use crate::db::inmemory_user::InMemoryUserRepository;
 use crate::error::RepositoryError;
 use crate::event::BroadcastEventPublisher;
-use crate::ingress::twitch_auth::TwitchTokenRepository;
 use crate::ingress::{EventIngress, spawn_logging_handler};
-use crate::platform::PlatformRepository;
+use crate::platform::{PlatformCredentialRepository, PlatformRepository};
 use crate::queue::repository::QueueRepository;
 use crate::queue::service::QueueService;
 use crate::random::StandartRandomProvider;
@@ -33,7 +32,7 @@ use crate::user::repository::UserRepository;
 use crate::user::service::UserService;
 
 #[non_exhaustive]
-pub struct UniAppState<Q, R, U, P, S, A, Se, T>
+pub struct UniAppState<Q, R, U, P, S, A, Se, C>
 where
     Q: QueueRepository,
     R: RarityRepository,
@@ -42,7 +41,7 @@ where
     S: RouletteSlotRepository,
     A: AdminRepository,
     Se: SessionRepository,
-    T: TwitchTokenRepository,
+    C: PlatformCredentialRepository,
 {
     pub slot_service: Arc<RouletteSlotService<Arc<S>>>,
     pub rarity_service: Arc<RarityService<Arc<R>>>,
@@ -54,10 +53,10 @@ where
     pub event_publisher: BroadcastEventPublisher,
     pub stream_status: Arc<StreamStatus>,
     pub ingress: Arc<EventIngress>,
-    pub admin_auth: Arc<AdminAuthService<T>>,
+    pub admin_auth: Arc<AdminAuthService<C>>,
 }
 
-impl<Q, R, U, P, S, A, Se, T> Clone for UniAppState<Q, R, U, P, S, A, Se, T>
+impl<Q, R, U, P, S, A, Se, C> Clone for UniAppState<Q, R, U, P, S, A, Se, C>
 where
     Q: QueueRepository,
     R: RarityRepository,
@@ -66,7 +65,7 @@ where
     S: RouletteSlotRepository,
     A: AdminRepository,
     Se: SessionRepository,
-    T: TwitchTokenRepository,
+    C: PlatformCredentialRepository,
 {
     fn clone(&self) -> Self {
         Self {
@@ -93,7 +92,7 @@ pub type AppState = UniAppState<
     InMemoryRouletteSlotRepository,
     InMemoryAdminRepository,
     InMemorySessionRepository,
-    InMemoryTwitchTokenRepository,
+    InMemoryPlatformCredentialRepository,
 >;
 
 pub type AppQueueService =
@@ -104,7 +103,7 @@ pub type AppSessionService = SessionService<InMemorySessionRepository>;
 pub struct AppStateBuilder {
     random: StandartRandomProvider,
     config: Arc<Config>,
-    token_repo: Arc<InMemoryTwitchTokenRepository>,
+    credentials_repo: Arc<InMemoryPlatformCredentialRepository>,
     seeded: bool,
 }
 
@@ -112,12 +111,12 @@ impl AppStateBuilder {
     pub fn new(
         random: StandartRandomProvider,
         config: &Arc<Config>,
-        token_repo: Arc<InMemoryTwitchTokenRepository>,
+        credentials_repo: Arc<InMemoryPlatformCredentialRepository>,
     ) -> Self {
         Self {
             random,
             config: Arc::clone(config),
-            token_repo,
+            credentials_repo,
             seeded: true,
         }
     }
@@ -170,7 +169,7 @@ impl AppStateBuilder {
         ));
         let admin_auth = Arc::new(AdminAuthService::new(
             self.config.twitch.clone(),
-            self.token_repo,
+            self.credentials_repo,
         ));
 
         Ok(AppState {

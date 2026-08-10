@@ -19,19 +19,19 @@ where
     config: Arc<TwitchConfig>,
     http: reqwest::Client,
     token: Mutex<Option<UserToken>>,
-    token_repo: Arc<R>,
+    credentials_repo: Arc<R>,
 }
 
 impl<R> TwitchAuthService<R>
 where
     R: PlatformCredentialRepository,
 {
-    pub fn new(config: Arc<TwitchConfig>, token_repo: Arc<R>) -> Self {
+    pub fn new(config: Arc<TwitchConfig>, credentials_repo: Arc<R>) -> Self {
         Self {
             config,
             http: reqwest::Client::new(),
             token: Mutex::new(None),
-            token_repo,
+            credentials_repo,
         }
     }
 
@@ -83,7 +83,7 @@ where
 
     async fn current_refresh_token(&self) -> Result<String, RepositoryError> {
         Ok(self
-            .token_repo
+            .credentials_repo
             .load_credential(PlatformId::TWITCH)
             .await?
             .filter(|s| !s.is_empty())
@@ -95,7 +95,7 @@ where
             return;
         };
         if let Err(e) = self
-            .token_repo
+            .credentials_repo
             .save_credential(PlatformId::TWITCH, refresh_token.secret())
             .await
         {

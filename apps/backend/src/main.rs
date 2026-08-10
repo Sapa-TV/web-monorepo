@@ -8,7 +8,7 @@ use std::time::Duration;
 use axum::http::{HeaderValue, Method, header};
 use backend::api::{self, ApiDoc};
 use backend::config::Config;
-use backend::db::inmemory_twitch_auth::InMemoryTwitchTokenRepository;
+use backend::db::inmemory_platform_credential::InMemoryPlatformCredentialRepository;
 use backend::ingress::PlatformService;
 use backend::ingress::twitch::TwitchPlatformService;
 use backend::random::StandartRandomProvider;
@@ -33,20 +33,20 @@ async fn main() {
         .init();
 
     let config = Arc::new(Config::load());
-    let token_repo = Arc::new(InMemoryTwitchTokenRepository::new());
+    let credentials_repo = Arc::new(InMemoryPlatformCredentialRepository::new());
     let state = AppStateBuilder::new(
         StandartRandomProvider::new(),
         &config,
-        Arc::clone(&token_repo),
+        Arc::clone(&credentials_repo),
     )
     .build()
     .await
     .expect("failed to build app state");
 
     if let Some(twitch) = &config.twitch {
-        let service = TwitchPlatformService::new(Arc::clone(twitch), Arc::clone(&token_repo));
+        let service = TwitchPlatformService::new(Arc::clone(twitch), Arc::clone(&credentials_repo));
         let sink = state.ingress.sink();
-        tracing::info!("starting {} ingress", service.kind().as_name());
+        tracing::info!("starting {} ingress", service.platform().as_name());
         tokio::spawn(async move {
             if let Err(e) = service.run(sink).await {
                 tracing::error!("twitch ingress stopped: {e}");

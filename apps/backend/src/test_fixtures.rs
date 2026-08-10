@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use crate::config::Config;
-use crate::db::inmemory_twitch_auth::InMemoryTwitchTokenRepository;
+use crate::db::inmemory_platform_credential::InMemoryPlatformCredentialRepository;
 use crate::random::StandartRandomProvider;
 use crate::state::{AppState, AppStateBuilder};
 
@@ -12,7 +12,7 @@ pub async fn test_state() -> AppState {
     AppStateBuilder::new(
         StandartRandomProvider,
         &config,
-        Arc::new(InMemoryTwitchTokenRepository::new()),
+        Arc::new(InMemoryPlatformCredentialRepository::new()),
     )
     .with_empty_repos()
     .build()
