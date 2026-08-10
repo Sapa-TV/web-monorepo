@@ -1,36 +1,19 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-#[non_exhaustive]
-pub enum PlatformKind {
-    Twitch,
-    YouTube,
-    VkVideoLive,
-}
-
-impl PlatformKind {
-    pub const fn as_name(self) -> &'static str {
-        match self {
-            Self::Twitch => "twitch",
-            Self::YouTube => "youtube",
-            Self::VkVideoLive => "vk_video_live",
-        }
-    }
-}
+use crate::platform::{Platform, PlatformId};
 
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub struct PlatformEvent {
-    pub platform: PlatformKind,
+    pub platform: Platform,
     pub sent_at: DateTime<Utc>,
     pub payload: PlatformEventPayload,
 }
 
 impl PlatformEvent {
     pub fn chat_message(
-        platform: PlatformKind,
+        platform: Platform,
         user_id: String,
         user_name: String,
         text: String,
@@ -74,28 +57,21 @@ mod tests {
     use super::*;
 
     #[test]
-    fn platform_kind_as_name() {
-        assert_eq!(PlatformKind::Twitch.as_name(), "twitch");
-        assert_eq!(PlatformKind::YouTube.as_name(), "youtube");
-        assert_eq!(PlatformKind::VkVideoLive.as_name(), "vk_video_live");
-    }
-
-    #[test]
-    fn platform_kind_serde() {
+    fn platform_serde() {
         assert_eq!(
-            serde_json::to_value(PlatformKind::Twitch).unwrap(),
-            serde_json::json!("twitch")
+            serde_json::to_value(Platform::from_id(PlatformId::TWITCH)).unwrap(),
+            serde_json::json!({"id": 1, "name": "twitch"})
         );
         assert_eq!(
-            serde_json::to_value(PlatformKind::VkVideoLive).unwrap(),
-            serde_json::json!("vk_video_live")
+            serde_json::to_value(Platform::from_id(PlatformId::VK_VIDEO_LIVE)).unwrap(),
+            serde_json::json!({"id": 3, "name": "vk_video_live"})
         );
     }
 
     #[test]
     fn chat_message_payload_type_name() {
         let event = PlatformEvent::chat_message(
-            PlatformKind::Twitch,
+            Platform::from_id(PlatformId::TWITCH),
             "1".to_string(),
             "viewer".to_string(),
             "hello".to_string(),
