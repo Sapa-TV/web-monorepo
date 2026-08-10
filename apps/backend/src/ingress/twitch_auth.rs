@@ -1,6 +1,4 @@
-use std::fs;
-use std::io::ErrorKind;
-use std::path::PathBuf;
+use std::future::Future;
 use std::sync::Arc;
 
 use tokio::sync::Mutex;
@@ -8,74 +6,39 @@ use twitch_api::helix::HelixClient;
 use twitch_oauth2::{ClientId, ClientSecret, RefreshToken, Scope, TwitchToken, UserToken};
 
 use crate::config::TwitchConfig;
+use crate::error::RepositoryError;
 use crate::error::ingress::PlatformError;
 
 const REQUIRED_SCOPES: &[Scope] = &[Scope::ChatRead, Scope::UserBot];
-const DEFAULT_REFRESH_TOKEN_PATH: &str = "twitch_refresh_token";
 
-#[derive(Debug)]
-#[non_exhaustive]
-pub struct TwitchRefreshTokenStore {
-    path: PathBuf,
-}
-
-impl Default for TwitchRefreshTokenStore {
-    fn default() -> Self {
-        Self::new(DEFAULT_REFRESH_TOKEN_PATH)
-    }
-}
-
-impl TwitchRefreshTokenStore {
-    pub fn new(path: impl Into<PathBuf>) -> Self {
-        Self { path: path.into() }
-    }
-
-    pub fn load(&self) -> Option<String> {
-        fs::read_to_string(&self.path)
-            .ok()
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty())
-    }
-
-    pub fn save(&self, refresh_token: &str) -> Result<(), PlatformError> {
-        fs::write(&self.path, refresh_token.trim()).map_err(|e| {
-            PlatformError::Auth(format!("failed to persist twitch refresh token: {e}"))
-        })
-    }
-
-    pub fn clear(&self) -> Result<(), PlatformError> {
-        match fs::remove_file(&self.path) {
-            Ok(()) => Ok(()),
-            Err(e) if e.kind() == ErrorKind::NotFound => Ok(()),
-            Err(e) => Err(PlatformError::Auth(format!(
-                "failed to clear twitch refresh token: {e}"
-            ))),
-        }
-    }
+pub trait TwitchTokenRepository: Send + Sync {
+    fn load(&self) -> impl Future<Output = Result<Option<String>, RepositoryError>> + Send;
+    fn save(&self, refresh_token: &str)
+    -> impl Future<Output = Result<(), RepositoryError>> + Send;
+    fn clear(&self) -> impl Future<Output = Result<(), RepositoryError>> + Send;
 }
 
 #[non_exhaustive]
-pub struct TwitchAuthService {
+pub struct TwitchAuthService<R>
+where
+    R: TwitchTokenRepository,
+{
     config: Arc<TwitchConfig>,
     http: reqwest::Client,
     token: Mutex<Option<UserToken>>,
-    refresh_token_store: TwitchRefreshTokenStore,
+    token_repo: Arc<R>,
 }
 
-impl TwitchAuthService {
-    pub fn new(config: Arc<TwitchConfig>) -> Self {
-        Self::with_refresh_token_store(config, TwitchRefreshTokenStore::default())
-    }
-
-    pub fn with_refresh_token_store(
-        config: Arc<TwitchConfig>,
-        refresh_token_store: TwitchRefreshTokenStore,
-    ) -> Self {
+impl<R> TwitchAuthService<R>
+where
+    R: TwitchTokenRepository,
+{
+    pub fn new(config: Arc<TwitchConfig>, token_repo: Arc<R>) -> Self {
         Self {
             config,
             http: reqwest::Client::new(),
             token: Mutex::new(None),
-            refresh_token_store,
+            token_repo,
         }
     }
 
@@ -94,7 +57,7 @@ impl TwitchAuthService {
                     .refresh_token(&self.http)
                     .await
                     .map_err(|e| PlatformError::Auth(e.to_string()))?;
-                self.persist_rotated(token);
+                self.persist_rotated(token).await;
                 let token = cached.as_ref().expect("token is set").clone();
                 self.log_scopes(&token);
                 Ok(token)
@@ -109,29 +72,36 @@ impl TwitchAuthService {
     }
 
     async fn refresh(&self) -> Result<UserToken, PlatformError> {
+        let refresh_token = self
+            .current_refresh_token()
+            .await
+            .map_err(|e| PlatformError::Auth(e.to_string()))?;
         let token = UserToken::from_refresh_token(
             &self.http,
-            RefreshToken::new(self.current_refresh_token()),
+            RefreshToken::new(refresh_token),
             ClientId::new(self.config.client_id.clone()),
             Some(ClientSecret::new(self.config.client_secret.clone())),
         )
         .await
         .map_err(|e| PlatformError::Auth(e.to_string()))?;
-        self.persist_rotated(&token);
+        self.persist_rotated(&token).await;
         Ok(token)
     }
 
-    fn current_refresh_token(&self) -> String {
-        self.refresh_token_store
+    async fn current_refresh_token(&self) -> Result<String, RepositoryError> {
+        Ok(self
+            .token_repo
             .load()
-            .unwrap_or_else(|| self.config.refresh_token.clone())
+            .await?
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| self.config.refresh_token.clone()))
     }
 
-    fn persist_rotated(&self, token: &UserToken) {
+    async fn persist_rotated(&self, token: &UserToken) {
         let Some(refresh_token) = token.refresh_token.as_ref() else {
             return;
         };
-        if let Err(e) = self.refresh_token_store.save(refresh_token.secret()) {
+        if let Err(e) = self.token_repo.save(refresh_token.secret()).await {
             tracing::warn!("{e}");
         }
     }
@@ -156,8 +126,9 @@ impl TwitchAuthService {
 
 #[cfg(test)]
 mod tests {
-    use std::env;
-    use std::time::{SystemTime, UNIX_EPOCH};
+    use std::sync::Arc;
+
+    use crate::db::inmemory_twitch_auth::InMemoryTwitchTokenRepository;
 
     use super::*;
 
@@ -167,39 +138,32 @@ mod tests {
         assert!(REQUIRED_SCOPES.contains(&Scope::UserBot));
     }
 
-    fn temp_store_path(suffix: &str) -> PathBuf {
-        let nanos = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("system clock is sane")
-            .as_nanos();
-        env::temp_dir().join(format!("twitch_refresh_token_{suffix}_{nanos}"))
-    }
-
-    #[test]
-    fn store_roundtrip() {
-        let path = temp_store_path("roundtrip");
-        let store = TwitchRefreshTokenStore::new(&path);
-        assert!(store.load().is_none());
-        store.save("refresh_token_1").unwrap();
-        assert_eq!(store.load().as_deref(), Some("refresh_token_1"));
-        drop(fs::remove_file(&path));
-    }
-
-    #[test]
-    fn store_prefers_file_over_config_empty() {
-        let path = temp_store_path("prefers_file");
-        let store = TwitchRefreshTokenStore::new(&path);
-        store.save("from_file").unwrap();
-        let config = Arc::new(TwitchConfig {
+    fn test_config() -> Arc<TwitchConfig> {
+        Arc::new(TwitchConfig {
             client_id: "id".to_string(),
             client_secret: "secret".to_string(),
-            refresh_token: String::new(),
+            refresh_token: "from_config".to_string(),
             broadcaster_id: "broadcaster".to_string(),
             redirect_uri: String::new(),
             csrf_ttl_secs: 600,
-        });
-        let service = TwitchAuthService::with_refresh_token_store(config, store);
-        assert_eq!(service.current_refresh_token(), "from_file");
-        drop(fs::remove_file(&path));
+        })
+    }
+
+    #[tokio::test]
+    async fn current_refresh_token_prefers_repo_over_config() {
+        let repo = Arc::new(InMemoryTwitchTokenRepository::new());
+        repo.save("from_repo").await.unwrap();
+        let service = TwitchAuthService::new(test_config(), repo);
+        assert_eq!(service.current_refresh_token().await.unwrap(), "from_repo");
+    }
+
+    #[tokio::test]
+    async fn current_refresh_token_falls_back_to_config_when_repo_empty() {
+        let repo = Arc::new(InMemoryTwitchTokenRepository::new());
+        let service = TwitchAuthService::new(test_config(), repo);
+        assert_eq!(
+            service.current_refresh_token().await.unwrap(),
+            "from_config"
+        );
     }
 }

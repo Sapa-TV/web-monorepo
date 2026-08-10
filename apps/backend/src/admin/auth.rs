@@ -7,7 +7,7 @@ use axum::http::StatusCode;
 use twitch_oauth2::{CsrfToken, Scope, TwitchToken, UserTokenBuilder};
 
 use crate::config::TwitchConfig;
-use crate::ingress::twitch_auth::TwitchRefreshTokenStore;
+use crate::ingress::twitch_auth::TwitchTokenRepository;
 
 const ADMIN_SCOPES: &[Scope] = &[Scope::ChatRead, Scope::UserBot, Scope::ChannelBot];
 
@@ -40,25 +40,24 @@ impl From<AdminAuthError> for StatusCode {
 }
 
 #[non_exhaustive]
-pub struct AdminAuthService {
+pub struct AdminAuthService<R>
+where
+    R: TwitchTokenRepository,
+{
     config: Option<Arc<TwitchConfig>>,
     pending_csrf: Mutex<BTreeMap<String, Instant>>,
-    refresh_token_store: TwitchRefreshTokenStore,
+    token_repo: Arc<R>,
 }
 
-impl AdminAuthService {
-    pub fn new(config: Option<Arc<TwitchConfig>>) -> Self {
-        Self::with_refresh_token_store(config, TwitchRefreshTokenStore::default())
-    }
-
-    pub fn with_refresh_token_store(
-        config: Option<Arc<TwitchConfig>>,
-        refresh_token_store: TwitchRefreshTokenStore,
-    ) -> Self {
+impl<R> AdminAuthService<R>
+where
+    R: TwitchTokenRepository,
+{
+    pub fn new(config: Option<Arc<TwitchConfig>>, token_repo: Arc<R>) -> Self {
         Self {
             config,
             pending_csrf: Mutex::new(BTreeMap::new()),
-            refresh_token_store,
+            token_repo,
         }
     }
 
@@ -98,8 +97,9 @@ impl AdminAuthService {
         let Some(refresh_token) = token.refresh_token.as_ref() else {
             return Err(AdminAuthError::Exchange);
         };
-        self.refresh_token_store
+        self.token_repo
             .save(refresh_token.secret())
+            .await
             .map_err(|_| AdminAuthError::Persist)?;
         Ok(exchanged_of(&token))
     }
@@ -140,13 +140,19 @@ impl AdminAuthService {
             .map_err(|_| AdminAuthError::Exchange)
     }
 
-    pub fn is_ingress_credentials_configured(&self) -> bool {
-        self.refresh_token_store.load().is_some()
+    pub async fn is_ingress_credentials_configured(&self) -> Result<bool, AdminAuthError> {
+        Ok(self
+            .token_repo
+            .load()
+            .await
+            .map_err(|_| AdminAuthError::Persist)?
+            .is_some())
     }
 
-    pub fn revoke_ingress_credentials(&self) -> Result<(), AdminAuthError> {
-        self.refresh_token_store
+    pub async fn revoke_ingress_credentials(&self) -> Result<(), AdminAuthError> {
+        self.token_repo
             .clear()
+            .await
             .map_err(|_| AdminAuthError::Persist)
     }
 
@@ -169,6 +175,8 @@ fn exchanged_of(token: &twitch_oauth2::UserToken) -> ExchangedToken {
 mod tests {
     use std::time::{Duration, Instant};
 
+    use crate::db::inmemory_twitch_auth::InMemoryTwitchTokenRepository;
+
     use super::*;
 
     fn test_config() -> Option<Arc<TwitchConfig>> {
@@ -182,9 +190,15 @@ mod tests {
         }))
     }
 
+    fn test_service(
+        config: Option<Arc<TwitchConfig>>,
+    ) -> AdminAuthService<InMemoryTwitchTokenRepository> {
+        AdminAuthService::new(config, Arc::new(InMemoryTwitchTokenRepository::new()))
+    }
+
     #[test]
     fn start_requires_twitch_config() {
-        let service = AdminAuthService::new(None);
+        let service = test_service(None);
         assert!(matches!(
             service.start(),
             Err(AdminAuthError::NotConfigured)
@@ -193,14 +207,14 @@ mod tests {
 
     #[test]
     fn start_returns_redirect_url() {
-        let service = AdminAuthService::new(test_config());
+        let service = test_service(test_config());
         let url = service.start().expect("start should succeed");
         assert!(url.starts_with("https://id.twitch.tv/oauth2/authorize"));
     }
 
     #[test]
     fn concurrent_starts_keep_own_csrf_tickets() {
-        let service = AdminAuthService::new(test_config());
+        let service = test_service(test_config());
         let first = service.start().expect("first start");
         let second = service.start().expect("second start");
         assert_ne!(first, second, "each start must mint its own ticket");
@@ -210,7 +224,7 @@ mod tests {
 
     #[test]
     fn completing_consumes_only_own_ticket() {
-        let service = AdminAuthService::new(test_config());
+        let service = test_service(test_config());
         service.start().expect("first start");
         service.start().expect("second start");
 
@@ -226,7 +240,7 @@ mod tests {
 
     #[tokio::test]
     async fn unknown_state_is_rejected() {
-        let service = AdminAuthService::new(test_config());
+        let service = test_service(test_config());
         service.start().expect("start");
         assert!(matches!(
             service.complete("code", "not-a-real-state").await,
@@ -236,7 +250,7 @@ mod tests {
 
     #[tokio::test]
     async fn expired_ticket_is_pruned_on_complete() {
-        let service = AdminAuthService::new(test_config());
+        let service = test_service(test_config());
         service
             .pending_csrf
             .lock()

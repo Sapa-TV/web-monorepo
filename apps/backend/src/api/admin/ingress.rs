@@ -23,10 +23,9 @@ pub struct IngressCredentialsResponse {
 )]
 pub async fn get_ingress_credentials(
     State(state): State<AppState>,
-) -> Json<IngressCredentialsResponse> {
-    Json(IngressCredentialsResponse {
-        configured: state.admin_auth.is_ingress_credentials_configured(),
-    })
+) -> Result<Json<IngressCredentialsResponse>, StatusCode> {
+    let configured = state.admin_auth.is_ingress_credentials_configured().await?;
+    Ok(Json(IngressCredentialsResponse { configured }))
 }
 
 #[utoipa::path(
@@ -41,7 +40,7 @@ pub async fn get_ingress_credentials(
 pub async fn revoke_ingress_credentials(
     State(state): State<AppState>,
 ) -> Result<StatusCode, StatusCode> {
-    state.admin_auth.revoke_ingress_credentials()?;
+    state.admin_auth.revoke_ingress_credentials().await?;
     Ok(StatusCode::NO_CONTENT)
 }
 

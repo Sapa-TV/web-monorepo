@@ -11,9 +11,11 @@ use crate::db::inmemory_queue::InMemoryQueueRepository;
 use crate::db::inmemory_rarity::InMemoryRarityRepository;
 use crate::db::inmemory_roulette_slots::InMemoryRouletteSlotRepository;
 use crate::db::inmemory_session::InMemorySessionRepository;
+use crate::db::inmemory_twitch_auth::InMemoryTwitchTokenRepository;
 use crate::db::inmemory_user::InMemoryUserRepository;
 use crate::error::RepositoryError;
 use crate::event::BroadcastEventPublisher;
+use crate::ingress::twitch_auth::TwitchTokenRepository;
 use crate::ingress::{EventIngress, spawn_logging_handler};
 use crate::platform::PlatformRepository;
 use crate::queue::repository::QueueRepository;
@@ -31,7 +33,7 @@ use crate::user::repository::UserRepository;
 use crate::user::service::UserService;
 
 #[non_exhaustive]
-pub struct UniAppState<Q, R, U, P, S, A, Se>
+pub struct UniAppState<Q, R, U, P, S, A, Se, T>
 where
     Q: QueueRepository,
     R: RarityRepository,
@@ -40,6 +42,7 @@ where
     S: RouletteSlotRepository,
     A: AdminRepository,
     Se: SessionRepository,
+    T: TwitchTokenRepository,
 {
     pub slot_service: Arc<RouletteSlotService<Arc<S>>>,
     pub rarity_service: Arc<RarityService<Arc<R>>>,
@@ -51,10 +54,10 @@ where
     pub event_publisher: BroadcastEventPublisher,
     pub stream_status: Arc<StreamStatus>,
     pub ingress: Arc<EventIngress>,
-    pub admin_auth: Arc<AdminAuthService>,
+    pub admin_auth: Arc<AdminAuthService<T>>,
 }
 
-impl<Q, R, U, P, S, A, Se> Clone for UniAppState<Q, R, U, P, S, A, Se>
+impl<Q, R, U, P, S, A, Se, T> Clone for UniAppState<Q, R, U, P, S, A, Se, T>
 where
     Q: QueueRepository,
     R: RarityRepository,
@@ -63,6 +66,7 @@ where
     S: RouletteSlotRepository,
     A: AdminRepository,
     Se: SessionRepository,
+    T: TwitchTokenRepository,
 {
     fn clone(&self) -> Self {
         Self {
@@ -89,6 +93,7 @@ pub type AppState = UniAppState<
     InMemoryRouletteSlotRepository,
     InMemoryAdminRepository,
     InMemorySessionRepository,
+    InMemoryTwitchTokenRepository,
 >;
 
 pub type AppQueueService =
@@ -99,14 +104,20 @@ pub type AppSessionService = SessionService<InMemorySessionRepository>;
 pub struct AppStateBuilder {
     random: StandartRandomProvider,
     config: Arc<Config>,
+    token_repo: Arc<InMemoryTwitchTokenRepository>,
     seeded: bool,
 }
 
 impl AppStateBuilder {
-    pub fn new(random: StandartRandomProvider, config: &Arc<Config>) -> Self {
+    pub fn new(
+        random: StandartRandomProvider,
+        config: &Arc<Config>,
+        token_repo: Arc<InMemoryTwitchTokenRepository>,
+    ) -> Self {
         Self {
             random,
             config: Arc::clone(config),
+            token_repo,
             seeded: true,
         }
     }
@@ -157,7 +168,10 @@ impl AppStateBuilder {
             session_repo,
             Duration::from_secs(self.config.session_ttl_secs),
         ));
-        let admin_auth = Arc::new(AdminAuthService::new(self.config.twitch.clone()));
+        let admin_auth = Arc::new(AdminAuthService::new(
+            self.config.twitch.clone(),
+            self.token_repo,
+        ));
 
         Ok(AppState {
             slot_service,

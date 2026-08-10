@@ -14,20 +14,30 @@ use crate::config::TwitchConfig;
 use crate::error::ingress::PlatformError;
 use crate::ingress::event::{PlatformEvent, PlatformKind};
 use crate::ingress::platform::{EventSink, PlatformService};
-use crate::ingress::twitch_auth::TwitchAuthService;
+use crate::ingress::twitch_auth::{TwitchAuthService, TwitchTokenRepository};
 
 const EVENTSUB_WS_URL: &str = "wss://eventsub.wss.twitch.tv/ws";
 const INITIAL_RECONNECT_DELAY: Duration = Duration::from_secs(1);
 const MAX_RECONNECT_DELAY: Duration = Duration::from_secs(60);
 
 #[non_exhaustive]
-pub struct TwitchPlatformService {
+pub struct TwitchPlatformService<R>
+where
+    R: TwitchTokenRepository,
+{
     config: Arc<TwitchConfig>,
+    auth: Arc<TwitchAuthService<R>>,
 }
 
-impl TwitchPlatformService {
-    pub fn new(config: Arc<TwitchConfig>) -> Self {
-        Self { config }
+impl<R> TwitchPlatformService<R>
+where
+    R: TwitchTokenRepository,
+{
+    pub fn new(config: Arc<TwitchConfig>, token_repo: Arc<R>) -> Self {
+        Self {
+            config: Arc::clone(&config),
+            auth: Arc::new(TwitchAuthService::new(config, token_repo)),
+        }
     }
 
     async fn consume_loop(
@@ -115,18 +125,20 @@ impl TwitchPlatformService {
     }
 }
 
-impl PlatformService for TwitchPlatformService {
+impl<R> PlatformService for TwitchPlatformService<R>
+where
+    R: TwitchTokenRepository,
+{
     fn kind(&self) -> PlatformKind {
         PlatformKind::Twitch
     }
 
     async fn run(&self, sink: EventSink) -> Result<(), PlatformError> {
-        let auth = TwitchAuthService::new(Arc::clone(&self.config));
-        let helix = auth.helix();
+        let helix = self.auth.helix();
 
         let mut delay = INITIAL_RECONNECT_DELAY;
         loop {
-            let token = auth.user_token().await?;
+            let token = self.auth.user_token().await?;
             match self.consume_loop(&helix, &token, sink.clone()).await {
                 Ok(()) => return Ok(()),
                 Err(e) => {

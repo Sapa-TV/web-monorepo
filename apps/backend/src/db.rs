@@ -4,4 +4,5 @@ pub mod inmemory_queue;
 pub mod inmemory_rarity;
 pub mod inmemory_roulette_slots;
 pub mod inmemory_session;
+pub mod inmemory_twitch_auth;
 pub mod inmemory_user;
