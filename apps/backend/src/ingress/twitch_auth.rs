@@ -1,4 +1,3 @@
-use std::future::Future;
 use std::sync::Arc;
 
 use tokio::sync::Mutex;
@@ -8,20 +7,14 @@ use twitch_oauth2::{ClientId, ClientSecret, RefreshToken, Scope, TwitchToken, Us
 use crate::config::TwitchConfig;
 use crate::error::RepositoryError;
 use crate::error::ingress::PlatformError;
+use crate::platform::{PlatformCredentialRepository, PlatformId};
 
 const REQUIRED_SCOPES: &[Scope] = &[Scope::ChatRead, Scope::UserBot];
-
-pub trait TwitchTokenRepository: Send + Sync {
-    fn load(&self) -> impl Future<Output = Result<Option<String>, RepositoryError>> + Send;
-    fn save(&self, refresh_token: &str)
-    -> impl Future<Output = Result<(), RepositoryError>> + Send;
-    fn clear(&self) -> impl Future<Output = Result<(), RepositoryError>> + Send;
-}
 
 #[non_exhaustive]
 pub struct TwitchAuthService<R>
 where
-    R: TwitchTokenRepository,
+    R: PlatformCredentialRepository,
 {
     config: Arc<TwitchConfig>,
     http: reqwest::Client,
@@ -31,7 +24,7 @@ where
 
 impl<R> TwitchAuthService<R>
 where
-    R: TwitchTokenRepository,
+    R: PlatformCredentialRepository,
 {
     pub fn new(config: Arc<TwitchConfig>, token_repo: Arc<R>) -> Self {
         Self {
@@ -91,7 +84,7 @@ where
     async fn current_refresh_token(&self) -> Result<String, RepositoryError> {
         Ok(self
             .token_repo
-            .load()
+            .load_credential(PlatformId::TWITCH)
             .await?
             .filter(|s| !s.is_empty())
             .unwrap_or_else(|| self.config.refresh_token.clone()))
@@ -101,7 +94,11 @@ where
         let Some(refresh_token) = token.refresh_token.as_ref() else {
             return;
         };
-        if let Err(e) = self.token_repo.save(refresh_token.secret()).await {
+        if let Err(e) = self
+            .token_repo
+            .save_credential(PlatformId::TWITCH, refresh_token.secret())
+            .await
+        {
             tracing::warn!("{e}");
         }
     }
@@ -128,7 +125,8 @@ where
 mod tests {
     use std::sync::Arc;
 
-    use crate::db::inmemory_twitch_auth::InMemoryTwitchTokenRepository;
+    use crate::db::inmemory_platform_credential::InMemoryPlatformCredentialRepository;
+    use crate::platform::PlatformId;
 
     use super::*;
 
@@ -151,15 +149,17 @@ mod tests {
 
     #[tokio::test]
     async fn current_refresh_token_prefers_repo_over_config() {
-        let repo = Arc::new(InMemoryTwitchTokenRepository::new());
-        repo.save("from_repo").await.unwrap();
+        let repo = Arc::new(InMemoryPlatformCredentialRepository::new());
+        repo.save_credential(PlatformId::TWITCH, "from_repo")
+            .await
+            .unwrap();
         let service = TwitchAuthService::new(test_config(), repo);
         assert_eq!(service.current_refresh_token().await.unwrap(), "from_repo");
     }
 
     #[tokio::test]
     async fn current_refresh_token_falls_back_to_config_when_repo_empty() {
-        let repo = Arc::new(InMemoryTwitchTokenRepository::new());
+        let repo = Arc::new(InMemoryPlatformCredentialRepository::new());
         let service = TwitchAuthService::new(test_config(), repo);
         assert_eq!(
             service.current_refresh_token().await.unwrap(),

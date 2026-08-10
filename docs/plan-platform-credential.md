@@ -28,9 +28,9 @@
 ## Решения
 
 - **Ключ репозитория кредов — `PlatformId`** (не text, не enum). Отдельная `PlatformEnum`-таблица не нужна — она уже существует как `Platform`. В sqlite: `platform_credentials(platform_id INTEGER NOT NULL UNIQUE REFERENCES platform(id), refresh_token TEXT NOT NULL)`.
-- **`PlatformKind` удаляется**. События несут `Platform`, сиды и маппинг id↔name — один источник истины в `platform.rs` (константы `PlatformId::TWITCH/YOUTUBE/VK_VIDEO_LIVE` + `PlatformId::name()`).
+- **`PlatformKind` удаляется**. События несут только `PlatformId`, сиды и маппинг id↔name — один источник истины в `platform.rs` (константы `PlatformId::TWITCH/YOUTUBE/VK_VIDEO_LIVE` + `PlatformId::name()`).
 - Текстовый формат в БД/событиях: имя платформы ("twitch") генерируется из `PlatformId::name()`, поэтому опечатки исключены на уровне API.
-- Формат JSON события меняется: `event.platform` из `"twitch"` станет `{"id":1,"name":"twitch"}` — осознанно, обновить тесты сериализации.
+- Формат JSON события меняется: `event.platform` из `"twitch"` станет числом `1` (transparent serde `PlatformId`); имя на проводе не передаётся — резолвится через `PlatformId::name()`.
 
 ## Шаги
 
@@ -56,11 +56,11 @@
 
   ```rust
   pub trait PlatformCredentialRepository: Send + Sync {
-      fn load_refresh_token(&self, platform: PlatformId)
+      fn load_credential(&self, platform: PlatformId)
           -> impl Future<Output = Result<Option<String>, RepositoryError>> + Send;
-      fn save_refresh_token(&self, platform: PlatformId, refresh_token: &str)
+      fn save_credential(&self, platform: PlatformId, credential: &str)
           -> impl Future<Output = Result<(), RepositoryError>> + Send;
-      fn clear_refresh_token(&self, platform: PlatformId)
+      fn clear_credential(&self, platform: PlatformId)
           -> impl Future<Output = Result<(), RepositoryError>> + Send;
   }
   ```
@@ -74,9 +74,9 @@
 ### 3. Новый `src/db/inmemory_platform_credential.rs`
 
 - `InMemoryPlatformCredentialRepository` на `std::sync::nonpoison::Mutex<HashMap<PlatformId, String>>`:
-  - `load_refresh_token(id) -> Ok(repo.get(id).cloned())`;
-  - `save_refresh_token(id, tok)` → `insert(id, tok.trim())`;
-  - `clear_refresh_token(id)` → `remove(id)`.
+  - `load_credential(id) -> Ok(repo.get(id).cloned())`;
+  - `save_credential(id, credential)` → `insert(id, credential.trim())`;
+  - `clear_credential(id)` → `remove(id)`.
 - `new()`, `Default`, `seeded(...)` по аналогии.
 - Тесты: roundtrip, clear, независимость ключей (twitch ≠ youtube).
 - `src/db.rs`: добавить `pub mod inmemory_platform_credential;` (модуль `inmemory_twitch_auth` пока остаётся — его удаление переносится в шаг 7).
@@ -84,34 +84,34 @@
 ### 4. `src/ingress/event.rs` — убрать `PlatformKind`
 
 - Удалить enum `PlatformKind` и его `as_name()`.
-- `PlatformEvent.platform: Platform`; `PlatformEvent::chat_message(platform: Platform, …)`.
+- `PlatformEvent.platform: PlatformId` (Copy, без клонов на хот-пате; имя доступно через `PlatformId::name()`); `PlatformEvent::chat_message(platform: PlatformId, …)`.
 - `PlatformEventPayload::ChatMessage` — без изменений.
-- Тесты: заменить `PlatformKind::*` на `Platform::from_id(PlatformId::TWITCH/etc)`; serde-тест проверяет `{"id":1,"name":"twitch"}`.
+- Тесты: заменить `PlatformKind::*` на `PlatformId::TWITCH/etc`; отдельный serde-тест платформы не нужен — реальный формат события проверяется в шаге 8.
 
 ### 5. Ингресс
 
 - `src/ingress/platform.rs`:
   - `PlatformService::kind(&self) -> PlatformKind` → `fn platform(&self) -> Platform`.
 - `src/ingress/twitch.rs`:
-  - `TwitchPlatformService<R: PlatformCredentialRepository>`; `platform()` → `Self::new` строит `Platform::from_id(PlatformId::TWITCH)` (поле или константа);
-  - `chat_event_from` / `consume_loop` принимают `Platform`;
+  - `TwitchPlatformService<R: PlatformCredentialRepository>`; поле `platform: PlatformId` (Copy), инициализируется `PlatformId::TWITCH` в `new()`;
+  - `chat_event_from` / `consume_loop` принимают `PlatformId` (без клонов); `PlatformService::platform()` → `Platform::from_id(self.platform)`;
   - `use crate::platform::{Platform, PlatformCredentialRepository, PlatformId}` вместо `PlatformKind`.
 - `src/ingress/twitch_auth.rs`:
   - импорт трейта сменить на `platform::PlatformCredentialRepository`;
   - `TwitchAuthService<R: PlatformCredentialRepository>`;
   - `new(config, token_repo: Arc<R>)`;
-  - `current_refresh_token()` → `token_repo.load_refresh_token(PlatformId::TWITCH)`;
-  - `persist_rotated()` → `token_repo.save_refresh_token(PlatformId::TWITCH, …)`;
+  - `current_refresh_token()` → `token_repo.load_credential(PlatformId::TWITCH)`;
+  - `persist_rotated()` → `token_repo.save_credential(PlatformId::TWITCH, …)`;
   - тесты — `InMemoryPlatformCredentialRepository`.
-- `src/ingress/service.rs`: тесты — `Platform::from_id(PlatformId::TWITCH/YOUTUBE)`, сравнения `received.platform == platform`.
+- `src/ingress/service.rs`: тесты — `PlatformId::TWITCH/YOUTUBE`, сравнения `received.platform == platform`.
 
 ### 6. Админ
 
 - `src/admin/auth.rs`:
   - `AdminAuthService<R: PlatformCredentialRepository>`, `new(config, token_repo)`;
-  - `complete()` → `token_repo.save_refresh_token(PlatformId::TWITCH, …)`;
-  - `is_ingress_credentials_configured()` → `token_repo.load_refresh_token(PlatformId::TWITCH)`;
-  - `revoke_ingress_credentials()` → `clear_refresh_token(PlatformId::TWITCH)`;
+  - `complete()` → `token_repo.save_credential(PlatformId::TWITCH, …)`;
+  - `is_ingress_credentials_configured()` → `token_repo.load_credential(PlatformId::TWITCH)`;
+  - `revoke_ingress_credentials()` → `clear_credential(PlatformId::TWITCH)`;
   - тесты — `InMemoryPlatformCredentialRepository`.
 
 ### 7. Вайринг
@@ -129,7 +129,7 @@
 
 ### 8. Проверка `src/api/ws.rs`
 
-- Тесты сериализации событий над WS: если сравнивают `event.platform` как строку — обновить на новую форму (`{"id":1,"name":"twitch"}`).
+- Тесты сериализации событий над WS: если сравнивают `event.platform` как строку — обновить на новую форму (число `PlatformId`, напр. `1`).
 
 ### 9. Верификация
 
@@ -147,4 +147,4 @@
 ## Открытые вопросы
 
 - Нужен ли `PlatformCredentialService` (тонкая обёртка над репо) — пока репо в одиночку покрывает потребности, сервис = лишняя прослойка (YAGNI). Добавить, если появится логика вроде «отдать статус по всем платформам».
-- Хранить ли в событиях полный `Platform` (id+name) или только `PlatformId` (легче на проводе, имя резолвится через `PlatformRepository::load_all`/событие). В плане — полный `Platform`.
+- Решено: в событиях хранится только `PlatformId` (Copy, лёгкий на проводе). Имя не передаётся — резолвится из константы `PlatformId::name()`. Полный `Platform` строится на месте (`Platform::from_id`) только там, где нужен (напр., `PlatformService::platform()`).

@@ -12,9 +12,10 @@ use twitch_oauth2::{TwitchToken, UserToken};
 
 use crate::config::TwitchConfig;
 use crate::error::ingress::PlatformError;
-use crate::ingress::event::{PlatformEvent, PlatformKind};
+use crate::ingress::event::PlatformEvent;
 use crate::ingress::platform::{EventSink, PlatformService};
-use crate::ingress::twitch_auth::{TwitchAuthService, TwitchTokenRepository};
+use crate::ingress::twitch_auth::TwitchAuthService;
+use crate::platform::{Platform, PlatformCredentialRepository, PlatformId};
 
 const EVENTSUB_WS_URL: &str = "wss://eventsub.wss.twitch.tv/ws";
 const INITIAL_RECONNECT_DELAY: Duration = Duration::from_secs(1);
@@ -23,20 +24,22 @@ const MAX_RECONNECT_DELAY: Duration = Duration::from_secs(60);
 #[non_exhaustive]
 pub struct TwitchPlatformService<R>
 where
-    R: TwitchTokenRepository,
+    R: PlatformCredentialRepository,
 {
     config: Arc<TwitchConfig>,
     auth: Arc<TwitchAuthService<R>>,
+    platform: PlatformId,
 }
 
 impl<R> TwitchPlatformService<R>
 where
-    R: TwitchTokenRepository,
+    R: PlatformCredentialRepository,
 {
     pub fn new(config: Arc<TwitchConfig>, token_repo: Arc<R>) -> Self {
         Self {
             config: Arc::clone(&config),
             auth: Arc::new(TwitchAuthService::new(config, token_repo)),
+            platform: PlatformId::TWITCH,
         }
     }
 
@@ -45,6 +48,7 @@ where
         helix: &HelixClient<'static, reqwest::Client>,
         token: &UserToken,
         sink: EventSink,
+        platform: PlatformId,
     ) -> Result<(), PlatformError> {
         let (mut ws, _) = connect_async(EVENTSUB_WS_URL)
             .await
@@ -99,6 +103,7 @@ where
                         && let Message::Notification(data) = payload.message
                     {
                         let event = chat_event_from(
+                            platform,
                             data.chatter_user_id.as_ref(),
                             data.chatter_user_name.as_ref(),
                             data.message.text.as_str(),
@@ -127,10 +132,10 @@ where
 
 impl<R> PlatformService for TwitchPlatformService<R>
 where
-    R: TwitchTokenRepository,
+    R: PlatformCredentialRepository,
 {
-    fn kind(&self) -> PlatformKind {
-        PlatformKind::Twitch
+    fn platform(&self) -> Platform {
+        Platform::from_id(self.platform)
     }
 
     async fn run(&self, sink: EventSink) -> Result<(), PlatformError> {
@@ -139,7 +144,10 @@ where
         let mut delay = INITIAL_RECONNECT_DELAY;
         loop {
             let token = self.auth.user_token().await?;
-            match self.consume_loop(&helix, &token, sink.clone()).await {
+            match self
+                .consume_loop(&helix, &token, sink.clone(), self.platform)
+                .await
+            {
                 Ok(()) => return Ok(()),
                 Err(e) => {
                     tracing::warn!("twitch eventsub stopped: {e}; reconnecting in {delay:?}");
@@ -151,13 +159,13 @@ where
     }
 }
 
-fn chat_event_from(user_id: &str, user_name: &str, text: &str) -> PlatformEvent {
-    PlatformEvent::chat_message(
-        PlatformKind::Twitch,
-        user_id.to_owned(),
-        user_name.to_owned(),
-        text.to_owned(),
-    )
+fn chat_event_from(
+    platform: PlatformId,
+    user_id: &str,
+    user_name: &str,
+    text: &str,
+) -> PlatformEvent {
+    PlatformEvent::chat_message(platform, user_id.to_owned(), user_name.to_owned(), text.to_owned())
 }
 
 #[cfg(test)]
@@ -168,8 +176,8 @@ mod tests {
 
     #[test]
     fn maps_chat_message_fields() {
-        let event = chat_event_from("4145994", "viewer32", "Hi chat");
-        assert_eq!(event.platform, PlatformKind::Twitch);
+        let event = chat_event_from(PlatformId::TWITCH, "4145994", "viewer32", "Hi chat");
+        assert_eq!(event.platform, PlatformId::TWITCH);
         match &event.payload {
             PlatformEventPayload::ChatMessage(msg) => {
                 assert_eq!(msg.user_id, "4145994");

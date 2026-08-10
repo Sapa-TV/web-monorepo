@@ -1,19 +1,19 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::platform::{Platform, PlatformId};
+use crate::platform::PlatformId;
 
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub struct PlatformEvent {
-    pub platform: Platform,
+    pub platform: PlatformId,
     pub sent_at: DateTime<Utc>,
     pub payload: PlatformEventPayload,
 }
 
 impl PlatformEvent {
     pub fn chat_message(
-        platform: Platform,
+        platform: PlatformId,
         user_id: String,
         user_name: String,
         text: String,
@@ -57,21 +57,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn platform_serde() {
-        assert_eq!(
-            serde_json::to_value(Platform::from_id(PlatformId::TWITCH)).unwrap(),
-            serde_json::json!({"id": 1, "name": "twitch"})
-        );
-        assert_eq!(
-            serde_json::to_value(Platform::from_id(PlatformId::VK_VIDEO_LIVE)).unwrap(),
-            serde_json::json!({"id": 3, "name": "vk_video_live"})
-        );
-    }
-
-    #[test]
     fn chat_message_payload_type_name() {
         let event = PlatformEvent::chat_message(
-            Platform::from_id(PlatformId::TWITCH),
+            PlatformId::TWITCH,
             "1".to_string(),
             "viewer".to_string(),
             "hello".to_string(),

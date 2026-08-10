@@ -86,14 +86,16 @@ pub fn spawn_logging_handler(rx: broadcast::Receiver<Arc<PlatformEvent>>) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ingress::event::{PlatformEventPayload, PlatformKind};
+    use crate::ingress::event::PlatformEventPayload;
+    use crate::platform::PlatformId;
 
     #[tokio::test]
     async fn publish_delivers_to_subscriber() {
         let ingress = EventIngress::new();
         let mut rx = ingress.subscribe();
+        let platform = PlatformId::TWITCH;
         let event = PlatformEvent::chat_message(
-            PlatformKind::Twitch,
+            platform,
             "1".to_string(),
             "viewer".to_string(),
             "hello".to_string(),
@@ -102,7 +104,7 @@ mod tests {
         ingress.publish(event.clone()).await.unwrap();
 
         let received = rx.recv().await.unwrap();
-        assert_eq!(received.platform, PlatformKind::Twitch);
+        assert_eq!(received.platform, platform);
         match &received.payload {
             PlatformEventPayload::ChatMessage(msg) => assert_eq!(msg.text, "hello"),
         }
@@ -112,7 +114,7 @@ mod tests {
     async fn publish_without_subscribers_is_ok() {
         let ingress = EventIngress::new();
         let event = PlatformEvent::chat_message(
-            PlatformKind::YouTube,
+            PlatformId::YOUTUBE,
             "1".to_string(),
             "viewer".to_string(),
             "hello".to_string(),
