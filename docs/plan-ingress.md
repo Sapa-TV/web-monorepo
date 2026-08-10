@@ -171,3 +171,12 @@ pub struct TwitchConfig {
 - WS-библиотека для EventSub-коннекта (tokio-tungstenite vs twitch_eventsub) — зависит от уже проверенного теста.
 - Нужен ли дедуп по `message_id` сейчас или позже.
 - Форма будущих вариантов `PlatformEventPayload` (`Subscription`, `Follow`, `ChannelPointsReward`) — их DTO пока не проектируем, только модель-скелет.
+
+---
+
+## Не выполнено (2026-08-10)
+
+- **Дедуп событий по `message_id`** — из «Открытых вопросов» плана, не реализован (в `ingress/twitch.rs` `message_id` не сохраняется и не проверяется). Решить: нужен ли сейчас (риск дублей при reconnect/переподписке EventSub) или отложить.
+- **Будущие варианты `PlatformEventPayload`** (`Subscription`, `Follow`, `ChannelPointsReward` и т.п.) — осознанно отложены, не начаты.
+
+> Примечание: после реализации плана появился платформенный OAuth-слой (`TwitchAuthService`, admin-фло твича, файловый стор refresh_token) — текущее состояние и план рефакторинга в `docs/plan-platform-credential.md`.
