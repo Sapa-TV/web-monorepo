@@ -1,5 +1,6 @@
 pub mod inmemory_admin;
 pub mod inmemory_platform;
+pub mod inmemory_platform_credential;
 pub mod inmemory_queue;
 pub mod inmemory_rarity;
 pub mod inmemory_roulette_slots;

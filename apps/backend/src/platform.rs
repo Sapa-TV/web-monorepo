@@ -6,7 +6,7 @@ use utoipa::ToSchema;
 
 use crate::error::RepositoryError;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, ToSchema)]
 #[serde(transparent)]
 #[non_exhaustive]
 pub struct PlatformId(u32);

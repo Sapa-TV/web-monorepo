@@ -79,8 +79,7 @@
   - `clear_refresh_token(id)` → `remove(id)`.
 - `new()`, `Default`, `seeded(...)` по аналогии.
 - Тесты: roundtrip, clear, независимость ключей (twitch ≠ youtube).
-- `src/db.rs`: добавить `pub mod inmemory_platform_credential;`, удалить `pub mod inmemory_twitch_auth;`.
-- Удалить файл `src/db/inmemory_twitch_auth.rs`.
+- `src/db.rs`: добавить `pub mod inmemory_platform_credential;` (модуль `inmemory_twitch_auth` пока остаётся — его удаление переносится в шаг 7).
 
 ### 4. `src/ingress/event.rs` — убрать `PlatformKind`
 
@@ -125,6 +124,7 @@
   - `token_repo = Arc::new(InMemoryPlatformCredentialRepository::new())`, передать в builder и в `TwitchPlatformService::new(twitch.clone(), Arc::clone(&token_repo))`;
   - лог: `service.platform().as_name()`.
 - `src/test_fixtures.rs`: `Arc::new(InMemoryPlatformCredentialRepository::new())`.
+- После замены всех использований удалить старый модуль: файл `src/db/inmemory_twitch_auth.rs` и `pub mod inmemory_twitch_auth;` из `src/db.rs`.
 - Проверить `bas src/api/*` — `State<AppState>` ссылает тип через alias, менять не должно понадобиться (кроме проверки `api/ws.rs`).
 
 ### 8. Проверка `src/api/ws.rs`
