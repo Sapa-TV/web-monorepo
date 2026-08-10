@@ -3,8 +3,6 @@ use std::sync::nonpoison::Mutex;
 use crate::error::RepositoryError;
 use crate::platform::{Platform, PlatformId, PlatformRepository};
 
-const SEEDED: &[(u32, &str)] = &[(1, "twitch"), (2, "youtube"), (3, "vk_video_live")];
-
 #[non_exhaustive]
 pub struct InMemoryPlatformRepository {
     platforms: Mutex<Vec<Platform>>,
@@ -12,12 +10,13 @@ pub struct InMemoryPlatformRepository {
 
 impl InMemoryPlatformRepository {
     pub fn new_seeded() -> Self {
-        let platforms = SEEDED
-            .iter()
-            .map(|&(id, name)| Platform::new(PlatformId::new(id), name))
-            .collect();
+        let platforms = [
+            Platform::from_id(PlatformId::TWITCH),
+            Platform::from_id(PlatformId::YOUTUBE),
+            Platform::from_id(PlatformId::VK_VIDEO_LIVE),
+        ];
         Self {
-            platforms: Mutex::new(platforms),
+            platforms: Mutex::new(platforms.to_vec()),
         }
     }
 }
