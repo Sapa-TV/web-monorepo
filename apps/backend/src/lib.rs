@@ -15,6 +15,7 @@ pub mod platform;
 pub mod queue;
 pub mod random;
 pub mod roulette;
+pub mod session;
 pub mod state;
 pub mod stream;
 #[cfg(test)]

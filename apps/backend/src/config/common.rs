@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use ::config::{Environment, File};
 use serde::Deserialize;
 
@@ -9,12 +11,17 @@ use crate::config::twitch::TwitchConfig;
 pub struct Config {
     pub roulette_timeout_secs: u64,
     pub retention_secs: u64,
+    pub queue_cleanup_interval_secs: u64,
+    pub sessions_cleanup_interval_secs: u64,
     pub queue_default_limit: usize,
     pub port: u16,
     pub access_key: String,
     #[serde(deserialize_with = "deserialize_cors_origins")]
     pub cors_origins: Option<Vec<String>>,
-    pub twitch: Option<TwitchConfig>,
+    pub twitch: Option<Arc<TwitchConfig>>,
+    pub admin_twitch_id: Option<String>,
+    pub session_ttl_secs: u64,
+    pub cookie_secure: bool,
 }
 
 impl Default for Config {
@@ -22,11 +29,16 @@ impl Default for Config {
         Self {
             roulette_timeout_secs: 10,
             retention_secs: 24 * 60 * 60,
+            queue_cleanup_interval_secs: 60 * 60,
+            sessions_cleanup_interval_secs: 60 * 60,
             queue_default_limit: 20,
             port: 3000,
             access_key: String::new(),
             cors_origins: None,
             twitch: None,
+            admin_twitch_id: None,
+            session_ttl_secs: 24 * 60 * 60,
+            cookie_secure: false,
         }
     }
 }
@@ -89,11 +101,16 @@ impl Config {
         Self {
             roulette_timeout_secs: 0,
             retention_secs: 24 * 60 * 60,
+            queue_cleanup_interval_secs: 60 * 60,
+            sessions_cleanup_interval_secs: 60 * 60,
             queue_default_limit: 20,
             port: 3000,
             access_key: "test-key".to_string(),
             cors_origins: None,
             twitch: None,
+            admin_twitch_id: None,
+            session_ttl_secs: 24 * 60 * 60,
+            cookie_secure: false,
         }
     }
 }

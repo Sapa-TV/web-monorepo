@@ -23,8 +23,6 @@ pub enum SpinEvent {
 }
 
 pub trait SpinEventPublisher: Send + Sync {
-    fn publish_spin(
-        &self,
-        event: SpinEvent,
-    ) -> impl Future<Output = Result<(), EventError>> + Send;
+    fn publish_spin(&self, event: SpinEvent)
+    -> impl Future<Output = Result<(), EventError>> + Send;
 }

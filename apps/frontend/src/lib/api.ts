@@ -24,5 +24,5 @@ export interface QueueStats {
 export function apiFetch(path: string, init: RequestInit = {}, pak = "") {
 	const headers = new Headers(init.headers);
 	if (pak) headers.set("Authorization", `Bearer ${pak}`);
-	return fetch(`${API_BASE}${path}`, { ...init, headers });
+	return fetch(`${API_BASE}${path}`, { ...init, headers, credentials: "include" });
 }

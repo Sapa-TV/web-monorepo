@@ -5,15 +5,21 @@ pub mod auth;
 pub mod queue;
 pub mod rarities;
 pub mod roulette_slots;
+pub mod session;
 pub mod stream;
 pub mod users;
 pub mod ws;
 
+use axum::middleware::from_fn_with_state;
 use axum::routing::get;
-use utoipa::openapi::OpenApi as OpenApiSchema;
 use utoipa::Modify;
 use utoipa::OpenApi;
+use utoipa::openapi::OpenApi as OpenApiSchema;
 
+use crate::api::auth::require_admin;
+use crate::api::auth::require_auth;
+use crate::api::auth::require_root;
+use crate::api::auth::require_session;
 use crate::state::AppState;
 
 struct MergeSubdocs;
@@ -26,6 +32,9 @@ impl Modify for MergeSubdocs {
         openapi.merge(queue::QueueApiDoc::openapi());
         openapi.merge(stream::StreamApiDoc::openapi());
         openapi.merge(admin::twitch::AdminTwitchApiDoc::openapi());
+        openapi.merge(admin::ingress::AdminIngressApiDoc::openapi());
+        openapi.merge(admin::AdminApiDoc::openapi());
+        openapi.merge(session::SessionApiDoc::openapi());
     }
 }
 
@@ -42,6 +51,7 @@ impl Modify for MergeSubdocs {
         (name = "users", description = "User management"),
         (name = "queue", description = "Spin queue"),
         (name = "stream", description = "Stream status"),
+        (name = "auth", description = "Sessions and login"),
         (name = "admin", description = "Administrative endpoints")
     ),
     modifiers(&MergeSubdocs)
@@ -55,6 +65,7 @@ pub fn public_router() -> axum::Router<AppState> {
         .route("/version", get(version))
         .merge(ws::public_router())
         .merge(stream::public_router())
+        .merge(session::public_router())
 }
 
 async fn health() -> &'static str {
@@ -75,18 +86,43 @@ pub fn protected_router() -> axum::Router<AppState> {
         .merge(users::protected_router())
         .merge(queue::protected_router())
         .merge(stream::protected_router())
-        .merge(admin::protected_router())
+}
+
+pub fn session_router() -> axum::Router<AppState> {
+    axum::Router::new()
+        .merge(session::session_router())
+        .merge(admin::session_router())
+}
+
+pub fn root_router() -> axum::Router<AppState> {
+    admin::root_router()
 }
 
 #[cfg(test)]
 pub fn router(state: AppState) -> axum::Router {
-    public_router().merge(protected_router()).with_state(state)
+    public_router()
+        .merge(protected_router())
+        .merge(session_router())
+        .merge(root_router())
+        .with_state(state)
 }
 
-pub fn router_with_auth(
-    state: AppState,
-    apply_auth: impl FnOnce(axum::Router<AppState>) -> axum::Router<AppState>,
-) -> axum::Router {
-    let protected = apply_auth(protected_router());
-    public_router().merge(protected).with_state(state)
+pub fn router_with_auth(state: AppState) -> axum::Router {
+    let key_layer = from_fn_with_state(state.clone(), require_auth);
+    let session_layer = from_fn_with_state(state.clone(), require_session);
+    let admin_layer = from_fn_with_state(state.clone(), require_admin);
+    let root_layer = from_fn_with_state(state.clone(), require_root);
+
+    let key_protected = protected_router().route_layer(key_layer);
+    let root_protected = root_router().route_layer(root_layer);
+    let admin_protected = admin::session_router().route_layer(admin_layer);
+    let session_protected = session::session_router()
+        .merge(admin_protected)
+        .merge(root_protected)
+        .route_layer(session_layer);
+
+    public_router()
+        .merge(key_protected)
+        .merge(session_protected)
+        .with_state(state)
 }

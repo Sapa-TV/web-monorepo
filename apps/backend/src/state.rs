@@ -2,11 +2,15 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use crate::admin::auth::AdminAuthService;
+use crate::admin::repository::AdminRepository;
+use crate::admin::service::AdminService;
 use crate::config::Config;
+use crate::db::inmemory_admin::InMemoryAdminRepository;
 use crate::db::inmemory_platform::InMemoryPlatformRepository;
 use crate::db::inmemory_queue::InMemoryQueueRepository;
 use crate::db::inmemory_rarity::InMemoryRarityRepository;
 use crate::db::inmemory_roulette_slots::InMemoryRouletteSlotRepository;
+use crate::db::inmemory_session::InMemorySessionRepository;
 use crate::db::inmemory_user::InMemoryUserRepository;
 use crate::error::RepositoryError;
 use crate::event::BroadcastEventPublisher;
@@ -20,45 +24,55 @@ use crate::roulette::rarity::RarityRepository;
 use crate::roulette::rarity_service::RarityService;
 use crate::roulette::repository::RouletteSlotRepository;
 use crate::roulette::slot_service::RouletteSlotService;
+use crate::session::repository::SessionRepository;
+use crate::session::service::SessionService;
 use crate::stream::StreamStatus;
 use crate::user::repository::UserRepository;
 use crate::user::service::UserService;
 
 #[non_exhaustive]
-pub struct UniAppState<Q, R, U, P, S>
+pub struct UniAppState<Q, R, U, P, S, A, Se>
 where
     Q: QueueRepository,
     R: RarityRepository,
     U: UserRepository,
     P: PlatformRepository,
     S: RouletteSlotRepository,
+    A: AdminRepository,
+    Se: SessionRepository,
 {
     pub slot_service: Arc<RouletteSlotService<Arc<S>>>,
     pub rarity_service: Arc<RarityService<Arc<R>>>,
     pub user_service: Arc<UserService<U, P>>,
-    pub queue_service: QueueService<Q, R, S>,
-    pub config: Config,
+    pub admin_service: Arc<AdminService<A>>,
+    pub session_service: Arc<SessionService<Se>>,
+    pub queue_service: Arc<QueueService<Q, R, S>>,
+    pub config: Arc<Config>,
     pub event_publisher: BroadcastEventPublisher,
     pub stream_status: Arc<StreamStatus>,
     pub ingress: Arc<EventIngress>,
     pub admin_auth: Arc<AdminAuthService>,
 }
 
-impl<Q, R, U, P, S> Clone for UniAppState<Q, R, U, P, S>
+impl<Q, R, U, P, S, A, Se> Clone for UniAppState<Q, R, U, P, S, A, Se>
 where
     Q: QueueRepository,
     R: RarityRepository,
     U: UserRepository,
     P: PlatformRepository,
     S: RouletteSlotRepository,
+    A: AdminRepository,
+    Se: SessionRepository,
 {
     fn clone(&self) -> Self {
         Self {
             slot_service: Arc::clone(&self.slot_service),
             rarity_service: Arc::clone(&self.rarity_service),
             user_service: Arc::clone(&self.user_service),
-            queue_service: self.queue_service.clone(),
-            config: self.config.clone(),
+            admin_service: Arc::clone(&self.admin_service),
+            session_service: Arc::clone(&self.session_service),
+            queue_service: Arc::clone(&self.queue_service),
+            config: Arc::clone(&self.config),
             event_publisher: self.event_publisher.clone(),
             stream_status: Arc::clone(&self.stream_status),
             ingress: Arc::clone(&self.ingress),
@@ -73,19 +87,26 @@ pub type AppState = UniAppState<
     InMemoryUserRepository,
     InMemoryPlatformRepository,
     InMemoryRouletteSlotRepository,
+    InMemoryAdminRepository,
+    InMemorySessionRepository,
 >;
+
+pub type AppQueueService =
+    QueueService<InMemoryQueueRepository, InMemoryRarityRepository, InMemoryRouletteSlotRepository>;
+
+pub type AppSessionService = SessionService<InMemorySessionRepository>;
 
 pub struct AppStateBuilder {
     random: StandartRandomProvider,
-    config: Config,
+    config: Arc<Config>,
     seeded: bool,
 }
 
 impl AppStateBuilder {
-    pub fn new(random: StandartRandomProvider, config: &Config) -> Self {
+    pub fn new(random: StandartRandomProvider, config: &Arc<Config>) -> Self {
         Self {
             random,
-            config: config.clone(),
+            config: Arc::clone(config),
             seeded: true,
         }
     }
@@ -110,6 +131,8 @@ impl AppStateBuilder {
         let user_repo = Arc::new(InMemoryUserRepository::new());
         let platform_repo = Arc::new(InMemoryPlatformRepository::new_seeded());
         let queue_repo = Arc::new(InMemoryQueueRepository::new());
+        let admin_repo = Arc::new(InMemoryAdminRepository::new());
+        let session_repo = Arc::new(InMemorySessionRepository::new());
         let event_publisher = BroadcastEventPublisher::new();
         let ingress = Arc::new(EventIngress::new());
         spawn_logging_handler(ingress.subscribe());
@@ -117,21 +140,31 @@ impl AppStateBuilder {
         let slot_service = Arc::new(RouletteSlotService::build(Arc::clone(&slot_repo)).await?);
         let rarity_service = Arc::new(RarityService::build(Arc::clone(&rarity_repo)).await?);
         let roulette = RouletteService::new(Arc::clone(&slot_service), self.random);
-        let queue_service = QueueService::new(
+        let queue_service = Arc::new(QueueService::new(
             Arc::clone(&queue_repo),
             Arc::clone(&rarity_service),
             roulette,
             event_publisher.clone(),
             Duration::from_secs(self.config.roulette_timeout_secs),
             Duration::from_secs(self.config.retention_secs),
-        );
+        ));
         let user_service = Arc::new(UserService::new(user_repo, platform_repo));
+        let admin_service = Arc::new(AdminService::new(admin_repo));
+        if let Some(admin_id) = self.config.admin_twitch_id.as_deref() {
+            admin_service.seed(admin_id).await?;
+        }
+        let session_service = Arc::new(SessionService::new(
+            session_repo,
+            Duration::from_secs(self.config.session_ttl_secs),
+        ));
         let admin_auth = Arc::new(AdminAuthService::new(self.config.twitch.clone()));
 
         Ok(AppState {
             slot_service,
             rarity_service,
             user_service,
+            admin_service,
+            session_service,
             queue_service,
             config: self.config,
             event_publisher,

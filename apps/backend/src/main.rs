@@ -2,16 +2,16 @@
 #![deny(clippy::new_ret_no_self)]
 
 use std::future::pending;
+use std::sync::Arc;
+use std::time::Duration;
 
 use axum::http::{HeaderValue, Method, header};
-use axum::middleware::from_fn_with_state;
 use backend::api::{self, ApiDoc};
-use backend::api::auth::require_auth;
 use backend::config::Config;
 use backend::ingress::PlatformService;
 use backend::ingress::twitch::TwitchPlatformService;
 use backend::random::StandartRandomProvider;
-use backend::state::{AppState, AppStateBuilder};
+use backend::state::{AppQueueService, AppSessionService, AppState, AppStateBuilder};
 use tokio::net::TcpListener;
 use tokio::signal::ctrl_c;
 use tokio::time;
@@ -31,7 +31,7 @@ async fn main() {
         )
         .init();
 
-    let config = Config::load();
+    let config = Arc::new(Config::load());
     let state = AppStateBuilder::new(StandartRandomProvider::new(), &config)
         .build()
         .await
@@ -58,24 +58,34 @@ async fn main() {
         None => CorsLayer::permissive(),
     };
 
-    let app = api::router_with_auth(state.clone(), |router| {
-        router.route_layer(from_fn_with_state(state.clone(), require_auth))
-    })
-    .layer(cors)
-    .layer(TraceLayer::new_for_http())
-    .merge(SwaggerUi::new("/docs").url("/api-doc/openapi.json", ApiDoc::openapi()))
-    .merge(Redoc::with_url("/redoc", ApiDoc::openapi()));
+    let app = api::router_with_auth(state.clone())
+        .layer(cors)
+        .layer(TraceLayer::new_for_http())
+        .merge(SwaggerUi::new("/docs").url("/api-doc/openapi.json", ApiDoc::openapi()))
+        .merge(Redoc::with_url("/redoc", ApiDoc::openapi()));
 
     let addr = format!("0.0.0.0:{}", config.port);
     let listener = TcpListener::bind(&addr).await.expect("failed to bind");
     info!("listening on http://{}", addr);
 
-    tokio::spawn(timeout_task(state));
+    start_background_tasks(&state);
 
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await
         .expect("server failed");
+}
+
+fn start_background_tasks(state: &AppState) {
+    tokio::spawn(queue_timeout_task(Arc::clone(&state.queue_service)));
+    tokio::spawn(queue_purge_task(
+        Arc::clone(&state.queue_service),
+        Duration::from_secs(state.config.queue_cleanup_interval_secs),
+    ));
+    tokio::spawn(session_prune_task(
+        Arc::clone(&state.session_service),
+        Duration::from_secs(state.config.sessions_cleanup_interval_secs),
+    ));
 }
 
 async fn shutdown_signal() {
@@ -102,16 +112,33 @@ async fn shutdown_signal() {
     info!("shutdown signal received, draining connections");
 }
 
-async fn timeout_task(state: AppState) {
-    let timeout = state.queue_service.timeout();
+async fn queue_timeout_task(queue_service: Arc<AppQueueService>) {
+    let timeout = queue_service.timeout();
     let mut interval = time::interval(timeout);
     loop {
         interval.tick().await;
-        if let Err(e) = state.queue_service.mark_timed_out().await {
+        if let Err(e) = queue_service.mark_timed_out().await {
             tracing::error!("mark_timed_out failed: {e}");
         }
-        if let Err(e) = state.queue_service.purge_expired().await {
-            tracing::error!("purge_expired failed: {e}");
+    }
+}
+
+async fn queue_purge_task(queue_service: Arc<AppQueueService>, interval_secs: Duration) {
+    let mut interval = time::interval(interval_secs);
+    loop {
+        interval.tick().await;
+        if let Err(e) = queue_service.purge_expired().await {
+            tracing::error!("queue purge_expired failed: {e}");
+        }
+    }
+}
+
+async fn session_prune_task(session_service: Arc<AppSessionService>, interval_secs: Duration) {
+    let mut interval = time::interval(interval_secs);
+    loop {
+        interval.tick().await;
+        if let Err(e) = session_service.prune_expired().await {
+            tracing::error!("session prune_expired failed: {e}");
         }
     }
 }

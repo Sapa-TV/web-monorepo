@@ -1,3 +1,5 @@
 roulette_timeout_secs = 10
 retention_secs = 86400
+queue_cleanup_interval_secs = 3600
+sessions_cleanup_interval_secs = 3600
 queue_default_limit = 20

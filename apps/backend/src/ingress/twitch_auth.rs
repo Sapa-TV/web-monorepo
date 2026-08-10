@@ -1,5 +1,7 @@
 use std::fs;
+use std::io::ErrorKind;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use tokio::sync::Mutex;
 use twitch_api::helix::HelixClient;
@@ -40,23 +42,33 @@ impl TwitchRefreshTokenStore {
             PlatformError::Auth(format!("failed to persist twitch refresh token: {e}"))
         })
     }
+
+    pub fn clear(&self) -> Result<(), PlatformError> {
+        match fs::remove_file(&self.path) {
+            Ok(()) => Ok(()),
+            Err(e) if e.kind() == ErrorKind::NotFound => Ok(()),
+            Err(e) => Err(PlatformError::Auth(format!(
+                "failed to clear twitch refresh token: {e}"
+            ))),
+        }
+    }
 }
 
 #[non_exhaustive]
 pub struct TwitchAuthService {
-    config: TwitchConfig,
+    config: Arc<TwitchConfig>,
     http: reqwest::Client,
     token: Mutex<Option<UserToken>>,
     refresh_token_store: TwitchRefreshTokenStore,
 }
 
 impl TwitchAuthService {
-    pub fn new(config: TwitchConfig) -> Self {
+    pub fn new(config: Arc<TwitchConfig>) -> Self {
         Self::with_refresh_token_store(config, TwitchRefreshTokenStore::default())
     }
 
     pub fn with_refresh_token_store(
-        config: TwitchConfig,
+        config: Arc<TwitchConfig>,
         refresh_token_store: TwitchRefreshTokenStore,
     ) -> Self {
         Self {
@@ -178,14 +190,14 @@ mod tests {
         let path = temp_store_path("prefers_file");
         let store = TwitchRefreshTokenStore::new(&path);
         store.save("from_file").unwrap();
-        let config = TwitchConfig {
+        let config = Arc::new(TwitchConfig {
             client_id: "id".to_string(),
             client_secret: "secret".to_string(),
             refresh_token: String::new(),
             broadcaster_id: "broadcaster".to_string(),
             redirect_uri: String::new(),
             csrf_ttl_secs: 600,
-        };
+        });
         let service = TwitchAuthService::with_refresh_token_store(config, store);
         assert_eq!(service.current_refresh_token(), "from_file");
         drop(fs::remove_file(&path));

@@ -1,11 +1,14 @@
 #![cfg(test)]
 
+use std::sync::Arc;
+
 use crate::config::Config;
 use crate::random::StandartRandomProvider;
 use crate::state::{AppState, AppStateBuilder};
 
 pub async fn test_state() -> AppState {
-    AppStateBuilder::new(StandartRandomProvider, &Config::test_config())
+    let config = Arc::new(Config::test_config());
+    AppStateBuilder::new(StandartRandomProvider, &config)
         .with_empty_repos()
         .build()
         .await

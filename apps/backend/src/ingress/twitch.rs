@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::time::Duration;
 
 use futures_util::StreamExt;
@@ -21,11 +22,11 @@ const MAX_RECONNECT_DELAY: Duration = Duration::from_secs(60);
 
 #[non_exhaustive]
 pub struct TwitchPlatformService {
-    config: TwitchConfig,
+    config: Arc<TwitchConfig>,
 }
 
 impl TwitchPlatformService {
-    pub fn new(config: TwitchConfig) -> Self {
+    pub fn new(config: Arc<TwitchConfig>) -> Self {
         Self { config }
     }
 
@@ -120,7 +121,7 @@ impl PlatformService for TwitchPlatformService {
     }
 
     async fn run(&self, sink: EventSink) -> Result<(), PlatformError> {
-        let auth = TwitchAuthService::new(self.config.clone());
+        let auth = TwitchAuthService::new(Arc::clone(&self.config));
         let helix = auth.helix();
 
         let mut delay = INITIAL_RECONNECT_DELAY;

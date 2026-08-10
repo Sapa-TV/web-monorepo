@@ -1,7 +1,9 @@
 use std::collections::BTreeMap;
+use std::sync::Arc;
 use std::sync::nonpoison::Mutex;
 use std::time::{Duration, Instant};
 
+use axum::http::StatusCode;
 use twitch_oauth2::{CsrfToken, Scope, TwitchToken, UserTokenBuilder};
 
 use crate::config::TwitchConfig;
@@ -25,20 +27,32 @@ pub enum AdminAuthError {
     Persist,
 }
 
+impl From<AdminAuthError> for StatusCode {
+    fn from(e: AdminAuthError) -> Self {
+        match e {
+            AdminAuthError::NotConfigured => StatusCode::BAD_REQUEST,
+            AdminAuthError::CsrfMismatch => StatusCode::FORBIDDEN,
+            AdminAuthError::InvalidRedirectUri
+            | AdminAuthError::Exchange
+            | AdminAuthError::Persist => StatusCode::INTERNAL_SERVER_ERROR,
+        }
+    }
+}
+
 #[non_exhaustive]
 pub struct AdminAuthService {
-    config: Option<TwitchConfig>,
+    config: Option<Arc<TwitchConfig>>,
     pending_csrf: Mutex<BTreeMap<String, Instant>>,
     refresh_token_store: TwitchRefreshTokenStore,
 }
 
 impl AdminAuthService {
-    pub fn new(config: Option<TwitchConfig>) -> Self {
+    pub fn new(config: Option<Arc<TwitchConfig>>) -> Self {
         Self::with_refresh_token_store(config, TwitchRefreshTokenStore::default())
     }
 
     pub fn with_refresh_token_store(
-        config: Option<TwitchConfig>,
+        config: Option<Arc<TwitchConfig>>,
         refresh_token_store: TwitchRefreshTokenStore,
     ) -> Self {
         Self {
@@ -49,6 +63,14 @@ impl AdminAuthService {
     }
 
     pub fn start(&self) -> Result<String, AdminAuthError> {
+        self.start_with_scopes(ADMIN_SCOPES.to_vec())
+    }
+
+    pub fn start_login(&self) -> Result<String, AdminAuthError> {
+        self.start_with_scopes(Vec::new())
+    }
+
+    fn start_with_scopes(&self, scopes: Vec<Scope>) -> Result<String, AdminAuthError> {
         let twitch = self.config.as_ref().ok_or(AdminAuthError::NotConfigured)?;
         let redirect_url = url::Url::parse(&twitch.redirect_uri)
             .map_err(|_| AdminAuthError::InvalidRedirectUri)?;
@@ -57,7 +79,7 @@ impl AdminAuthService {
             twitch.client_secret.clone(),
             redirect_url,
         )
-        .set_scopes(ADMIN_SCOPES.to_vec());
+        .set_scopes(scopes);
         let (auth_url, csrf) = builder.generate_url();
         self.prune_expired();
         let ttl = Duration::from_secs(twitch.csrf_ttl_secs);
@@ -72,6 +94,30 @@ impl AdminAuthService {
         code: &str,
         auth_state: &str,
     ) -> Result<ExchangedToken, AdminAuthError> {
+        let token = self.exchange(code, auth_state).await?;
+        let Some(refresh_token) = token.refresh_token.as_ref() else {
+            return Err(AdminAuthError::Exchange);
+        };
+        self.refresh_token_store
+            .save(refresh_token.secret())
+            .map_err(|_| AdminAuthError::Persist)?;
+        Ok(exchanged_of(&token))
+    }
+
+    pub async fn complete_login(
+        &self,
+        code: &str,
+        auth_state: &str,
+    ) -> Result<ExchangedToken, AdminAuthError> {
+        let token = self.exchange(code, auth_state).await?;
+        Ok(exchanged_of(&token))
+    }
+
+    async fn exchange(
+        &self,
+        code: &str,
+        auth_state: &str,
+    ) -> Result<twitch_oauth2::UserToken, AdminAuthError> {
         let twitch = self.config.as_ref().ok_or(AdminAuthError::NotConfigured)?;
         self.prune_expired();
         if self.pending_csrf.lock().remove(auth_state).is_none() {
@@ -88,22 +134,20 @@ impl AdminAuthService {
         builder.set_csrf(CsrfToken::new(auth_state.to_string()));
 
         let http = reqwest::Client::new();
-        let token = builder
+        builder
             .get_user_token(&http, auth_state, code)
             .await
-            .map_err(|_| AdminAuthError::Exchange)?;
+            .map_err(|_| AdminAuthError::Exchange)
+    }
 
-        let Some(refresh_token) = token.refresh_token.as_ref() else {
-            return Err(AdminAuthError::Exchange);
-        };
+    pub fn is_ingress_credentials_configured(&self) -> bool {
+        self.refresh_token_store.load().is_some()
+    }
+
+    pub fn revoke_ingress_credentials(&self) -> Result<(), AdminAuthError> {
         self.refresh_token_store
-            .save(refresh_token.secret())
-            .map_err(|_| AdminAuthError::Persist)?;
-
-        Ok(ExchangedToken {
-            user_id: token.user_id().map(|u| u.to_string()).unwrap_or_default(),
-            user_name: token.login().map(|u| u.to_string()),
-        })
+            .clear()
+            .map_err(|_| AdminAuthError::Persist)
     }
 
     fn prune_expired(&self) {
@@ -114,21 +158,28 @@ impl AdminAuthService {
     }
 }
 
+fn exchanged_of(token: &twitch_oauth2::UserToken) -> ExchangedToken {
+    ExchangedToken {
+        user_id: token.user_id().map(|u| u.to_string()).unwrap_or_default(),
+        user_name: token.login().map(|u| u.to_string()),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::time::{Duration, Instant};
 
     use super::*;
 
-    fn test_config() -> Option<TwitchConfig> {
-        Some(TwitchConfig {
+    fn test_config() -> Option<Arc<TwitchConfig>> {
+        Some(Arc::new(TwitchConfig {
             client_id: "client_id".to_string(),
             client_secret: "client_secret".to_string(),
             refresh_token: String::new(),
             broadcaster_id: String::new(),
             redirect_uri: "https://localhost:8080/callback".to_string(),
             csrf_ttl_secs: 600,
-        })
+        }))
     }
 
     #[test]

@@ -6,25 +6,12 @@ use utoipa::IntoParams;
 use utoipa::OpenApi;
 use utoipa::ToSchema;
 
-use crate::admin::auth::AdminAuthError;
 use crate::state::AppState;
 
 #[derive(Debug, Serialize, ToSchema)]
 #[non_exhaustive]
 pub struct TwitchAuthStartResponse {
     pub auth_url: String,
-}
-
-impl From<AdminAuthError> for StatusCode {
-    fn from(e: AdminAuthError) -> Self {
-        match e {
-            AdminAuthError::NotConfigured => StatusCode::BAD_REQUEST,
-            AdminAuthError::CsrfMismatch => StatusCode::FORBIDDEN,
-            AdminAuthError::InvalidRedirectUri
-            | AdminAuthError::Exchange
-            | AdminAuthError::Persist => StatusCode::INTERNAL_SERVER_ERROR,
-        }
-    }
 }
 
 #[derive(Debug, Deserialize, IntoParams)]
@@ -88,7 +75,7 @@ pub async fn twitch_auth_callback(
 #[allow(dead_code)]
 pub(crate) struct AdminTwitchApiDoc;
 
-pub fn protected_router() -> axum::Router<AppState> {
+pub fn root_router() -> axum::Router<AppState> {
     use axum::routing::get;
     axum::Router::new()
         .route("/api/admin/twitch/auth", get(start_twitch_auth))
