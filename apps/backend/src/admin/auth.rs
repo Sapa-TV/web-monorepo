@@ -264,4 +264,20 @@ mod tests {
         ));
         assert!(service.pending_csrf.lock().is_empty());
     }
+
+    #[tokio::test]
+    async fn ingress_credentials_configuration_lifecycle() {
+        let service = test_service(test_config());
+        assert!(!service.is_ingress_credentials_configured().await.unwrap());
+
+        service
+            .credentials_repo
+            .save_credential(PlatformId::TWITCH, "tok")
+            .await
+            .unwrap();
+        assert!(service.is_ingress_credentials_configured().await.unwrap());
+
+        service.revoke_ingress_credentials().await.unwrap();
+        assert!(!service.is_ingress_credentials_configured().await.unwrap());
+    }
 }

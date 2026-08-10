@@ -117,4 +117,19 @@ mod tests {
             None
         );
     }
+
+    #[tokio::test]
+    async fn save_trims_credential() {
+        let repo = InMemoryPlatformCredentialRepository::new();
+        repo.save_credential(PlatformId::TWITCH, "  tok  ")
+            .await
+            .unwrap();
+        assert_eq!(
+            repo.load_credential(PlatformId::TWITCH)
+                .await
+                .unwrap()
+                .as_deref(),
+            Some("tok")
+        );
+    }
 }
