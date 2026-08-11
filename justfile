@@ -26,3 +26,11 @@ lint:
 # Run ast-grep rule test suites
 lint-test:
     pnpm exec ast-grep test
+
+# Encrypt deploy/.env -> deploy/.env.sops (needs sops + age, uses deploy/.sops.yaml)
+encrypt-env:
+    sops -e --input-type dotenv --output-type dotenv deploy/.env > deploy/.env.sops
+
+# Decrypt deploy/.env.sops -> deploy/.env (local inspection only, file is gitignored)
+decrypt-env:
+    sops -d --input-type dotenv --output-type dotenv deploy/.env.sops > deploy/.env

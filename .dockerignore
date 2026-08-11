@@ -1,0 +1,14 @@
+.git
+target
+generated
+node_modules
+**/node_modules
+.svelte-kit
+apps/frontend
+packages
+deploy
+docs
+.github
+.turbo
+.VSCodeCounter
+.sg

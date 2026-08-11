@@ -1,6 +1,11 @@
-export const API_BASE = "http://localhost:3000";
+const defaultOrigin =
+	typeof location !== "undefined"
+		? `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}`
+		: "";
 
-export const WS_URL = "ws://localhost:3000/ws";
+export const API_BASE = "";
+
+export const WS_URL = `${defaultOrigin}/ws`;
 
 export interface QueueEntry {
 	id: number;

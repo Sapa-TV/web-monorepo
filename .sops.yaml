@@ -1,0 +1,5 @@
+creation_rules:
+  - path_regex: deploy[\\/]\.env$
+    age:
+      - age1qujf2kfpuzlkq78k3mgvcynv5f7vpxv0fjdlmpcq6fw5qkkdl92q7xepvs
+      - age14w7wqwfjrp55k5mw4zhcrq6gs7jlwujsqhcrfenrsfmdrva4uq7sw79ugw
