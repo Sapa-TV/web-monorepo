@@ -1,4 +1,5 @@
 <script lang="ts">
+	import IconPlay from "~icons/lucide/play";
 	import IconTwitch from "~icons/lucide/twitch";
 	import IconYoutube from "~icons/lucide/youtube";
 	import IconVk from "~icons/simple-icons/vk";
@@ -30,9 +31,14 @@
 		<p class="tagline">Скоро открытие.</p>
 
 		<div class="shelf" aria-label="Выбери площадку">
+			<a class="tape tape--stream" href="/stream">
+				<span class="tape__ink">
+					<IconPlay aria-hidden="true" />
+					Смотреть стрим
+				</span>
+			</a>
 			<a
-				class="tape"
-				style="--brand: oklch(0.62 0.25 293); --brand-ink: oklch(0.97 0.02 293)"
+				class="tape tape--twitch"
 				href="https://www.twitch.tv/sapushka_"
 				target="_blank"
 				rel="noopener"
@@ -43,27 +49,25 @@
 				</span>
 			</a>
 			<a
-				class="tape"
-				style="--brand: oklch(0.62 0.19 252); --brand-ink: oklch(0.97 0.02 252)"
+				class="tape tape--vk"
 				href="https://live.vkvideo.ru/sapushka_"
 				target="_blank"
 				rel="noopener"
 			>
 				<span class="tape__index">
 					<IconVk aria-hidden="true" />
-					VK Видео Live
+					Смотреть на VK Видео Live
 				</span>
 			</a>
 			<a
-				class="tape"
-				style="--brand: oklch(0.6 0.2 28); --brand-ink: oklch(0.98 0.01 28)"
+				class="tape tape--youtube"
 				href="https://www.youtube.com/@sapa_sapushka"
 				target="_blank"
 				rel="noopener"
 			>
 				<span class="tape__index">
 					<IconYoutube aria-hidden="true" />
-					YouTube
+					Смотреть на YouTube
 				</span>
 			</a>
 		</div>
@@ -211,7 +215,7 @@
 		background: var(--brand);
 		color: var(--brand-ink);
 		border-radius: 0.9rem;
-		padding: 0.85rem 1.1rem;
+		padding: 0.85rem 2rem;
 		box-shadow:
 			0 8px 20px -8px color-mix(in oklch, var(--brand) 60%, transparent),
 			inset 0 0 0 1px color-mix(in oklch, var(--brand-ink) 18%, transparent);
@@ -239,9 +243,29 @@
 		line-height: 1;
 	}
 
+	.tape--stream {
+		--brand: var(--primary-dim);
+		--brand-ink: var(--stream-ink);
+	}
+
+	.tape--twitch {
+		--brand: var(--twitch-brand);
+		--brand-ink: var(--twitch-ink);
+	}
+
+	.tape--vk {
+		--brand: var(--vk-brand);
+		--brand-ink: var(--vk-ink);
+	}
+
+	.tape--youtube {
+		--brand: var(--youtube-brand);
+		--brand-ink: var(--youtube-ink);
+	}
+
 	@media (min-width: 640px) {
 		.tape {
-			padding: 1rem 1.35rem;
+			padding: 1rem 2rem;
 		}
 	}
 </style>

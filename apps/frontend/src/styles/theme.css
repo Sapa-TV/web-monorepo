@@ -9,6 +9,14 @@
 	--c-secondary: 0.145;
 	--c-tertiary: 0.125;
 	--c-error: 0.185;
+
+	--twitch-brand: oklch(0.62 0.25 293);
+	--twitch-ink: oklch(0.97 0.02 293);
+	--vk-brand: oklch(0.62 0.19 252);
+	--vk-ink: oklch(0.97 0.02 252);
+	--youtube-brand: oklch(0.6 0.2 28);
+	--youtube-ink: oklch(0.98 0.01 28);
+	--stream-ink: oklch(0.97 0.02 293);
 }
 
 :root,

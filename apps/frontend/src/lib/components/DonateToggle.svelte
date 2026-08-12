@@ -1,12 +1,24 @@
 <script lang="ts">
 	import { onMount } from "svelte";
-	import IconPlus from "~icons/lucide/plus";
+	import IconRocket from "~icons/lucide/rocket";
+	import IconShield from "~icons/lucide/shield";
+	import IconTrendingUp from "~icons/lucide/trending-up";
+	import IconCoins from "~icons/lucide/coins";
+	import IconUtensils from "~icons/lucide/utensils";
 
 	const DEST = "https://sapushka.oda.digital/";
-	const LABELS = ["На поддержку сервера", "Торну на еду"];
+	const LABELS = [
+		{ text: "Поддержка сервера", icon: IconCoins },
+		{ text: "Торну на еду", icon: IconUtensils },
+		{ text: "На движ!", icon: IconRocket },
+		{ text: "Против восстания машин", icon: IconShield },
+		{ text: "Развитие платформы", icon: IconTrendingUp },
+	];
 	const LABEL_ROTATE_INTERVAL_MS = 10_000;
 
 	let index = $state(0);
+	const label = $derived(LABELS[index]);
+	const Icon = $derived(label.icon);
 
 	onMount(() => {
 		const id = setInterval(() => {
@@ -17,8 +29,8 @@
 </script>
 
 <a class="donate-link" href={DEST} target="_blank" rel="noopener">
-	<IconPlus aria-hidden="true" />
-	{LABELS[index]}
+	<Icon aria-hidden="true" />
+	{label.text}
 </a>
 
 <style>

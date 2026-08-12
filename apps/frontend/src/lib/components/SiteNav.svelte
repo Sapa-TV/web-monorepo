@@ -1,10 +1,9 @@
 <script lang="ts">
-	import { onMount } from "svelte";
 	import { page } from "$app/state";
-	import DonateToggle from "./DonateToggle.svelte";
-	import IconBook from "~icons/lucide/book";
-	import IconSun from "~icons/lucide/sun";
+	import { onMount } from "svelte";
 	import IconMoon from "~icons/lucide/moon";
+	import IconSun from "~icons/lucide/sun";
+	import DonateToggle from "./DonateToggle.svelte";
 
 	let isStream = $derived(page.url.pathname === "/stream");
 
@@ -52,10 +51,10 @@
 		</a>
 
 		<div class="nav-actions">
-			<a class="nav-link" href="/links">
+			<!-- <a class="nav-link" href="/links">
 				<IconBook aria-hidden="true" />
 				Каталог
-			</a>
+			</a> -->
 			<DonateToggle />
 			<button
 				class="theme-toggle"
