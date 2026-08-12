@@ -10,7 +10,7 @@
 	"keywords": [],
 	"author": "Th0rN13",
 	"license": "MIT",
-	"packageManager": "pnpm@11.15.1",
+	"packageManager": "pnpm@11.21.0",
 	"devDependencies": {
 		"@ast-grep/cli": "^0.45.0",
 		"prettier": "^3.9.6",
