@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { page } from "$app/state";
-	import { onMount } from "svelte";
 	import IconMoon from "~icons/lucide/moon";
 	import IconSun from "~icons/lucide/sun";
 	import DonateToggle from "./DonateToggle.svelte";
@@ -14,20 +13,6 @@
 				: "light"
 			: "light",
 	);
-
-	onMount(() => {
-		const stored = localStorage.getItem("theme");
-		const prefersDark = window.matchMedia(
-			"(prefers-color-scheme: dark)",
-		).matches;
-		dark = stored
-			? stored === "dark"
-				? "dark"
-				: "light"
-			: prefersDark
-				? "dark"
-				: "light";
-	});
 
 	$effect(() => {
 		if (typeof document === "undefined") return;

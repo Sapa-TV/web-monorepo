@@ -3,6 +3,22 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<script>
+			(function () {
+				var theme = "light";
+				try {
+					var stored = localStorage.getItem("theme");
+					if (stored === "dark" || stored === "light") {
+						theme = stored;
+					} else if (
+						window.matchMedia("(prefers-color-scheme: dark)").matches
+					) {
+						theme = "dark";
+					}
+				} catch (e) {}
+				document.documentElement.setAttribute("data-theme", theme);
+			})();
+		</script>
 		<meta name="text-scale" content="scale" />
 		<style>
 			html:not([data-theme]) {

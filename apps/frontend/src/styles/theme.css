@@ -21,6 +21,7 @@
 
 :root,
 :root[data-theme="light"] {
+	color-scheme: light;
 	--background: oklch(0.972 calc(var(--c-neutral) * 0.7) var(--h));
 	--surface: oklch(0.958 calc(var(--c-neutral) * 0.82) var(--h));
 	--surface-container: oklch(0.922 calc(var(--c-neutral) * 1.1) var(--h));
@@ -87,6 +88,7 @@
 }
 
 :root[data-theme="dark"] {
+	color-scheme: dark;
 	--background: oklch(0.123 calc(var(--c-neutral) * 1.4) var(--h));
 	--surface: oklch(0.133 calc(var(--c-neutral) * 1.4) var(--h));
 	--surface-container: oklch(0.167 calc(var(--c-neutral) * 1.7) var(--h));
