@@ -19,6 +19,11 @@ run:
 gen path='generated/openapi.json':
     cargo run -p gen-openapi -- {{path}}
 
+# Generate OpenAPI spec + TS REST client for @sapa-tv-ru/api-client
+gen-client:
+    just gen
+    pnpm --dir packages/api-client exec swagger-typescript-api generate --path ../../generated/openapi.json --output ./generated --name Api --templates ./templates --modular --clean-output
+
 # Custom ast-grep lints, only own code, all targets
 lint:
     pnpm exec ast-grep scan

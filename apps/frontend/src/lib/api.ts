@@ -1,9 +1,16 @@
+import { createApi } from "@sapa-tv-ru/api-client";
+
 const defaultOrigin =
 	typeof location !== "undefined"
 		? `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}`
 		: "";
 
 export const API_BASE = "";
+
+const httpOrigin =
+	typeof location !== "undefined" ? location.origin : "";
+
+export const api = createApi(httpOrigin);
 
 export const WS_URL = `${defaultOrigin}/ws`;
 

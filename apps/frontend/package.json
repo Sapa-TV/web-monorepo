@@ -45,5 +45,9 @@
 	"imports": {
 		"#lib": "./src/lib/index.js",
 		"#lib/*": "./src/lib/*"
+	},
+	"dependencies": {
+		"@sapa-tv-ru/api-client": "workspace:*",
+		"neverthrow": "^8.2.0"
 	}
 }

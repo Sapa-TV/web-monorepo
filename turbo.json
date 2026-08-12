@@ -2,8 +2,8 @@
   "$schema": "https://v2-10-9.turborepo.dev/schema.json",
   "tasks": {
     "codegen:rest": {
-      "inputs": ["apps/server/src/**/*"],
-      "outputs": ["packages/api-client/src/generated/**/*"]
+      "inputs": ["../../generated/openapi.json", "templates/**/*", "src/**/*"],
+      "outputs": ["generated/**/*"]
     },
     "codegen:ws": {
       "inputs": ["apps/server/src/**/*"],
