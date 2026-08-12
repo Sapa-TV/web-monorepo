@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from "svelte";
+	import IconPlus from "~icons/lucide/plus";
 
 	const DEST = "https://sapushka.oda.digital/";
 	const LABELS = ["На поддержку сервера", "Торну на еду"];
@@ -15,17 +16,7 @@
 </script>
 
 <a class="donate-link" href={DEST} target="_blank" rel="noopener">
-	<svg
-		viewBox="0 0 24 24"
-		fill="none"
-		stroke="currentColor"
-		stroke-width="1.8"
-		stroke-linecap="round"
-		stroke-linejoin="round"
-		aria-hidden="true"
-	>
-		<path d="M12 2v20M2 12h20" />
-	</svg>
+	<IconPlus aria-hidden="true" />
 	{LABELS[index]}
 </a>
 
@@ -47,11 +38,6 @@
 		transition:
 			background-color 0.15s,
 			filter 0.15s;
-	}
-
-	.donate-link svg {
-		width: 0.95rem;
-		height: 0.95rem;
 	}
 
 	.donate-link:hover {

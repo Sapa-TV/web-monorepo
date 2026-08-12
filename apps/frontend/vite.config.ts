@@ -2,6 +2,7 @@ import { defineConfig } from "vitest/config";
 import { playwright } from "@vitest/browser-playwright";
 import adapter from "@sveltejs/adapter-static";
 import { sveltekit } from "@sveltejs/kit/vite";
+import Icons from "unplugin-icons/vite";
 
 export default defineConfig({
 	plugins: [
@@ -14,6 +15,9 @@ export default defineConfig({
 			},
 			adapter: adapter(),
 			experimental: { remoteFunctions: true },
+		}),
+		Icons({
+			compiler: "svelte",
 		}),
 	],
 	test: {

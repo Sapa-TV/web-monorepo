@@ -1,6 +1,13 @@
 <script lang="ts">
 	import { onMount } from "svelte";
 	import { WS_URL, apiFetch, type QueueEntry, type QueueStats } from "#lib/api";
+	import IconKeyRound from "~icons/lucide/key-round";
+	import IconRefreshCw from "~icons/lucide/refresh-cw";
+	import IconPlay from "~icons/lucide/play";
+	import IconPlus from "~icons/lucide/plus";
+	import IconList from "~icons/lucide/list";
+	import IconX from "~icons/lucide/x";
+	import IconCheck from "~icons/lucide/check";
 
 	const pak =
 		typeof window !== "undefined"
@@ -251,19 +258,7 @@
 	<div class="panel-header__right">
 		{#if keyState}
 			<span class={`key-badge ${keyState}`}>
-				<svg
-					class="key-badge__icon"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					aria-hidden="true"
-				>
-					<circle cx="7.5" cy="15.5" r="3.5" />
-					<path d="M7.5 12V8l3.5-3h5L20 9.5M18 13l-4 4" />
-				</svg>
+				<IconKeyRound class="key-badge__icon" aria-hidden="true" />
 				{keyState === "ok"
 					? "ключ ок"
 					: keyState === "missing"
@@ -279,18 +274,7 @@
 			title="Обновить"
 			aria-label="Обновить"
 		>
-			<svg
-				viewBox="0 0 24 24"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="2"
-				stroke-linecap="round"
-				stroke-linejoin="round"
-				aria-hidden="true"
-			>
-				<path d="M21 12a9 9 0 1 1-2.64-6.36" />
-				<path d="M21 3v6h-6" />
-			</svg>
+			<IconRefreshCw aria-hidden="true" />
 		</button>
 	</div>
 </header>
@@ -302,13 +286,7 @@
 		onclick={dequeueNext}
 		disabled={nextBusy}
 	>
-		<svg
-			viewBox="0 0 24 24"
-			fill="currentColor"
-			aria-hidden="true"
-		>
-			<path d="M8 5v14l11-7z" />
-		</svg>
+		<IconPlay aria-hidden="true" />
 		{dequeueLabel}
 	</button>
 	<span class="next-user">{nextUser}</span>
@@ -317,17 +295,7 @@
 		type="button"
 		onclick={() => void (showEnqueue = !showEnqueue)}
 	>
-		<svg
-			viewBox="0 0 24 24"
-			fill="none"
-			stroke="currentColor"
-			stroke-width="2"
-			stroke-linecap="round"
-			stroke-linejoin="round"
-			aria-hidden="true"
-		>
-			<path d="M12 5v14M5 12h14" />
-		</svg>
+		<IconPlus aria-hidden="true" />
 		{showEnqueue ? "Закрыть" : "Добавить"}
 	</button>
 	<span class="spacer"></span>
@@ -336,18 +304,7 @@
 		type="button"
 		onclick={() => void (showLog = !showLog)}
 	>
-		<svg
-			viewBox="0 0 24 24"
-			fill="none"
-			stroke="currentColor"
-			stroke-width="2"
-			stroke-linecap="round"
-			stroke-linejoin="round"
-			aria-hidden="true"
-		>
-			<path d="M8 6h13M8 12h13M8 18h13" />
-			<path d="M3 6h.01M3 12h.01M3 18h.01" />
-		</svg>
+		<IconList aria-hidden="true" />
 		{showLog ? "Скрыть лог" : "Лог"}
 	</button>
 </div>
@@ -368,13 +325,7 @@
 				onclick={enqueueEntry}
 				disabled={enqBusy}
 			>
-				<svg
-					viewBox="0 0 24 24"
-					fill="currentColor"
-					aria-hidden="true"
-				>
-					<path d="M12 5v14M5 12h14" />
-				</svg>
+				<IconPlus aria-hidden="true" />
 				Добавить
 			</button>
 		</div>
@@ -420,16 +371,7 @@
 										onclick={() => cancelEntry(e.id)}
 										aria-label="Отменить"
 									>
-										<svg
-											viewBox="0 0 24 24"
-											fill="none"
-											stroke="currentColor"
-											stroke-width="2.2"
-											stroke-linecap="round"
-											aria-hidden="true"
-										>
-											<path d="M18 6 6 18M6 6l12 12" />
-										</svg>
+										<IconX aria-hidden="true" />
 									</button>
 								{:else if e.status === "Spinning"}
 									<button
@@ -438,17 +380,7 @@
 										onclick={() => completeEntry(e.id)}
 										aria-label="Завершить"
 									>
-										<svg
-											viewBox="0 0 24 24"
-											fill="none"
-											stroke="currentColor"
-											stroke-width="2.2"
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											aria-hidden="true"
-										>
-											<path d="M20 6 9 17l-5-5" />
-										</svg>
+										<IconCheck aria-hidden="true" />
 									</button>
 								{/if}
 							</td>
@@ -634,12 +566,6 @@
 			filter 0.15s;
 		font-family: inherit;
 		color: var(--on-surface);
-	}
-
-	.btn svg {
-		width: 1rem;
-		height: 1rem;
-		flex-shrink: 0;
 	}
 
 	.btn:disabled {
