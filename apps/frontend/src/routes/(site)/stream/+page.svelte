@@ -131,20 +131,6 @@
 		border-radius: 6px;
 	}
 
-	.badge-live {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.4rem;
-		background-color: var(--error, #e64040);
-		color: var(--on-error, #ffffff);
-		padding: 0.15rem 0.6rem;
-		border-radius: 6px;
-		font-weight: 700;
-		font-size: 0.72rem;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-	}
-
 	.video-shell {
 		flex: 1;
 		min-height: 0;

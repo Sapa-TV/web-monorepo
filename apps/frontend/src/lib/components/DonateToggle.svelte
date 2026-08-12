@@ -4,13 +4,14 @@
 
 	const DEST = "https://sapushka.oda.digital/";
 	const LABELS = ["На поддержку сервера", "Торну на еду"];
+	const LABEL_ROTATE_INTERVAL_MS = 10_000;
 
 	let index = $state(0);
 
 	onMount(() => {
 		const id = setInterval(() => {
 			index = (index + 1) % LABELS.length;
-		}, 10_000);
+		}, LABEL_ROTATE_INTERVAL_MS);
 		return () => clearInterval(id);
 	});
 </script>

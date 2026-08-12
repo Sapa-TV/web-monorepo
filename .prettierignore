@@ -1,0 +1,33 @@
+# Package managers
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+bun.lock
+bun.lockb
+
+# Builds & caches
+node_modules/
+target/
+.turbo/
+.svelte-kit/
+build/
+
+# Сгенерированный код
+/generated/
+packages/api-client/generated/
+packages/ws-client/src/generated/
+
+# Не код: CI, инфраструктура, служебные YAML
+.github/
+deploy/
+.sg/
+.sops.yaml
+sgconfig.yml
+
+# Frontend-специфичные статические/встроенные каталоги
+html/
+static/
+
+# Прочее
+.env
+.env.*

@@ -145,8 +145,8 @@
 	.card:hover {
 		border-color: var(--primary);
 		transform: translateY(-1px);
-		box-shadow:
-			0 10px 24px -12px color-mix(in oklch, var(--primary) 40%, transparent);
+		box-shadow: 0 10px 24px -12px
+			color-mix(in oklch, var(--primary) 40%, transparent);
 	}
 
 	.card__idx {

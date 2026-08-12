@@ -156,19 +156,19 @@ Dock открыт
 const sse = new EventSource("/api/events");
 
 sse.addEventListener("spin_started", (e) => {
-  // { entry_id, slot_name, slot_rarity, user_name }
-  dock.showSpinning(e.data);
+	// { entry_id, slot_name, slot_rarity, user_name }
+	dock.showSpinning(e.data);
 });
 
 sse.addEventListener("spin_completed", (e) => {
-  // { entry_id }
-  dock.showCompleted(e.data);
-  dock.refreshQueue();
+	// { entry_id }
+	dock.showCompleted(e.data);
+	dock.refreshQueue();
 });
 
 sse.addEventListener("queue_stats", (e) => {
-  // { pending, spinning, completed, error, cancelled }
-  dock.updateStats(e.data);
+	// { pending, spinning, completed, error, cancelled }
+	dock.updateStats(e.data);
 });
 ```
 
@@ -210,13 +210,13 @@ Widget открыт
 const sse = new EventSource("/api/events");
 
 sse.addEventListener("spin_started", (e) => {
-  const { entry_id, slot_name, slot_rarity, user_name } = JSON.parse(e.data);
-  widget.showEntryId = entry_id;
-  widget.startAnimation({ user_name, slot_name, slot_rarity });
+	const { entry_id, slot_name, slot_rarity, user_name } = JSON.parse(e.data);
+	widget.showEntryId = entry_id;
+	widget.startAnimation({ user_name, slot_name, slot_rarity });
 });
 
 sse.addEventListener("spin_error", (e) => {
-  widget.showError();
+	widget.showError();
 });
 ```
 

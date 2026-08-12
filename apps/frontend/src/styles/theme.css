@@ -1,6 +1,8 @@
 ﻿:root {
 	--h: 47;
-	--h2: calc(var(--h) + 142); --h3: calc(var(--h) - 82); --c-accent: 0.16;
+	--h2: calc(var(--h) + 142);
+	--h3: calc(var(--h) - 82);
+	--c-accent: 0.16;
 	--c-neutral: 0.014;
 
 	--c-primary: var(--c-accent);

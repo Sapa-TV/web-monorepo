@@ -7,8 +7,7 @@ const defaultOrigin =
 
 export const API_BASE = "";
 
-const httpOrigin =
-	typeof location !== "undefined" ? location.origin : "";
+const httpOrigin = typeof location !== "undefined" ? location.origin : "";
 
 export const api = createApi(httpOrigin);
 
@@ -36,5 +35,9 @@ export interface QueueStats {
 export function apiFetch(path: string, init: RequestInit = {}, pak = "") {
 	const headers = new Headers(init.headers);
 	if (pak) headers.set("Authorization", `Bearer ${pak}`);
-	return fetch(`${API_BASE}${path}`, { ...init, headers, credentials: "include" });
+	return fetch(`${API_BASE}${path}`, {
+		...init,
+		headers,
+		credentials: "include",
+	});
 }

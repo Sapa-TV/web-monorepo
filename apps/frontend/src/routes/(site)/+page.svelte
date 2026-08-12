@@ -29,10 +29,9 @@
 
 		<p class="tagline">Скоро открытие.</p>
 
-		<div class="shelf" role="list" aria-label="Выбери площадку">
+		<div class="shelf" aria-label="Выбери площадку">
 			<a
 				class="tape"
-				role="listitem"
 				style="--brand: oklch(0.62 0.25 293); --brand-ink: oklch(0.97 0.02 293)"
 				href="https://www.twitch.tv/sapushka_"
 				target="_blank"
@@ -45,7 +44,6 @@
 			</a>
 			<a
 				class="tape"
-				role="listitem"
 				style="--brand: oklch(0.62 0.19 252); --brand-ink: oklch(0.97 0.02 252)"
 				href="https://live.vkvideo.ru/sapushka_"
 				target="_blank"
@@ -58,7 +56,6 @@
 			</a>
 			<a
 				class="tape"
-				role="listitem"
 				style="--brand: oklch(0.6 0.2 28); --brand-ink: oklch(0.98 0.01 28)"
 				href="https://www.youtube.com/@sapa_sapushka"
 				target="_blank"
@@ -91,30 +88,6 @@
 		align-items: center;
 		gap: 1.5rem;
 		text-align: center;
-	}
-
-	.stage__kicker {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.5rem;
-		font-family: "IBM Plex Mono", monospace;
-		font-size: 0.72rem;
-		font-weight: 500;
-		letter-spacing: 0.14em;
-		text-transform: uppercase;
-		color: var(--on-surface-variant);
-		border: 1px solid var(--outline-variant);
-		background: var(--surface-container-low);
-		padding: 0.35rem 0.85rem;
-		border-radius: 6px;
-	}
-
-	.ticker-dot {
-		width: 0.45rem;
-		height: 0.45rem;
-		border-radius: 6px;
-		background: var(--primary);
-		animation: pulse 2.2s ease-in-out infinite;
 	}
 
 	@keyframes pulse {
@@ -264,24 +237,6 @@
 		font-weight: 700;
 		font-size: 0.95rem;
 		line-height: 1;
-	}
-
-	.tape__label {
-		font-family: "IBM Plex Mono", monospace;
-		font-size: 0.66rem;
-		font-weight: 500;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-		opacity: 0.78;
-		white-space: nowrap;
-	}
-
-	.footnote {
-		margin: 0.75rem 0 0;
-		font-family: "IBM Plex Mono", monospace;
-		font-size: 0.72rem;
-		letter-spacing: 0.08em;
-		color: var(--on-surface-variant);
 	}
 
 	@media (min-width: 640px) {

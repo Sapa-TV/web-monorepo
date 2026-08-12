@@ -1,35 +1,35 @@
 {
-  "$schema": "https://v2-10-9.turborepo.dev/schema.json",
-  "tasks": {
-    "codegen:rest": {
-      "inputs": ["../../generated/openapi.json", "templates/**/*", "src/**/*"],
-      "outputs": ["generated/**/*"]
-    },
-    "codegen:ws": {
-      "inputs": ["apps/server/src/**/*"],
-      "outputs": ["packages/ws-client/src/generated/**/*"]
-    },
-    "codegen": {
-      "dependsOn": ["codegen:rest", "codegen:ws"]
-    },
-    "build": {
-      "dependsOn": ["^build", "codegen"],
-      "outputs": [".svelte-kit/**", "build/**", "dist/**"]
-    },
-    "check": {
-      "dependsOn": ["codegen"],
-      "outputs": [".svelte-kit/**"]
-    },
-    "lint": {
-      "dependsOn": ["^lint", "build"],
-      "cache": true
-    },
-    "test": {
-      "dependsOn": ["build"]
-    },
-    "dev": {
-      "cache": false,
-      "persistent": true
-    }
-  }
+	"$schema": "https://v2-10-9.turborepo.dev/schema.json",
+	"tasks": {
+		"codegen:rest": {
+			"inputs": ["../../generated/openapi.json", "templates/**/*", "src/**/*"],
+			"outputs": ["generated/**/*"]
+		},
+		"codegen:ws": {
+			"inputs": ["apps/server/src/**/*"],
+			"outputs": ["packages/ws-client/src/generated/**/*"]
+		},
+		"codegen": {
+			"dependsOn": ["codegen:rest", "codegen:ws"]
+		},
+		"build": {
+			"dependsOn": ["^build", "codegen"],
+			"outputs": [".svelte-kit/**", "build/**", "dist/**"]
+		},
+		"check": {
+			"dependsOn": ["codegen"],
+			"outputs": [".svelte-kit/**"]
+		},
+		"lint": {
+			"dependsOn": ["^lint", "build"],
+			"cache": true
+		},
+		"test": {
+			"dependsOn": ["build"]
+		},
+		"dev": {
+			"cache": false,
+			"persistent": true
+		}
+	}
 }

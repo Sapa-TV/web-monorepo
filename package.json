@@ -1,16 +1,20 @@
 {
-  "name": "sapa-tv-ru",
-  "version": "0.1.0",
-  "description": "",
-  "scripts": {
-    "dev": "turbo run dev"
-  },
-  "keywords": [],
-  "author": "Th0rN13",
-  "license": "MIT",
-  "packageManager": "pnpm@11.15.1",
-  "devDependencies": {
-    "@ast-grep/cli": "^0.45.0",
-    "turbo": "^2.10.9"
-  }
+	"name": "sapa-tv-ru",
+	"version": "0.1.0",
+	"description": "",
+	"scripts": {
+		"dev": "turbo run dev",
+		"format": "prettier --write . --log-level warn && cargo fmt",
+		"format:check": "prettier --check . && cargo fmt --check"
+	},
+	"keywords": [],
+	"author": "Th0rN13",
+	"license": "MIT",
+	"packageManager": "pnpm@11.15.1",
+	"devDependencies": {
+		"@ast-grep/cli": "^0.45.0",
+		"prettier": "^3.9.6",
+		"prettier-plugin-svelte": "^4.1.1",
+		"turbo": "^2.10.9"
+	}
 }

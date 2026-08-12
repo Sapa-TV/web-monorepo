@@ -2,5 +2,5 @@ packages:
   - "apps/*"
   - "packages/*"
 allowBuilds:
-  '@ast-grep/cli': true
+  "@ast-grep/cli": true
   esbuild: true

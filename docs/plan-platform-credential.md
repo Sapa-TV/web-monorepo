@@ -6,7 +6,7 @@
 2. Убрать дублирование концепций платформы: сейчас в коде **две параллельные сущности**:
    - `PlatformKind` (enum в `ingress/event.rs`) — для ингресса/событий;
    - `Platform { id: PlatformId, name: String }` (`src/platform.rs`) — DB-концепция, сиды `1=twitch, 2=youtube, 3=vk_video_live`.
-   Убираем `PlatformKind`, единой сущностью становится `Platform`/`PlatformId`.
+     Убираем `PlatformKind`, единой сущностью становится `Platform`/`PlatformId`.
 3. При переходе на sqlite: таблица `platform` (соответствует текущему `PlatformRepository`), `platform_credentials` ссылается на неё через `platform_id` FK. Сиды обеих таблиц задаются из одних констант.
 
 ## Контекст (текущее состояние)
