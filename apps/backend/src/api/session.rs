@@ -98,7 +98,7 @@ pub async fn twitch_login_callback(
             LOGIN_COOKIE,
             ticket.ticket.as_str(),
             10 * 60,
-            state.config.cookie_secure,
+            state.config.cookie_secure(),
         ),
     );
 
@@ -175,8 +175,8 @@ pub async fn create_session(
         cookie_header(
             SESSION_COOKIE,
             session.token.as_str(),
-            state.config.session_ttl_secs as i64,
-            state.config.cookie_secure,
+            state.config.session_ttl_secs() as i64,
+            state.config.cookie_secure(),
         ),
     );
 
@@ -239,7 +239,7 @@ pub async fn logout(
     let mut headers = HeaderMap::new();
     headers.append(
         header::SET_COOKIE,
-        cookie_header(SESSION_COOKIE, "", 0, state.config.cookie_secure),
+        cookie_header(SESSION_COOKIE, "", 0, state.config.cookie_secure()),
     );
     Ok((StatusCode::NO_CONTENT, headers))
 }

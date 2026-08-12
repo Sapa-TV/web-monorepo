@@ -115,7 +115,7 @@ pub async fn remove_admin(
 )]
 pub async fn get_admin_pak(State(state): State<AppState>) -> Json<PakResponse> {
     Json(PakResponse {
-        pak: state.config.access_key.clone(),
+        pak: state.config.access_key(),
     })
 }
 

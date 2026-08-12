@@ -7,7 +7,8 @@ use std::time::Duration;
 
 use axum::http::{HeaderValue, Method, header};
 use backend::api::{self, ApiDoc};
-use backend::config::Config;
+use backend::config::store::ConfigStore;
+use backend::db::inmemory_config::InMemoryConfigRepository;
 use backend::db::inmemory_platform_credential::InMemoryPlatformCredentialRepository;
 use backend::ingress::PlatformService;
 use backend::ingress::twitch::TwitchPlatformService;
@@ -32,19 +33,22 @@ async fn main() {
         )
         .init();
 
-    let config = Arc::new(Config::load());
     let credentials_repo = Arc::new(InMemoryPlatformCredentialRepository::new());
+    let config_store = ConfigStore::load_or_seed()
+        .await
+        .expect("failed to load config");
     let state = AppStateBuilder::new(
         StandartRandomProvider::new(),
-        &config,
+        Arc::clone(&config_store),
         Arc::clone(&credentials_repo),
     )
     .build()
     .await
     .expect("failed to build app state");
 
-    if let Some(twitch) = &config.twitch {
-        let service = TwitchPlatformService::new(Arc::clone(twitch), Arc::clone(&credentials_repo));
+    if let Some(twitch) = config_store.twitch() {
+        let service =
+            TwitchPlatformService::new(Arc::new(twitch.clone()), Arc::clone(&credentials_repo));
         let sink = state.ingress.sink();
         tracing::info!("starting {} ingress", service.platform().as_name());
         tokio::spawn(async move {
@@ -53,7 +57,7 @@ async fn main() {
             }
         });
     }
-    let cors = match state.config.cors_origins.as_deref() {
+    let cors = match config_store.cors_origins() {
         Some(origins) => {
             let origins: Vec<HeaderValue> = origins.iter().filter_map(|o| o.parse().ok()).collect();
             CorsLayer::new()
@@ -70,7 +74,7 @@ async fn main() {
         .merge(SwaggerUi::new("/docs").url("/api-doc/openapi.json", ApiDoc::openapi()))
         .merge(Redoc::with_url("/redoc", ApiDoc::openapi()));
 
-    let addr = format!("0.0.0.0:{}", config.port);
+    let addr = format!("0.0.0.0:{}", config_store.port());
     let listener = TcpListener::bind(&addr).await.expect("failed to bind");
     info!("listening on http://{}", addr);
 
@@ -86,11 +90,11 @@ fn start_background_tasks(state: &AppState) {
     tokio::spawn(queue_timeout_task(Arc::clone(&state.queue_service)));
     tokio::spawn(queue_purge_task(
         Arc::clone(&state.queue_service),
-        Duration::from_secs(state.config.queue_cleanup_interval_secs),
+        Arc::clone(&state.config),
     ));
     tokio::spawn(session_prune_task(
         Arc::clone(&state.session_service),
-        Duration::from_secs(state.config.sessions_cleanup_interval_secs),
+        Arc::clone(&state.config),
     ));
 }
 
@@ -119,30 +123,34 @@ async fn shutdown_signal() {
 }
 
 async fn queue_timeout_task(queue_service: Arc<AppQueueService>) {
-    let timeout = queue_service.timeout();
-    let mut interval = time::interval(timeout);
     loop {
-        interval.tick().await;
+        time::sleep(queue_service.timeout()).await;
         if let Err(e) = queue_service.mark_timed_out().await {
             tracing::error!("mark_timed_out failed: {e}");
         }
     }
 }
 
-async fn queue_purge_task(queue_service: Arc<AppQueueService>, interval_secs: Duration) {
-    let mut interval = time::interval(interval_secs);
+async fn queue_purge_task(
+    queue_service: Arc<AppQueueService>,
+    config: Arc<ConfigStore<InMemoryConfigRepository>>,
+) {
     loop {
-        interval.tick().await;
+        let interval = Duration::from_secs(config.queue_cleanup_interval_secs());
+        time::sleep(interval).await;
         if let Err(e) = queue_service.purge_expired().await {
             tracing::error!("queue purge_expired failed: {e}");
         }
     }
 }
 
-async fn session_prune_task(session_service: Arc<AppSessionService>, interval_secs: Duration) {
-    let mut interval = time::interval(interval_secs);
+async fn session_prune_task(
+    session_service: Arc<AppSessionService>,
+    config: Arc<ConfigStore<InMemoryConfigRepository>>,
+) {
     loop {
-        interval.tick().await;
+        let interval = Duration::from_secs(config.sessions_cleanup_interval_secs());
+        time::sleep(interval).await;
         if let Err(e) = session_service.prune_expired().await {
             tracing::error!("session prune_expired failed: {e}");
         }

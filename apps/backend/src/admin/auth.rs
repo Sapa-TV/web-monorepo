@@ -183,7 +183,6 @@ mod tests {
         Some(Arc::new(TwitchConfig {
             client_id: "client_id".to_string(),
             client_secret: "client_secret".to_string(),
-            refresh_token: String::new(),
             broadcaster_id: String::new(),
             redirect_uri: "https://localhost:8080/callback".to_string(),
             csrf_ttl_secs: 600,

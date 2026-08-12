@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use chrono::Utc;
 
+use crate::config::store::SharedSettings;
 use crate::error::SessionServiceError;
 use crate::session::repository::SessionRepository;
 use crate::session::{LoginTicket, LoginTicketToken, Session, SessionToken};
@@ -15,15 +16,15 @@ where
     R: SessionRepository,
 {
     repo: Arc<R>,
-    session_ttl: Duration,
+    settings: SharedSettings,
 }
 
 impl<R> SessionService<R>
 where
     R: SessionRepository,
 {
-    pub fn new(repo: Arc<R>, session_ttl: Duration) -> Self {
-        Self { repo, session_ttl }
+    pub fn new(repo: Arc<R>, settings: SharedSettings) -> Self {
+        Self { repo, settings }
     }
 
     pub async fn create_login_ticket(
@@ -66,12 +67,13 @@ where
         twitch_user_name: Option<&str>,
     ) -> Result<Session, SessionServiceError> {
         let now = Utc::now();
+        let ttl = Duration::from_secs(self.settings.read().session_ttl_secs);
         let session = Session {
             token: SessionToken::new(nonce()),
             twitch_user_id: twitch_user_id.to_string(),
             twitch_user_name: twitch_user_name.map(str::to_string),
             created_at: now,
-            expires_at: now + self.session_ttl,
+            expires_at: now + ttl,
         };
         self.repo.save_session(&session).await?;
         Ok(session)
@@ -117,16 +119,23 @@ fn nonce() -> String {
 mod tests {
     use std::sync::Arc;
 
+    use crate::config::runtime::RuntimeConfig;
     use crate::db::inmemory_session::InMemorySessionRepository;
 
     use super::*;
 
     type TestService = SessionService<InMemorySessionRepository>;
 
+    fn test_settings(ttl_secs: u64) -> SharedSettings {
+        let mut config = RuntimeConfig::test_runtime("test-key");
+        config.session_ttl_secs = ttl_secs;
+        SharedSettings::test_new(config)
+    }
+
     fn test_service() -> TestService {
         SessionService::new(
             Arc::new(InMemorySessionRepository::new()),
-            Duration::from_secs(60 * 60),
+            test_settings(60 * 60),
         )
     }
 
@@ -204,7 +213,7 @@ mod tests {
     #[tokio::test]
     async fn expired_sessions_are_pruned() {
         let repo = Arc::new(InMemorySessionRepository::new());
-        let svc = SessionService::new(Arc::clone(&repo), Duration::from_secs(60));
+        let svc = SessionService::new(Arc::clone(&repo), test_settings(60));
 
         let fresh = svc.issue_session("123", None).await.unwrap();
         let stale = Session {
@@ -220,5 +229,39 @@ mod tests {
         assert!(svc.validate_session(fresh.token.as_str()).await.is_ok());
         let err = svc.validate_session("stale").await.unwrap_err();
         assert!(matches!(err, SessionServiceError::SessionNotFound));
+    }
+
+    #[tokio::test]
+    async fn session_ttl_follows_live_settings() {
+        use crate::config::static_config::StaticConfig;
+        use crate::config::store::ConfigStore;
+        use crate::db::inmemory_config::InMemoryConfigRepository;
+
+        let repo = Arc::new(InMemoryConfigRepository::new());
+        let store = ConfigStore::new(
+            Arc::new(StaticConfig::test_config()),
+            RuntimeConfig::test_runtime("test-key"),
+            Arc::clone(&repo),
+        );
+        let svc = SessionService::new(Arc::new(InMemorySessionRepository::new()), store.source());
+
+        let first = svc.issue_session("123", None).await.unwrap();
+        let first_ttl = first
+            .expires_at
+            .signed_duration_since(first.created_at)
+            .num_seconds();
+
+        let mut next = RuntimeConfig::test_runtime("test-key");
+        next.session_ttl_secs = 30;
+        store.update_runtime(next).await.unwrap();
+
+        let second = svc.issue_session("456", None).await.unwrap();
+        let second_ttl = second
+            .expires_at
+            .signed_duration_since(second.created_at)
+            .num_seconds();
+
+        assert_eq!(first_ttl, 24 * 60 * 60);
+        assert_eq!(second_ttl, 30);
     }
 }

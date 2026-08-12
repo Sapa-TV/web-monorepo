@@ -30,7 +30,7 @@ pub async fn require_auth(
     let authorized = token
         .map(|t| {
             t.as_bytes()
-                .ct_eq(state.config.access_key.as_bytes())
+                .ct_eq(state.config.access_key().as_bytes())
                 .into()
         })
         .unwrap_or(false);

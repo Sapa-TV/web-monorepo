@@ -5,7 +5,6 @@ use twitch_api::helix::HelixClient;
 use twitch_oauth2::{ClientId, ClientSecret, RefreshToken, Scope, TwitchToken, UserToken};
 
 use crate::config::TwitchConfig;
-use crate::error::RepositoryError;
 use crate::error::ingress::PlatformError;
 use crate::platform::{PlatformCredentialRepository, PlatformId};
 
@@ -65,10 +64,7 @@ where
     }
 
     async fn refresh(&self) -> Result<UserToken, PlatformError> {
-        let refresh_token = self
-            .current_refresh_token()
-            .await
-            .map_err(|e| PlatformError::Auth(e.to_string()))?;
+        let refresh_token = self.current_refresh_token().await?;
         let token = UserToken::from_refresh_token(
             &self.http,
             RefreshToken::new(refresh_token),
@@ -81,13 +77,15 @@ where
         Ok(token)
     }
 
-    async fn current_refresh_token(&self) -> Result<String, RepositoryError> {
-        Ok(self
-            .credentials_repo
+    async fn current_refresh_token(&self) -> Result<String, PlatformError> {
+        self.credentials_repo
             .load_credential(PlatformId::TWITCH)
-            .await?
+            .await
+            .map_err(|e| PlatformError::Auth(e.to_string()))?
             .filter(|s| !s.is_empty())
-            .unwrap_or_else(|| self.config.refresh_token.clone()))
+            .ok_or_else(|| {
+                PlatformError::Auth("twitch refresh token is not configured".to_string())
+            })
     }
 
     async fn persist_rotated(&self, token: &UserToken) {
@@ -140,7 +138,6 @@ mod tests {
         Arc::new(TwitchConfig {
             client_id: "id".to_string(),
             client_secret: "secret".to_string(),
-            refresh_token: "from_config".to_string(),
             broadcaster_id: "broadcaster".to_string(),
             redirect_uri: String::new(),
             csrf_ttl_secs: 600,
@@ -148,7 +145,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn current_refresh_token_prefers_repo_over_config() {
+    async fn current_refresh_token_reads_from_repo() {
         let repo = Arc::new(InMemoryPlatformCredentialRepository::new());
         repo.save_credential(PlatformId::TWITCH, "from_repo")
             .await
@@ -158,12 +155,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn current_refresh_token_falls_back_to_config_when_repo_empty() {
+    async fn current_refresh_token_errors_when_repo_empty() {
         let repo = Arc::new(InMemoryPlatformCredentialRepository::new());
         let service = TwitchAuthService::new(test_config(), repo);
-        assert_eq!(
-            service.current_refresh_token().await.unwrap(),
-            "from_config"
-        );
+        assert!(matches!(
+            service.current_refresh_token().await,
+            Err(PlatformError::Auth(_))
+        ));
     }
 }

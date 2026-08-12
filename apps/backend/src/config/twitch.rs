@@ -8,7 +8,6 @@ use crate::error::config::ConfigError;
 pub struct TwitchConfig {
     pub client_id: String,
     pub client_secret: String,
-    pub refresh_token: String,
     pub broadcaster_id: String,
     pub redirect_uri: String,
     pub csrf_ttl_secs: u64,
@@ -18,7 +17,6 @@ impl TwitchConfig {
     pub fn build(
         client_id: String,
         client_secret: String,
-        refresh_token: String,
         broadcaster_id: String,
         redirect_uri: String,
         csrf_ttl_secs: u64,
@@ -40,7 +38,6 @@ impl TwitchConfig {
         Ok(Self {
             client_id,
             client_secret,
-            refresh_token,
             broadcaster_id,
             redirect_uri,
             csrf_ttl_secs,
@@ -57,7 +54,6 @@ impl<'de> Deserialize<'de> for TwitchConfig {
         struct Raw {
             client_id: String,
             client_secret: String,
-            refresh_token: String,
             broadcaster_id: String,
             redirect_uri: String,
             csrf_ttl_secs: u64,
@@ -67,7 +63,6 @@ impl<'de> Deserialize<'de> for TwitchConfig {
         TwitchConfig::build(
             raw.client_id,
             raw.client_secret,
-            raw.refresh_token,
             raw.broadcaster_id,
             raw.redirect_uri,
             raw.csrf_ttl_secs,
@@ -87,7 +82,6 @@ mod tests {
         json!({
             "client_id": "client_id",
             "client_secret": "client_secret",
-            "refresh_token": "refresh_token",
             "broadcaster_id": "broadcaster_id",
             "redirect_uri": "https://localhost/callback",
             "csrf_ttl_secs": 600,
@@ -105,7 +99,6 @@ mod tests {
         let config = TwitchConfig::build(
             String::new(),
             "secret".to_string(),
-            String::new(),
             "broadcaster".to_string(),
             "https://localhost/callback".to_string(),
             600,
@@ -122,7 +115,6 @@ mod tests {
         let config = TwitchConfig::build(
             value["client_id"].as_str().unwrap().to_string(),
             value["client_secret"].as_str().unwrap().to_string(),
-            value["refresh_token"].as_str().unwrap().to_string(),
             value["broadcaster_id"].as_str().unwrap().to_string(),
             value["redirect_uri"].as_str().unwrap().to_string(),
             0,

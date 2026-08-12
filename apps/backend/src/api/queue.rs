@@ -82,17 +82,22 @@ pub struct QueueIdParam {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use axum::body::Body;
     use axum::body::to_bytes;
     use axum::http::Request;
+    use chrono::Utc;
     use tower::ServiceExt;
 
     use crate::api::queue::EnqueueRequest;
     use crate::api::router;
+    use crate::db::inmemory_queue::InMemoryQueueRepository;
+    use crate::queue::repository::QueueRepository;
     use crate::roulette::rarity::{Rarity, RarityId};
     use crate::roulette::slot_service::{RouletteSlot, RouletteSlotId};
     use crate::state::AppState;
-    use crate::test_fixtures::test_state;
+    use crate::test_fixtures::{test_state, test_state_with_queue_repo};
     use crate::user::UserId;
 
     async fn setup_user(state: &AppState) -> UserId {
@@ -108,7 +113,8 @@ mod tests {
 
     #[tokio::test]
     async fn dequeue_next_retries_error_entry() {
-        let state = test_state().await;
+        let queue_repo = Arc::new(InMemoryQueueRepository::new());
+        let state = test_state_with_queue_repo(Arc::clone(&queue_repo)).await;
 
         state
             .rarity_service
@@ -165,7 +171,7 @@ mod tests {
             .unwrap();
         assert_eq!(resp.status(), 200);
 
-        state.queue_service.mark_timed_out().await.unwrap();
+        queue_repo.mark_timed_out(Utc::now()).await.unwrap();
 
         let resp = app
             .oneshot(
@@ -763,7 +769,7 @@ pub async fn list(
     State(state): State<AppState>,
     Query(query): Query<ListQuery>,
 ) -> Result<Json<QueueListResponse>, ApiError> {
-    let limit = query.limit.unwrap_or(state.config.queue_default_limit);
+    let limit = query.limit.unwrap_or(state.config.queue_default_limit());
     let page = state
         .queue_service
         .list(query.status, query.cursor, limit)

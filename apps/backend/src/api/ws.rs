@@ -42,7 +42,7 @@ async fn handle_message(state: &AppState, msg: ClientMessage) -> ServerMessage {
         ClientMessage::Auth { token } => {
             let authorized: bool = token
                 .as_bytes()
-                .ct_eq(state.config.access_key.as_bytes())
+                .ct_eq(state.config.access_key().as_bytes())
                 .into();
             if authorized {
                 ServerMessage::AuthOk

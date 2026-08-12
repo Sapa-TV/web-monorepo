@@ -9,6 +9,7 @@ pub mod session;
 pub mod user;
 
 pub use admin::AdminServiceError;
+pub use config::ConfigError;
 pub use queue::QueueServiceError;
 pub use repository::RepositoryError;
 pub use session::SessionServiceError;

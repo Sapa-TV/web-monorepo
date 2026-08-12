@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use chrono::Utc;
 
+use crate::config::store::SharedSettings;
 use crate::error::QueueServiceError;
 use crate::event::BroadcastEventPublisher;
 use crate::queue::entry::{QueueEntry, QueueEntryId, QueuePage, QueueStats, QueueStatus};
@@ -31,8 +32,7 @@ where
     rarity_service: Arc<RarityService<Arc<R>>>,
     roulette: Roulette<S>,
     event_publisher: BroadcastEventPublisher,
-    timeout: Duration,
-    retention: Duration,
+    settings: SharedSettings,
 }
 
 impl<Q, R, S> Clone for QueueService<Q, R, S>
@@ -47,8 +47,7 @@ where
             rarity_service: Arc::clone(&self.rarity_service),
             roulette: self.roulette.clone(),
             event_publisher: self.event_publisher.clone(),
-            timeout: self.timeout,
-            retention: self.retention,
+            settings: self.settings.clone(),
         }
     }
 }
@@ -64,16 +63,14 @@ where
         rarity_service: Arc<RarityService<Arc<R>>>,
         roulette: Roulette<S>,
         event_publisher: BroadcastEventPublisher,
-        timeout: Duration,
-        retention: Duration,
+        settings: SharedSettings,
     ) -> Self {
         Self {
             queue_repo,
             rarity_service,
             roulette,
             event_publisher,
-            timeout,
-            retention,
+            settings,
         }
     }
 
@@ -157,12 +154,13 @@ where
     }
 
     pub fn timeout(&self) -> Duration {
-        self.timeout
+        Duration::from_secs(self.settings.read().roulette_timeout_secs)
     }
 
     pub async fn mark_timed_out(&self) -> Result<(), QueueServiceError> {
+        let timeout = Duration::from_secs(self.settings.read().roulette_timeout_secs);
         let cutoff = Utc::now()
-            .checked_sub_signed(chrono::Duration::seconds(self.timeout.as_secs() as i64))
+            .checked_sub_signed(chrono::Duration::seconds(timeout.as_secs() as i64))
             .unwrap_or_else(Utc::now);
         let entries = self.queue_repo.mark_timed_out(cutoff).await?;
         for entry in entries {
@@ -224,8 +222,9 @@ where
     }
 
     pub async fn purge_expired(&self) -> Result<usize, QueueServiceError> {
+        let retention = Duration::from_secs(self.settings.read().retention_secs);
         let cutoff = Utc::now()
-            .checked_sub_signed(chrono::Duration::seconds(self.retention.as_secs() as i64))
+            .checked_sub_signed(chrono::Duration::seconds(retention.as_secs() as i64))
             .unwrap_or(Utc::now());
         Ok(self.queue_repo.purge_completed_cancelled(cutoff).await?)
     }
