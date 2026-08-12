@@ -1,0 +1,30 @@
+name: Setup SSH to VPS
+description: Configure SSH agent and known_hosts for the deploy VPS
+
+inputs:
+  ssh-key:
+    description: Private SSH key (VPS_SSH_KEY)
+    required: true
+  host:
+    description: VPS hostname (VPS_HOST)
+    required: true
+  port:
+    description: SSH port (VPS_PORT)
+    required: true
+  user:
+    description: SSH username (VPS_USER)
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: webfactory/ssh-agent@v0.10.0
+      with:
+        ssh-private-key: ${{ inputs.ssh-key }}
+    - name: Add VPS host key
+      shell: bash
+      env:
+        VPS_HOST: ${{ inputs.host }}
+        VPS_PORT: ${{ inputs.port }}
+      run: |
+        ssh-keyscan -p "$VPS_PORT" -H "$VPS_HOST" >> "$HOME/.ssh/known_hosts"

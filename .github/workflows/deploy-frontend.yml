@@ -1,0 +1,66 @@
+name: Deploy frontend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/frontend/**'
+      - 'packages/**'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'package.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-frontend
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.15.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm --filter frontend build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: apps/frontend/build
+          if-no-files-found: error
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup SSH
+        uses: ./.github/actions/setup-ssh
+        with:
+          ssh-key: ${{ secrets.VPS_SSH_KEY }}
+          host: ${{ secrets.VPS_HOST }}
+          port: ${{ secrets.VPS_PORT }}
+          user: ${{ secrets.VPS_USER }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend
+      - name: Sync frontend static
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          ssh -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" "mkdir -p /srv/web-app/www"
+          rsync -e "ssh -p $VPS_PORT" -az --delete ./frontend/ "$VPS_USER@$VPS_HOST:/srv/web-app/www/"
