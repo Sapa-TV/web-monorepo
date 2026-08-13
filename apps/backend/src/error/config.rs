@@ -1,6 +1,9 @@
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
 use thiserror::Error;
 
 use super::RepositoryError;
+use super::api::ApiError;
 
 #[derive(Debug, Error)]
 #[non_exhaustive]
@@ -15,4 +18,24 @@ pub enum ConfigError {
     InvalidValue { field: &'static str },
     #[error("config repository: {0}")]
     Repo(#[from] RepositoryError),
+}
+
+impl From<ConfigError> for ApiError {
+    fn from(e: ConfigError) -> Self {
+        match e {
+            ConfigError::Repo(re) => ApiError::from(re),
+            ConfigError::MissingField { .. }
+            | ConfigError::InvalidCsrfTtl
+            | ConfigError::InvalidAccessKey
+            | ConfigError::InvalidValue { .. } => {
+                ApiError::new(StatusCode::BAD_REQUEST, e.to_string())
+            }
+        }
+    }
+}
+
+impl IntoResponse for ConfigError {
+    fn into_response(self) -> Response {
+        ApiError::from(self).into_response()
+    }
 }

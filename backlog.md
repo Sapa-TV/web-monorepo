@@ -3,11 +3,18 @@
 - [ ] Переделать на axum-extra (cookie) `let mut cookie = format!("{name}={value}; Path=/; HttpOnly; SameSite=Lax");`
 - [ ] Перенести все const в config, для части сделать default значения
 - [ ] Разделить config - сейчас куча всего лежит в common
-- [ ] перейти с .env ACCESS_KEY на генерируемый при старте и с root ендпойнотом для замены ключа
-- [ ] посмотреть конфиги - зачем нужен refresh token в .env config? он будет храниться в db repo
-- [ ] посмотреть current_refresh_token - почему ошибка Auth вместо Fail-Fast при загрузке конфигурации во время инициализации
-- [ ] apps/backend/src/ingress/twitch_auth.rs - сейчас сохраняется в файл, надо переделать на inmemory repo.
+- [x] перейти с .env ACCESS_KEY на генерируемый при старте и с root ендпойнотом для замены ключа
+- [x] посмотреть конфиги - зачем нужен refresh token в .env config? он будет храниться в db repo
+- [x] посмотреть current_refresh_token - почему ошибка Auth вместо Fail-Fast при загрузке конфигурации во время инициализации
+- [x] apps/backend/src/ingress/twitch_auth.rs - сейчас сохраняется в файл, надо переделать на inmemory repo.
       c трейтом и инмемори реализацией, позже это будет храниться в sqlite db
+- [ ] Объединить .env / .env.example (сейчас два набора: корневой — дев (читает dotenvy при cargo run), deploy/.env + deploy/.env.example — прод/sops-раундтрип).
+      Оба .env.example не читаются рантаймом, это документация; содержимое дублируется, в deploy/.env.example остались устаревшие ACCESS_KEY/TWITCH__REFRESH_TOKEN/common.rs.
+      Вариант A (полная унификация): один .env в корне; sops-раундтрип перевести на него (justfile: sops -e .env > .env.sops / sops -d .env.sops > .env),
+      .env.sops перенести из deploy/ в корень (обновить scp в deploy-backend.yml и path_regex в .sops.yaml на ^\.env$), удалить deploy/.env.example и локальный deploy/.env.
+      Минус: just decrypt-env будет класть прод-секреты в дев-`.env`, encrypt-env зашифрует текущее содержимое .env.
+      Вариант B (минимальный): только один .env.example (корневой, слить и вычистить старьё), .env.sops и sops-файл остаются в deploy/ — «второго используемого .env» фактически нет.
+      VPS (deploy-backend.sh, docker-compose.yml env_file: .env) не меняется в обоих вариантах. Опционально: добавить .env/.env.sops в .dockerignore.
 - [ ] Бекенд выдаёт query-параметры в openapi.json как `in: path` (у `GET /api/queue` status/limit/cursor, у `GET /api/users` platform/platform_user_id и т.п.).
       Из-за этого в сгенерированном клиенте они объявлены аргументами, но в запрос не попадают.
       Починить генерацию спеки на бекенде (стоит пометить: поправить utoipa/introspection, чтобы параметры были `in: query`), затем выполнить `just gen-client`.

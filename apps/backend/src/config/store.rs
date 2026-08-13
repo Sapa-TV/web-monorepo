@@ -99,13 +99,19 @@ impl<R: ConfigRepository> ConfigStore<R> {
         Ok(())
     }
 
-    pub async fn rotate_access_key(&self, key: &str) -> Result<(), ConfigError> {
+    async fn rotate_access_key(&self, key: &str) -> Result<(), ConfigError> {
         let mut next = self.runtime_cfg.read().clone();
         next.access_key = key.to_string();
         next.validate()?;
         self.repo.save(&next).await?;
         *self.runtime_cfg.write() = next;
         Ok(())
+    }
+
+    pub async fn rotate_access_key_generated(&self) -> Result<String, ConfigError> {
+        let key = generate_secret();
+        self.rotate_access_key(&key).await?;
+        Ok(key)
     }
 }
 
@@ -206,5 +212,17 @@ mod tests {
         assert!(matches!(err, ConfigError::InvalidAccessKey));
         assert!(repo.load().await.unwrap().is_none());
         assert_eq!(store.access_key(), "secret");
+    }
+
+    #[tokio::test]
+    async fn rotate_access_key_generated_persists_and_is_visible() {
+        let (store, repo) = test_store();
+
+        let key = store.rotate_access_key_generated().await.unwrap();
+
+        assert!(!key.is_empty());
+        assert_eq!(store.source().read().access_key, key);
+        assert_eq!(store.access_key(), key);
+        assert_eq!(repo.load().await.unwrap().unwrap().access_key, key);
     }
 }

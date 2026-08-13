@@ -16,10 +16,17 @@ pub async fn test_state() -> AppState {
 }
 
 pub async fn test_state_with_queue_repo(queue_repo: Arc<InMemoryQueueRepository>) -> AppState {
+    test_state_with_config_repo(queue_repo, Arc::new(InMemoryConfigRepository::new())).await
+}
+
+pub async fn test_state_with_config_repo(
+    queue_repo: Arc<InMemoryQueueRepository>,
+    config_repo: Arc<InMemoryConfigRepository>,
+) -> AppState {
     let config_store = Arc::new(ConfigStore::new(
         Arc::new(StaticConfig::test_config()),
         RuntimeConfig::test_runtime("test-key"),
-        Arc::new(InMemoryConfigRepository::new()),
+        config_repo,
     ));
     AppStateBuilder::new(
         StandartRandomProvider,

@@ -179,7 +179,7 @@
 
 **Шаги:**
 
-1. `src/api/admin.rs` — `POST /api/admin/pak` (root-only, через `require_root`), body `{ "access_key": String }` → `store.rotate_access_key()`; ответ — новый PAK. OpenAPI: `AdminApiDoc` (`paths` + schema) + путь в `root_router`.
+1. `src/api/admin.rs` — `POST /api/admin/pak` (root-only, через `require_root`), без body → новый PAK генерируется случайно (`generate_secret()`, как при boot-seed) через `ConfigStore::rotate_access_key_generated()`; ответ — новый PAK. OpenAPI: `AdminApiDoc` (`paths`) + путь в `root_router`.
 2. Тесты ротации: root меняет → новый работает, старый отклоняется в `require_auth`; non-root → forbidden; значение персистится в repo.
 3. Чистка: `.env.example` — убрать `ACCESS_KEY` (и в комментариях документации при необходимости).
 4. `backlog.md` — отметить выполненными пункты: разделение config, ACCESS_KEY→repo+root-эндпоинт, refresh_token в `PlatformCredentialRepository`.
@@ -191,7 +191,7 @@
 - `ConfigStore`: `update_runtime` применяет + персистит; инвалид → repo не тронут; `rotate_access_key` меняет только key и виден через `source()`.
 - Boot-seed: пустой repo → access_key сгенерирован + сохранён; непустой repo → repo выигрывает, seed не применяется.
 - `twitch_auth`: репо — единственный источник (fallback удалён); пустой repo → `PlatformError::Auth("… not configured")`; удалить старый тест fallback.
-- Ротация PAK через endpoint: root меняет → новый работает, старый отклоняется в `require_auth`; non-root → forbidden; значение персистится в repo.
+- Ротация PAK через endpoint: root меняет (ключ генерируется случайно) → новый работает, старый отклоняется в `require_auth`; non-root → forbidden; значение персистится в repo.
 - Существующие api-тесты: `/api/admin/pak` продолжает отдавать `"test-key"`.
 - `QueueService`/`SessionService`: изменение настройки через `SharedSettings` видно следующему вызову.
 

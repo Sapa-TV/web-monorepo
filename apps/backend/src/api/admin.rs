@@ -9,6 +9,7 @@ use utoipa::{IntoParams, OpenApi, ToSchema};
 
 use crate::admin::Admin;
 use crate::error::AdminServiceError;
+use crate::error::api::ApiError;
 use crate::state::AppState;
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -119,9 +120,24 @@ pub async fn get_admin_pak(State(state): State<AppState>) -> Json<PakResponse> {
     })
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/admin/pak",
+    tag = "admin",
+    responses(
+        (status = 200, description = "PAK rotated, new key generated", body = PakResponse),
+    )
+)]
+pub async fn rotate_admin_pak(
+    State(state): State<AppState>,
+) -> Result<Json<PakResponse>, ApiError> {
+    let pak = state.config.rotate_access_key_generated().await?;
+    Ok(Json(PakResponse { pak }))
+}
+
 #[derive(OpenApi)]
 #[openapi(
-    paths(list_admins, add_admin, remove_admin, get_admin_pak),
+    paths(list_admins, add_admin, remove_admin, get_admin_pak, rotate_admin_pak),
     components(schemas(AdminResponse, AddAdminRequest, PakResponse,))
 )]
 #[non_exhaustive]
@@ -140,12 +156,15 @@ pub fn root_router() -> axum::Router<AppState> {
     axum::Router::new()
         .route("/api/admin", post(add_admin))
         .route("/api/admin/{twitch_id}", delete(remove_admin))
+        .route("/api/admin/pak", post(rotate_admin_pak))
         .merge(twitch::root_router())
         .merge(ingress::root_router())
 }
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use axum::body::Body;
     use axum::body::to_bytes;
     use axum::http::header;
@@ -155,8 +174,11 @@ mod tests {
 
     use crate::api::auth::{LOGIN_COOKIE, SESSION_COOKIE};
     use crate::api::router_with_auth;
+    use crate::config::repository::ConfigRepository;
+    use crate::db::inmemory_config::InMemoryConfigRepository;
+    use crate::db::inmemory_queue::InMemoryQueueRepository;
     use crate::state::AppState;
-    use crate::test_fixtures::test_state;
+    use crate::test_fixtures::{test_state, test_state_with_config_repo};
 
     async fn session_cookie(state: &AppState, twitch_id: &str) -> String {
         let app = router_with_auth(state.clone());
@@ -363,5 +385,144 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn only_root_can_rotate_pak() {
+        let state = test_state().await;
+        state.admin_service.add("123", None).await.unwrap();
+        state.admin_service.add("100", None).await.unwrap();
+        state.admin_service.set_root("100", true).await.unwrap();
+        let app = router_with_auth(state.clone());
+
+        let user_cookie = session_cookie(&state, "123").await;
+        let root_cookie = session_cookie(&state, "100").await;
+
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/admin/pak")
+                    .header(header::COOKIE, user_cookie)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/admin/pak")
+                    .header(header::COOKIE, root_cookie)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body: Value =
+            serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap())
+                .unwrap();
+        let pak = body["pak"].as_str().unwrap().to_string();
+        assert!(!pak.is_empty());
+        assert_ne!(pak, "test-key");
+        assert_eq!(state.config.access_key(), pak);
+    }
+
+    #[tokio::test]
+    async fn rotate_pak_is_persisted_to_repo() {
+        let config_repo = Arc::new(InMemoryConfigRepository::new());
+        let state = test_state_with_config_repo(
+            Arc::new(InMemoryQueueRepository::new()),
+            Arc::clone(&config_repo),
+        )
+        .await;
+        state.admin_service.add("100", None).await.unwrap();
+        state.admin_service.set_root("100", true).await.unwrap();
+        let app = router_with_auth(state.clone());
+        let root_cookie = session_cookie(&state, "100").await;
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/admin/pak")
+                    .header(header::COOKIE, root_cookie)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body: Value =
+            serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap())
+                .unwrap();
+        let pak = body["pak"].as_str().unwrap().to_string();
+
+        let stored = config_repo.load().await.unwrap().unwrap();
+        assert_eq!(stored.access_key, pak);
+    }
+
+    #[tokio::test]
+    async fn rotated_pak_replaces_old_key_in_require_auth() {
+        let state = test_state().await;
+        state.admin_service.add("100", None).await.unwrap();
+        state.admin_service.set_root("100", true).await.unwrap();
+        let app = router_with_auth(state.clone());
+        let root_cookie = session_cookie(&state, "100").await;
+
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/admin/pak")
+                    .header(header::COOKIE, root_cookie)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body: Value =
+            serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap())
+                .unwrap();
+        let pak = body["pak"].as_str().unwrap().to_string();
+
+        let old_key = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/stream/status")
+                    .header(header::CONTENT_TYPE, "application/json")
+                    .header(header::AUTHORIZATION, "Bearer test-key")
+                    .body(Body::from(r#"{"online":true}"#))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(old_key.status(), StatusCode::UNAUTHORIZED);
+
+        let new_key = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/stream/status")
+                    .header(header::CONTENT_TYPE, "application/json")
+                    .header(header::AUTHORIZATION, format!("Bearer {pak}"))
+                    .body(Body::from(r#"{"online":true}"#))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(new_key.status(), StatusCode::OK);
     }
 }
