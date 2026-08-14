@@ -27,7 +27,7 @@ docker compose up -d
 # -- Verify -------------------------------------------------------------------
 healthcheck() {
   for i in $(seq 1 30); do
-    if curl -fs http://127.0.0.1:3000/health >/dev/null; then
+    if curl -fs http://127.0.0.1:3000/api/health >/dev/null; then
       return 0
     fi
     sleep 5

@@ -1,0 +1,23 @@
+id: no-control-flow-in-api
+valid:
+  # thin handler: params -> service -> DTO -> status
+  - "async fn get_user(State(state): State<AppState>, Path(params): Path<UserIdParam>) -> Result<Json<UserResponse>, ApiError> {\n    let view = state.user_service.build_user(params.id).await?\n        .ok_or_else(|| ApiError::new(StatusCode::NOT_FOUND, \"user not found\"))?;\n    Ok(Json(view.into()))\n}"
+  # delete via bool mapping, no if
+  - "state.rarity_service.delete(params.id).await?\n        .then_some(())\n        .ok_or_else(|| ApiError::new(StatusCode::NOT_FOUND, \"rarity not found\"))?;\n    Ok(StatusCode::NO_CONTENT)"
+  # mechanical mapping through closures
+  - "let entries = page.entries.iter().map(|entry| QueueEntryResponse::from(entry).with_slot_name(&state)).collect();"
+  # From impl (DTO mapping)
+  - "impl From<UserView> for UserResponse {\n    fn from(view: UserView) -> Self {\n        Self { id: view.user.id, display_name: view.user.display_name }\n    }\n}"
+  # create_session: params + cookie -> service.login -> DTO -> status
+  - "async fn create_session(State(state): State<AppState>, headers: HeaderMap, Json(body): Json<CreateSessionRequest>) -> Result<(StatusCode, HeaderMap, Json<SessionResponse>), SessionServiceError> {\n    let login_cookie = read_cookie(&headers, LOGIN_COOKIE);\n    let (session, is_root) = state.session_service.login(state.admin_service.as_ref(), login_cookie.as_deref(), &body.ticket).await?;\n    let mut headers = HeaderMap::new();\n    headers.append(header::SET_COOKIE, cookie_header(SESSION_COOKIE, session.token.as_str(), state.config.session_ttl_secs() as i64, state.config.cookie_secure()));\n    Ok((StatusCode::CREATED, headers, Json(SessionResponse { twitch_user_id: session.twitch_user_id, twitch_user_name: session.twitch_user_name, is_root, expires_at: session.expires_at.to_rfc3339() })))\n}"
+invalid:
+  # if in a handler
+  - "async fn delete_rarity(State(state): State<AppState>, Path(params): Path<RarityIdParam>) -> Result<StatusCode, ApiError> {\n    let deleted = state.rarity_service.delete(params.id).await?;\n    if !deleted {\n        return Err(ApiError::new(StatusCode::NOT_FOUND, \"rarity not found\"));\n    }\n    Ok(StatusCode::NO_CONTENT)\n}"
+  # for loop in handler
+  - "async fn resolve(user_platforms: Vec<UserPlatform>) -> Vec<String> {\n    let mut result = Vec::new();\n    for up in user_platforms {\n        result.push(up.platform_user_id);\n    }\n    result\n}"
+  # match in handler
+  - "async fn handle(msg: ClientMessage) -> ServerMessage {\n    match msg {\n        ClientMessage::Auth { token } => ServerMessage::AuthOk,\n        ClientMessage::Complete { entry_id } => ServerMessage::CompleteOk { entry_id },\n    }\n}"
+  # loop in handler
+  - "async fn run() {\n    loop {\n        break;\n    }\n}"
+  # create_session with cookie check inline (logic belongs to service.login)
+  - "async fn create_session(State(state): State<AppState>, headers: HeaderMap, Json(body): Json<CreateSessionRequest>) -> Result<(StatusCode, HeaderMap, Json<SessionResponse>), SessionServiceError> {\n    let login_cookie = read_cookie(&headers, LOGIN_COOKIE);\n    if login_cookie.as_deref() != Some(body.ticket.as_str()) {\n        return Err(SessionServiceError::InvalidTicket);\n    }\n    let session = state.session_service.issue_session(\"123\", None).await?;\n    Ok((StatusCode::CREATED, HeaderMap::new(), Json(SessionResponse { twitch_user_id: session.twitch_user_id, twitch_user_name: session.twitch_user_name, is_root: false, expires_at: session.expires_at.to_rfc3339() })))\n}"

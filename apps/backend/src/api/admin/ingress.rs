@@ -15,7 +15,7 @@ pub struct IngressCredentialsResponse {
 
 #[utoipa::path(
     get,
-    path = "/api/admin/ingress/credentials",
+    path = "/admin/ingress/credentials",
     tag = "admin",
     responses(
         (status = 200, description = "Whether ingress credentials are configured", body = IngressCredentialsResponse),
@@ -30,7 +30,7 @@ pub async fn get_ingress_credentials(
 
 #[utoipa::path(
     delete,
-    path = "/api/admin/ingress/credentials",
+    path = "/admin/ingress/credentials",
     tag = "admin",
     responses(
         (status = 204, description = "Ingress credentials revoked"),
@@ -56,12 +56,9 @@ pub(crate) struct AdminIngressApiDoc;
 pub fn root_router() -> axum::Router<AppState> {
     use axum::routing::{delete, get};
     axum::Router::new()
+        .route("/admin/ingress/credentials", get(get_ingress_credentials))
         .route(
-            "/api/admin/ingress/credentials",
-            get(get_ingress_credentials),
-        )
-        .route(
-            "/api/admin/ingress/credentials",
+            "/admin/ingress/credentials",
             delete(revoke_ingress_credentials),
         )
 }

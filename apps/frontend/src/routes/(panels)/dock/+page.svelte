@@ -1,6 +1,12 @@
 <script lang="ts">
 	import { onMount } from "svelte";
-	import { WS_URL, apiFetch, type QueueEntry, type QueueStats } from "#lib/api";
+	import {
+		WAPI_BASE,
+		WS_URL,
+		apiFetch,
+		type QueueEntry,
+		type QueueStats,
+	} from "#lib/api";
 	import IconKeyRound from "~icons/lucide/key-round";
 	import IconRefreshCw from "~icons/lucide/refresh-cw";
 	import IconPlay from "~icons/lucide/play";
@@ -60,8 +66,8 @@
 	async function loadAll() {
 		try {
 			const [listRes, statsRes] = await Promise.all([
-				apiFetch("/api/queue", {}, pak),
-				apiFetch("/api/queue/stats", {}, pak),
+				apiFetch(`${WAPI_BASE}/queue`, {}, pak),
+				apiFetch(`${WAPI_BASE}/queue/stats`, {}, pak),
 			]);
 
 			if (listRes.status === UNAUTHORIZED) {
@@ -94,7 +100,11 @@
 	async function dequeueNext() {
 		nextBusy = true;
 		try {
-			const r = await apiFetch("/api/queue/next", { method: "POST" }, pak);
+			const r = await apiFetch(
+				`${WAPI_BASE}/queue/next`,
+				{ method: "POST" },
+				pak,
+			);
 			const data = (await r.json()) as {
 				slot?: { name: string };
 				entry?: { id: number; user_name: string };
@@ -118,7 +128,7 @@
 	async function completeEntry(id: number) {
 		try {
 			const r = await apiFetch(
-				`/api/queue/${id}/complete`,
+				`${WAPI_BASE}/queue/${id}/complete`,
 				{ method: "POST" },
 				pak,
 			);
@@ -136,7 +146,7 @@
 	async function cancelEntry(id: number) {
 		try {
 			const r = await apiFetch(
-				`/api/queue/${id}/cancel`,
+				`${WAPI_BASE}/queue/${id}/cancel`,
 				{ method: "POST" },
 				pak,
 			);
@@ -157,7 +167,7 @@
 		enqBusy = true;
 		try {
 			const r = await apiFetch(
-				"/api/queue/anonymous",
+				`${WAPI_BASE}/queue/anonymous`,
 				{
 					method: "POST",
 					headers: { "Content-Type": "application/json" },

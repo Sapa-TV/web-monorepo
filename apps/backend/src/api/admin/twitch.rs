@@ -30,7 +30,7 @@ pub struct TwitchAuthCallbackResponse {
 
 #[utoipa::path(
     get,
-    path = "/api/admin/twitch/auth",
+    path = "/admin/twitch/auth",
     tag = "admin",
     responses(
         (status = 200, description = "Twitch authorization URL", body = TwitchAuthStartResponse),
@@ -46,7 +46,7 @@ pub async fn start_twitch_auth(
 
 #[utoipa::path(
     get,
-    path = "/api/admin/twitch/auth/callback",
+    path = "/admin/twitch/auth/callback",
     tag = "admin",
     params(TwitchAuthCallbackQuery),
     responses(
@@ -78,6 +78,6 @@ pub(crate) struct AdminTwitchApiDoc;
 pub fn root_router() -> axum::Router<AppState> {
     use axum::routing::get;
     axum::Router::new()
-        .route("/api/admin/twitch/auth", get(start_twitch_auth))
-        .route("/api/admin/twitch/auth/callback", get(twitch_auth_callback))
+        .route("/admin/twitch/auth", get(start_twitch_auth))
+        .route("/admin/twitch/auth/callback", get(twitch_auth_callback))
 }

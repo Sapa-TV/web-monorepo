@@ -1,0 +1,81 @@
+id: no-control-flow-in-api
+snapshots:
+  ? |-
+    async fn create_session(State(state): State<AppState>, headers: HeaderMap, Json(body): Json<CreateSessionRequest>) -> Result<(StatusCode, HeaderMap, Json<SessionResponse>), SessionServiceError> {
+        let login_cookie = read_cookie(&headers, LOGIN_COOKIE);
+        if login_cookie.as_deref() != Some(body.ticket.as_str()) {
+            return Err(SessionServiceError::InvalidTicket);
+        }
+        let session = state.session_service.issue_session("123", None).await?;
+        Ok((StatusCode::CREATED, HeaderMap::new(), Json(SessionResponse { twitch_user_id: session.twitch_user_id, twitch_user_name: session.twitch_user_name, is_root: false, expires_at: session.expires_at.to_rfc3339() })))
+    }
+  : labels:
+    - source: |-
+        if login_cookie.as_deref() != Some(body.ticket.as_str()) {
+                return Err(SessionServiceError::InvalidTicket);
+            }
+      style: primary
+      start: 260
+      end: 380
+  ? |-
+    async fn delete_rarity(State(state): State<AppState>, Path(params): Path<RarityIdParam>) -> Result<StatusCode, ApiError> {
+        let deleted = state.rarity_service.delete(params.id).await?;
+        if !deleted {
+            return Err(ApiError::new(StatusCode::NOT_FOUND, "rarity not found"));
+        }
+        Ok(StatusCode::NO_CONTENT)
+    }
+  : labels:
+    - source: |-
+        if !deleted {
+                return Err(ApiError::new(StatusCode::NOT_FOUND, "rarity not found"));
+            }
+      style: primary
+      start: 192
+      end: 289
+  ? |-
+    async fn handle(msg: ClientMessage) -> ServerMessage {
+        match msg {
+            ClientMessage::Auth { token } => ServerMessage::AuthOk,
+            ClientMessage::Complete { entry_id } => ServerMessage::CompleteOk { entry_id },
+        }
+    }
+  : labels:
+    - source: |-
+        match msg {
+                ClientMessage::Auth { token } => ServerMessage::AuthOk,
+                ClientMessage::Complete { entry_id } => ServerMessage::CompleteOk { entry_id },
+            }
+      style: primary
+      start: 59
+      end: 228
+  ? |-
+    async fn resolve(user_platforms: Vec<UserPlatform>) -> Vec<String> {
+        let mut result = Vec::new();
+        for up in user_platforms {
+            result.push(up.platform_user_id);
+        }
+        result
+    }
+  : labels:
+    - source: |-
+        for up in user_platforms {
+                result.push(up.platform_user_id);
+            }
+      style: primary
+      start: 106
+      end: 180
+  ? |-
+    async fn run() {
+        loop {
+            break;
+        }
+    }
+  : labels:
+    - source: |-
+        loop {
+                break;
+            }
+      style: primary
+      start: 21
+      end: 48

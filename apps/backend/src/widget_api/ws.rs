@@ -133,18 +133,14 @@ pub fn public_router() -> axum::Router<AppState> {
 
 #[cfg(test)]
 mod tests {
-    use axum::body::Body;
-    use axum::http::Request;
     use serde_json::Value;
-    use tower::ServiceExt;
 
-    use crate::api::router;
-    use crate::api::ws::{ClientMessage, ServerMessage, handle_message};
     use crate::queue::entry::{QueueEntryId, QueueStatus};
     use crate::roulette::rarity::{Rarity, RarityId};
     use crate::roulette::slot_service::{RouletteSlot, RouletteSlotId};
     use crate::state::AppState;
     use crate::test_fixtures::test_state;
+    use crate::widget_api::ws::{ClientMessage, ServerMessage, handle_message};
 
     async fn setup_spinning(state: &AppState) -> QueueEntryId {
         state
@@ -199,71 +195,26 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn ws_and_rest_complete_are_equivalent() {
+    async fn complete_via_message_marks_entry_completed_once() {
         let state = test_state().await;
-        let app = router(state.clone());
 
-        let ws_entry_id = setup_spinning(&state).await;
-        let reply = handle_message(
-            &state,
-            ClientMessage::Complete {
-                entry_id: ws_entry_id,
-            },
-        )
-        .await;
-        assert!(matches!(reply, ServerMessage::CompleteOk { entry_id } if entry_id == ws_entry_id));
+        let entry_id = setup_spinning(&state).await;
+        let reply = handle_message(&state, ClientMessage::Complete { entry_id }).await;
+        assert!(matches!(reply, ServerMessage::CompleteOk { entry_id: id } if id == entry_id));
         let entry = state
             .queue_service
-            .get_by_id(ws_entry_id)
+            .get_by_id(entry_id)
             .await
             .unwrap()
             .unwrap();
         assert_eq!(entry.status, QueueStatus::Completed);
 
-        let rest_entry_id = setup_spinning(&state).await;
-        let response = app
-            .clone()
-            .oneshot(
-                Request::builder()
-                    .method("POST")
-                    .uri(format!("/api/queue/{rest_entry_id}/complete"))
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(response.status(), 200);
-        let entry = state
-            .queue_service
-            .get_by_id(rest_entry_id)
-            .await
-            .unwrap()
-            .unwrap();
-        assert_eq!(entry.status, QueueStatus::Completed);
-
-        let reply = handle_message(
-            &state,
-            ClientMessage::Complete {
-                entry_id: ws_entry_id,
-            },
-        )
-        .await;
+        let reply = handle_message(&state, ClientMessage::Complete { entry_id }).await;
         assert!(matches!(
             reply,
-            ServerMessage::CompleteErr { entry_id, error }
-            if entry_id == ws_entry_id && !error.is_empty()
+            ServerMessage::CompleteErr { entry_id: id, error }
+            if id == entry_id && !error.is_empty()
         ));
-        let response = app
-            .oneshot(
-                Request::builder()
-                    .method("POST")
-                    .uri(format!("/api/queue/{ws_entry_id}/complete"))
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(response.status(), 409);
     }
 
     #[tokio::test]

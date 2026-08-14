@@ -7,11 +7,13 @@ const defaultOrigin =
 
 export const API_BASE = "";
 
+export const WAPI_BASE = "/wapi";
+
 const httpOrigin = typeof location !== "undefined" ? location.origin : "";
 
 export const api = createApi(httpOrigin);
 
-export const WS_URL = `${defaultOrigin}/ws`;
+export const WS_URL = `${defaultOrigin}${WAPI_BASE}/ws`;
 
 export interface QueueEntry {
 	id: number;

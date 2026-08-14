@@ -4,7 +4,7 @@ use std::sync::OnceLock;
 use crate::error::UserServiceError;
 use crate::platform::{Platform, PlatformRepository};
 use crate::user::repository::UserRepository;
-use crate::user::{User, UserId, UserPlatform};
+use crate::user::{ResolvedUserPlatform, User, UserId, UserPlatform, UserView};
 
 pub struct UserService<U, P>
 where
@@ -61,6 +61,38 @@ where
         user_id: UserId,
     ) -> Result<Vec<UserPlatform>, UserServiceError> {
         Ok(self.user_repo.get_platforms(user_id).await?)
+    }
+
+    pub async fn build_user(&self, user_id: UserId) -> Result<Option<UserView>, UserServiceError> {
+        let Some(user) = self.user_repo.get_by_id(user_id).await? else {
+            return Ok(None);
+        };
+        let user_platforms = self.user_repo.get_platforms(user_id).await?;
+        let platforms = self.resolve_user_platforms(user_platforms).await?;
+        Ok(Some(UserView { user, platforms }))
+    }
+
+    pub async fn resolve_user_platforms(
+        &self,
+        user_platforms: Vec<UserPlatform>,
+    ) -> Result<Vec<ResolvedUserPlatform>, UserServiceError> {
+        let all_platforms = self.platform_repo.load_all().await?;
+        Ok(user_platforms
+            .into_iter()
+            .map(|up| {
+                let platform_name = all_platforms
+                    .iter()
+                    .find(|p| p.id == up.platform_id)
+                    .map(|p| p.name.clone())
+                    .unwrap_or_default();
+                ResolvedUserPlatform {
+                    id: up.id,
+                    platform_name,
+                    platform_user_id: up.platform_user_id,
+                    platform_username: up.platform_username,
+                }
+            })
+            .collect())
     }
 
     pub async fn update_user(
@@ -153,6 +185,7 @@ mod tests {
     use crate::db::inmemory_platform::InMemoryPlatformRepository;
     use crate::db::inmemory_user::InMemoryUserRepository;
     use crate::error::UserServiceError;
+    use crate::platform::PlatformId;
 
     use super::*;
 
@@ -288,5 +321,42 @@ mod tests {
         let user = create_user(&svc, "Viewer").await;
         svc.delete_user(user.id).await.unwrap();
         assert!(svc.get_user(user.id).await.unwrap().is_none());
+    }
+
+    #[tokio::test]
+    async fn build_user_resolves_platform_names() {
+        let svc = test_service().await;
+        let user = create_user(&svc, "Viewer").await;
+        svc.link_platform(user.id, "twitch", "123", "tw_user")
+            .await
+            .unwrap();
+
+        let view = svc.build_user(user.id).await.unwrap().unwrap();
+        assert_eq!(view.user.display_name, "Viewer");
+        assert_eq!(view.platforms.len(), 1);
+        assert_eq!(view.platforms[0].platform_name, "twitch");
+        assert_eq!(view.platforms[0].platform_user_id, "123");
+        assert_eq!(view.platforms[0].platform_username, "tw_user");
+    }
+
+    #[tokio::test]
+    async fn build_user_nonexistent() {
+        let svc = test_service().await;
+        assert!(svc.build_user(UserId::new(999)).await.unwrap().is_none());
+    }
+
+    #[tokio::test]
+    async fn build_user_unknown_platform_falls_back_to_empty_name() {
+        let svc = test_service().await;
+        let user = create_user(&svc, "Viewer").await;
+        svc.link_platform(user.id, "twitch", "123", "tw_user")
+            .await
+            .unwrap();
+        let user_platforms = svc.get_platforms(user.id).await.unwrap();
+        let mut broken = user_platforms;
+        broken[0].platform_id = PlatformId::new(999);
+
+        let resolved = svc.resolve_user_platforms(broken).await.unwrap();
+        assert_eq!(resolved[0].platform_name, "");
     }
 }

@@ -3,7 +3,7 @@ use std::fs;
 use std::path::Path;
 use std::process::ExitCode;
 
-use backend::api::ApiDoc;
+use backend::ApiDoc;
 use utoipa::OpenApi;
 
 fn main() -> ExitCode {

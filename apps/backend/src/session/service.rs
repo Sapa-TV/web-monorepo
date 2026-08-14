@@ -3,7 +3,10 @@ use std::time::Duration;
 
 use chrono::Utc;
 
+use crate::admin::repository::AdminRepository;
+use crate::admin::service::AdminService;
 use crate::config::store::SharedSettings;
+use crate::error::RepositoryError;
 use crate::error::SessionServiceError;
 use crate::session::repository::SessionRepository;
 use crate::session::{LoginTicket, LoginTicketToken, Session, SessionToken};
@@ -100,6 +103,45 @@ where
         Ok(())
     }
 
+    pub async fn login<A>(
+        &self,
+        admin: &AdminService<A>,
+        login_cookie: Option<&str>,
+        ticket: &str,
+    ) -> Result<(Session, bool), SessionServiceError>
+    where
+        A: AdminRepository,
+    {
+        if login_cookie != Some(ticket) {
+            return Err(SessionServiceError::InvalidTicket);
+        }
+
+        let ticket = self.consume_login_ticket(ticket).await?;
+
+        let is_admin = admin.is_admin(&ticket.twitch_user_id).await.map_err(|_| {
+            SessionServiceError::Repo(RepositoryError::Database("admin service".to_string()))
+        })?;
+        if is_admin {
+            admin
+                .update_display_name(
+                    &ticket.twitch_user_id,
+                    ticket.twitch_user_name.as_deref().unwrap_or(""),
+                )
+                .await
+                .ok();
+        }
+
+        let session = self
+            .issue_session(&ticket.twitch_user_id, ticket.twitch_user_name.as_deref())
+            .await?;
+
+        let is_root = admin.is_root(&session.twitch_user_id).await.map_err(|_| {
+            SessionServiceError::Repo(RepositoryError::Database("admin service".to_string()))
+        })?;
+
+        Ok((session, is_root))
+    }
+
     pub async fn prune_expired(&self) -> Result<usize, SessionServiceError> {
         let now = Utc::now();
         let sessions = self.repo.purge_expired_sessions(now).await?;
@@ -119,12 +161,18 @@ fn nonce() -> String {
 mod tests {
     use std::sync::Arc;
 
+    use crate::admin::service::AdminService;
     use crate::config::runtime::RuntimeConfig;
+    use crate::db::inmemory_admin::InMemoryAdminRepository;
     use crate::db::inmemory_session::InMemorySessionRepository;
 
     use super::*;
 
     type TestService = SessionService<InMemorySessionRepository>;
+
+    async fn admin_service() -> AdminService<InMemoryAdminRepository> {
+        AdminService::new(Arc::new(InMemoryAdminRepository::new()))
+    }
 
     fn test_settings(ttl_secs: u64) -> SharedSettings {
         let mut config = RuntimeConfig::test_runtime("test-key");
@@ -208,6 +256,92 @@ mod tests {
             .await
             .unwrap_err();
         assert!(matches!(err, SessionServiceError::SessionNotFound));
+    }
+
+    async fn login_ticket(svc: &TestService, twitch_id: &str, name: Option<&str>) -> String {
+        svc.create_login_ticket(twitch_id, name)
+            .await
+            .unwrap()
+            .ticket
+            .as_str()
+            .to_string()
+    }
+
+    #[tokio::test]
+    async fn login_updates_display_name_for_admin() {
+        let svc = test_service();
+        let admins = admin_service().await;
+        admins.add("123", Some("old_name")).await.unwrap();
+
+        let ticket = login_ticket(&svc, "123", Some("new_name")).await;
+        let (session, is_root) = svc
+            .login(&admins, Some(ticket.as_str()), ticket.as_str())
+            .await
+            .unwrap();
+
+        assert_eq!(session.twitch_user_id, "123");
+        assert_eq!(session.twitch_user_name.as_deref(), Some("new_name"));
+        assert!(!is_root);
+        assert_eq!(
+            admins
+                .get("123")
+                .await
+                .unwrap()
+                .unwrap()
+                .display_name
+                .as_deref(),
+            Some("new_name")
+        );
+    }
+
+    #[tokio::test]
+    async fn login_allows_regular_user() {
+        let svc = test_service();
+        let admins = admin_service().await;
+
+        let ticket = login_ticket(&svc, "999", Some("viewer")).await;
+        let (session, is_root) = svc
+            .login(&admins, Some(ticket.as_str()), ticket.as_str())
+            .await
+            .unwrap();
+
+        assert_eq!(session.twitch_user_id, "999");
+        assert_eq!(session.twitch_user_name.as_deref(), Some("viewer"));
+        assert!(!is_root);
+        assert!(admins.get("999").await.unwrap().is_none());
+    }
+
+    #[tokio::test]
+    async fn login_reports_is_root_for_root_admin() {
+        let svc = test_service();
+        let admins = admin_service().await;
+        admins.add("123", None).await.unwrap();
+        admins.set_root("123", true).await.unwrap();
+
+        let ticket = login_ticket(&svc, "123", None).await;
+        let (session, is_root) = svc
+            .login(&admins, Some(ticket.as_str()), ticket.as_str())
+            .await
+            .unwrap();
+
+        assert_eq!(session.twitch_user_id, "123");
+        assert!(is_root);
+    }
+
+    #[tokio::test]
+    async fn login_rejects_ticket_without_matching_cookie() {
+        let svc = test_service();
+        let admins = admin_service().await;
+        let ticket = login_ticket(&svc, "123", None).await;
+
+        let err = svc.login(&admins, None, ticket.as_str()).await.unwrap_err();
+        assert!(matches!(err, SessionServiceError::InvalidTicket));
+
+        let err = svc
+            .login(&admins, Some("stolen"), ticket.as_str())
+            .await
+            .unwrap_err();
+        assert!(matches!(err, SessionServiceError::InvalidTicket));
     }
 
     #[tokio::test]

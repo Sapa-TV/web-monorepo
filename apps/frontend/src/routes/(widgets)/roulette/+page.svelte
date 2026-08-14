@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from "svelte";
-	import { WS_URL, apiFetch } from "#lib/api";
+	import { WAPI_BASE, WS_URL, apiFetch } from "#lib/api";
 
 	type ConnState = "connected" | "disconnected";
 
@@ -87,7 +87,7 @@
 		idleTimer = setTimeout(() => {
 			if (currentEntryId === data.entry_id) {
 				apiFetch(
-					`/api/queue/${currentEntryId}/complete`,
+					`${WAPI_BASE}/queue/${currentEntryId}/complete`,
 					{ method: "POST" },
 					pak,
 				).catch(() => {});
@@ -184,7 +184,7 @@
 		}
 
 		setIdle();
-		apiFetch("/api/queue", {}, pak)
+		apiFetch(`${WAPI_BASE}/queue`, {}, pak)
 			.then((res) => {
 				if (res.status === UNAUTHORIZED) {
 					failAuth();

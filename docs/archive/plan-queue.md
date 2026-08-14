@@ -42,16 +42,16 @@
 
 ## API
 
-| Method | Path                       | Caller           | Request                                                            | Response              | Описание                                                                                                             |
-| ------ | -------------------------- | ---------------- | ------------------------------------------------------------------ | --------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `POST` | `/api/queue`               | External service | `{ platform, platform_user_id, platform_username, reward_title? }` | 200 + QueueEntry      | Добавить в очередь. Создаёт/находит пользователя.                                                                    |
-| `GET`  | `/api/queue`               | Dock             | `?status=`                                                         | 200 + [QueueEntry]    | Список элементов.                                                                                                    |
-| `GET`  | `/api/queue/{id}`          | Dock             | —                                                                  | 200 + QueueEntry      | Элемент с пользователем. 404 если нет.                                                                               |
-| `GET`  | `/api/queue/next`          | Dock             | —                                                                  | 200 + QueueEntry      | Error если есть, иначе первый Pending (без извлечения). 404 если нет ни Error ни Pending.                            |
-| `POST` | `/api/queue/next`          | Dock             | —                                                                  | 200 + { entry, slot } | Error → Spinning. Если Error нет — Pending → Spinning. 409 если уже есть Spinning. 404 если нет ни Error ни Pending. |
-| `POST` | `/api/queue/{id}/complete` | Widget           | —                                                                  | 200                   | Подтвердить → Completed. 409 если не Spinning.                                                                       |
-| `POST` | `/api/queue/{id}/cancel`   | Dock             | —                                                                  | 200                   | Отменить Pending или Error. 409 если не Pending и не Error.                                                          |
-| `GET`  | `/api/queue/stats`         | Dock             | —                                                                  | 200 + QueueStats      | Количество по статусам.                                                                                              |
+| Method | Path                        | Описание                                                                                                        |
+| ------ | --------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `POST` | `/wapi/queue`               | External service. Добавить в очередь; создаёт/находит пользователя. 400 неизвестная платформа.                  |
+| `GET`  | `/wapi/queue`               | Dock. Список элементов (`?status=` фильтр).                                                                     |
+| `GET`  | `/wapi/queue/{id}`          | Dock. Элемент с пользователем. 404 если нет.                                                                    |
+| `GET`  | `/wapi/queue/next`          | Dock. Error если есть, иначе первый Pending (без извлечения). 404 если нет ни Error ни Pending.                 |
+| `POST` | `/wapi/queue/next`          | Dock. Error → Spinning, иначе Pending → Spinning. 409 если уже есть Spinning. 404 если нет ни Error ни Pending. |
+| `POST` | `/wapi/queue/{id}/complete` | Widget. Подтвердить → Completed. 409 если не Spinning.                                                          |
+| `POST` | `/wapi/queue/{id}/cancel`   | Dock. Отменить Pending или Error. 409 если не Pending и не Error.                                               |
+| `GET`  | `/wapi/queue/stats`         | Dock. Количество по статусам (`QueueStats`).                                                                    |
 
 > **Изменение относительно плана:** `reward_title` удалён из запроса.
 
@@ -59,15 +59,15 @@
 
 ### Нормальный розыгрыш
 
-1. External service → `POST /api/queue` → Pending
-2. Dock → `GET /api/queue/next` → видят первый Pending
-3. Dock → `POST /api/queue/next` → Pending → Spinning + событие spin_started
+1. External service → `POST /wapi/queue` → Pending
+2. Dock → `GET /wapi/queue/next` → видят первый Pending
+3. Dock → `POST /wapi/queue/next` → Pending → Spinning + событие spin_started
 4. Widget отображает анимацию
-5. Widget → `POST /api/queue/{id}/complete` → Completed + событие spin_completed
+5. Widget → `POST /wapi/queue/{id}/complete` → Completed + событие spin_completed
 
 ### Отмена
 
-1. Dock → `POST /api/queue/{id}/cancel` — только если Pending или Error
+1. Dock → `POST /wapi/queue/{id}/cancel` — только если Pending или Error
 2. Если статус не Pending и не Error → 409 Conflict
 
 ### Таймаут
@@ -77,9 +77,9 @@
 
 ## Зависимости
 
-- **`RouletteService`** — `POST /api/queue/next` использует `RouletteService::roll()` для выбора случайного слота по весам. Если слотов нет (roll → None) → 500.
-- **`PlatformRepository`** — `POST /api/queue` ищет платформу по имени. Не найдена → 400.
-- **`UserRepository`** — `POST /api/queue` создаёт или находит пользователя: `find_by_platform` → если нет → `create` + `link_platform`.
+- **`RouletteService`** — `POST /wapi/queue/next` использует `RouletteService::roll()` для выбора случайного слота по весам. Если слотов нет (roll → None) → 500.
+- **`PlatformRepository`** — `POST /wapi/queue` ищет платформу по имени. Не найдена → 400.
+- **`UserRepository`** — `POST /wapi/queue` создаёт или находит пользователя: `find_by_platform` → если нет → `create` + `link_platform`.
 - **`Config`** — статическая структура с настройками модуля.
 
 ## Конфиг
@@ -159,32 +159,32 @@ pub trait SpinEventPublisher: Send + Sync {
 
 ### API
 
-20. `POST /api/queue` 200
-21. `POST /api/queue` — неизвестная платформа → 400
-22. `GET /api/queue` 200
-23. `GET /api/queue?status=pending` 200
-24. `GET /api/queue/{id}` 200
-25. `GET /api/queue/{id}` 404
-26. `GET /api/queue/next` 200
-27. `GET /api/queue/next` — нет Error и нет Pending → 404
-28. `POST /api/queue/next` — Pending → Spinning 200
-29. `POST /api/queue/next` — Error → Spinning 200
-30. `POST /api/queue/next` — уже есть Spinning → 409
-31. `POST /api/queue/next` — нет Error и нет Pending → 404
-32. `POST /api/queue/{id}/complete` 200
-33. `POST /api/queue/{id}/complete` — не Spinning → 409
-34. `POST /api/queue/{id}/cancel` — Pending → 200
-35. `POST /api/queue/{id}/cancel` — Error → 200
-36. `POST /api/queue/{id}/cancel` — не Pending и не Error → 409
-37. `GET /api/queue/stats` 200
-38. `POST /api/queue` — новый пользователь (создаётся User + link_platform)
-39. `POST /api/queue/next` — нет слотов (roll → None) → 500
-40. `POST /api/queue/next` — publish_spin вернул Err → 500
-41. `POST /api/queue/{id}/complete` — publish_spin вернул Err → 500
+20. `POST /wapi/queue` 200
+21. `POST /wapi/queue` — неизвестная платформа → 400
+22. `GET /wapi/queue` 200
+23. `GET /wapi/queue?status=pending` 200
+24. `GET /wapi/queue/{id}` 200
+25. `GET /wapi/queue/{id}` 404
+26. `GET /wapi/queue/next` 200
+27. `GET /wapi/queue/next` — нет Error и нет Pending → 404
+28. `POST /wapi/queue/next` — Pending → Spinning 200
+29. `POST /wapi/queue/next` — Error → Spinning 200
+30. `POST /wapi/queue/next` — уже есть Spinning → 409
+31. `POST /wapi/queue/next` — нет Error и нет Pending → 404
+32. `POST /wapi/queue/{id}/complete` 200
+33. `POST /wapi/queue/{id}/complete` — не Spinning → 409
+34. `POST /wapi/queue/{id}/cancel` — Pending → 200
+35. `POST /wapi/queue/{id}/cancel` — Error → 200
+36. `POST /wapi/queue/{id}/cancel` — не Pending и не Error → 409
+37. `GET /wapi/queue/stats` 200
+38. `POST /wapi/queue` — новый пользователь (создаётся User + link_platform)
+39. `POST /wapi/queue/next` — нет слотов (roll → None) → 500
+40. `POST /wapi/queue/next` — publish_spin вернул Err → 500
+41. `POST /wapi/queue/{id}/complete` — publish_spin вернул Err → 500
 
 ### SpinEventPublisher (с моком)
 
-42. `POST /api/queue/next` → Pending → Spinning → вызван `SpinEventPublisher::publish_spin(Started)`
-43. `POST /api/queue/next` → Error → Spinning → вызван `SpinEventPublisher::publish_spin(Started)`
-44. `POST /api/queue/{id}/complete` → Spinning → Completed → вызван `SpinEventPublisher::publish_spin(Completed)`
+42. `POST /wapi/queue/next` → Pending → Spinning → вызван `SpinEventPublisher::publish_spin(Started)`
+43. `POST /wapi/queue/next` → Error → Spinning → вызван `SpinEventPublisher::publish_spin(Started)`
+44. `POST /wapi/queue/{id}/complete` → Spinning → Completed → вызван `SpinEventPublisher::publish_spin(Completed)`
 45. Таймаут: запуск проверки → Spinning истёк → Error + вызван `SpinEventPublisher::publish_spin(Error)`

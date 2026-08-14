@@ -58,17 +58,17 @@
 
 ## API
 
-| Method   | Path                                     | Request                 | Response         | Описание                                           |
-| -------- | ---------------------------------------- | ----------------------- | ---------------- | -------------------------------------------------- |
-| `POST`   | `/api/users`                             | `CreateUserRequest`     | 201 + User       | Создать нового зрителя.                            |
-| `GET`    | `/api/users?platform=&platform_user_id=` | —                       | 200 + User       | Найти зрителя по платформе. 404 если не найден.    |
-| `GET`    | `/api/users/{id}`                        | —                       | 200 + User       | Зритель с платформами. 404 если нет.               |
-| `PATCH`  | `/api/users/{id}`                        | `UpdateUserRequest`     | 200 + User       | Обновить display_name. 404 если нет.               |
-| `DELETE` | `/api/users/{id}`                        | —                       | 204              | Удалить зрителя и все его платформы. 404 если нет. |
-| `POST`   | `/api/users/{id}/platforms`              | `LinkPlatformRequest`   | 200 + User       | Привязать платформу. 409 если уже занята.          |
-| `PATCH`  | `/api/users/{id}/platforms/{platform}`   | `UpdatePlatformRequest` | 200 + User       | Обновить username на платформе. 404 если нет.      |
-| `DELETE` | `/api/users/{id}/platforms/{platform}`   | —                       | 200 + User       | Отвязать платформу. 404 если нет.                  |
-| `GET`    | `/api/platforms`                         | —                       | 200 + [Platform] | Список всех платформ.                              |
+| Method   | Path                                      | Request                 | Response         | Описание                                           |
+| -------- | ----------------------------------------- | ----------------------- | ---------------- | -------------------------------------------------- |
+| `POST`   | `/wapi/users`                             | `CreateUserRequest`     | 201 + User       | Создать нового зрителя.                            |
+| `GET`    | `/wapi/users?platform=&platform_user_id=` | —                       | 200 + User       | Найти зрителя по платформе. 404 если не найден.    |
+| `GET`    | `/wapi/users/{id}`                        | —                       | 200 + User       | Зритель с платформами. 404 если нет.               |
+| `PATCH`  | `/wapi/users/{id}`                        | `UpdateUserRequest`     | 200 + User       | Обновить display_name. 404 если нет.               |
+| `DELETE` | `/wapi/users/{id}`                        | —                       | 204              | Удалить зрителя и все его платформы. 404 если нет. |
+| `POST`   | `/wapi/users/{id}/platforms`              | `LinkPlatformRequest`   | 200 + User       | Привязать платформу. 409 если уже занята.          |
+| `PATCH`  | `/wapi/users/{id}/platforms/{platform}`   | `UpdatePlatformRequest` | 200 + User       | Обновить username на платформе. 404 если нет.      |
+| `DELETE` | `/wapi/users/{id}/platforms/{platform}`   | —                       | 200 + User       | Отвязать платформу. 404 если нет.                  |
+| `GET`    | `/wapi/platforms`                         | —                       | 200 + [Platform] | Список всех платформ.                              |
 
 > **Изменение относительно плана:** хендлеры сами конвертят `None`/`false` из репозитория в 404 через `ApiError::new()`.
 
@@ -85,19 +85,19 @@
 
 ### Новый зритель
 
-1. `GET /api/users?platform=twitch&platform_user_id=123` → 404
-2. `POST /api/users { "display_name": "Viewer" }` → 201 + User
-3. `POST /api/users/{id}/platforms { "platform": "twitch", "platform_user_id": "123", "platform_username": "viewer" }` → 200 + User
+1. `GET /wapi/users?platform=twitch&platform_user_id=123` → 404
+2. `POST /wapi/users { "display_name": "Viewer" }` → 201 + User
+3. `POST /wapi/users/{id}/platforms { "platform": "twitch", "platform_user_id": "123", "platform_username": "viewer" }` → 200 + User
 
 ### Вернувшийся зритель
 
-1. `GET /api/users?platform=twitch&platform_user_id=123` → 200 + User
-2. Если username на платформе изменился: `PATCH /api/users/{id}/platforms/twitch { "platform_username": "new_name" }` → 200 + User
+1. `GET /wapi/users?platform=twitch&platform_user_id=123` → 200 + User
+2. Если username на платформе изменился: `PATCH /wapi/users/{id}/platforms/twitch { "platform_username": "new_name" }` → 200 + User
 
 ### Зритель на другой платформе
 
-1. `GET /api/users/{id}` → 200 + User (видно обе платформы)
-2. `POST /api/users/{id}/platforms { "platform": "youtube", ... }` → 200 + User
+1. `GET /wapi/users/{id}` → 200 + User (видно обе платформы)
+2. `POST /wapi/users/{id}/platforms { "platform": "youtube", ... }` → 200 + User
 
 ## Тесты
 
@@ -136,23 +136,23 @@
 
 ### API (+4 теста сверх плана)
 
-26. `POST /api/users` 201
-27. `GET /api/users?platform=twitch&platform_user_id=123` 200
-28. `GET /api/users?platform=twitch&platform_user_id=unknown` 404
-29. `GET /api/users?platform=unknown&platform_user_id=123` 400
-30. `GET /api/users/{id}` 200
-31. `GET /api/users/{id}` 404
-32. `PATCH /api/users/{id}` 200
-33. `DELETE /api/users/{id}` 204
-34. `DELETE /api/users/{id}` 404
-35. `POST /api/users/{id}/platforms` 200
-36. `POST /api/users/{id}/platforms` — платформа уже привязана → 409
-37. `POST /api/users/{id}/platforms` — неизвестная платформа → 400
-38. `PATCH /api/users/{id}/platforms/{platform}` 200
-39. `DELETE /api/users/{id}/platforms/{platform}` 200
-40. `DELETE /api/users/{id}/platforms/{platform}` 404
-41. `DELETE /api/users/{id}/platforms/{platform}` — неизвестная платформа → 400
-42. `GET /api/platforms` 200
+26. `POST /wapi/users` 201
+27. `GET /wapi/users?platform=twitch&platform_user_id=123` 200
+28. `GET /wapi/users?platform=twitch&platform_user_id=unknown` 404
+29. `GET /wapi/users?platform=unknown&platform_user_id=123` 400
+30. `GET /wapi/users/{id}` 200
+31. `GET /wapi/users/{id}` 404
+32. `PATCH /wapi/users/{id}` 200
+33. `DELETE /wapi/users/{id}` 204
+34. `DELETE /wapi/users/{id}` 404
+35. `POST /wapi/users/{id}/platforms` 200
+36. `POST /wapi/users/{id}/platforms` — платформа уже привязана → 409
+37. `POST /wapi/users/{id}/platforms` — неизвестная платформа → 400
+38. `PATCH /wapi/users/{id}/platforms/{platform}` 200
+39. `DELETE /wapi/users/{id}/platforms/{platform}` 200
+40. `DELETE /wapi/users/{id}/platforms/{platform}` 404
+41. `DELETE /wapi/users/{id}/platforms/{platform}` — неизвестная платформа → 400
+42. `GET /wapi/platforms` 200
 43. `full_flow_new_viewer` — e2e: поиск → создание → привязка → поиск
 
 ---

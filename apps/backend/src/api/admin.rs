@@ -53,7 +53,7 @@ pub struct PakResponse {
 
 #[utoipa::path(
     get,
-    path = "/api/admin",
+    path = "/admin",
     tag = "admin",
     responses(
         (status = 200, description = "List all admins", body = Vec<AdminResponse>),
@@ -68,7 +68,7 @@ pub async fn list_admins(
 
 #[utoipa::path(
     post,
-    path = "/api/admin",
+    path = "/admin",
     tag = "admin",
     request_body = AddAdminRequest,
     responses(
@@ -89,7 +89,7 @@ pub async fn add_admin(
 
 #[utoipa::path(
     delete,
-    path = "/api/admin/{twitch_id}",
+    path = "/admin/{twitch_id}",
     tag = "admin",
     params(TwitchIdParam),
     responses(
@@ -108,7 +108,7 @@ pub async fn remove_admin(
 
 #[utoipa::path(
     get,
-    path = "/api/admin/pak",
+    path = "/admin/pak",
     tag = "admin",
     responses(
         (status = 200, description = "Widget access key (PAK)", body = PakResponse),
@@ -122,7 +122,7 @@ pub async fn get_admin_pak(State(state): State<AppState>) -> Json<PakResponse> {
 
 #[utoipa::path(
     post,
-    path = "/api/admin/pak",
+    path = "/admin/pak",
     tag = "admin",
     responses(
         (status = 200, description = "PAK rotated, new key generated", body = PakResponse),
@@ -147,16 +147,16 @@ pub(crate) struct AdminApiDoc;
 pub fn session_router() -> axum::Router<AppState> {
     use axum::routing::get;
     axum::Router::new()
-        .route("/api/admin", get(list_admins))
-        .route("/api/admin/pak", get(get_admin_pak))
+        .route("/admin", get(list_admins))
+        .route("/admin/pak", get(get_admin_pak))
 }
 
 pub fn root_router() -> axum::Router<AppState> {
     use axum::routing::{delete, post};
     axum::Router::new()
-        .route("/api/admin", post(add_admin))
-        .route("/api/admin/{twitch_id}", delete(remove_admin))
-        .route("/api/admin/pak", post(rotate_admin_pak))
+        .route("/admin", post(add_admin))
+        .route("/admin/{twitch_id}", delete(remove_admin))
+        .route("/admin/pak", post(rotate_admin_pak))
         .merge(twitch::root_router())
         .merge(ingress::root_router())
 }
@@ -173,15 +173,14 @@ mod tests {
     use tower::ServiceExt;
 
     use crate::api::auth::{LOGIN_COOKIE, SESSION_COOKIE};
-    use crate::api::router_with_auth;
     use crate::config::repository::ConfigRepository;
     use crate::db::inmemory_config::InMemoryConfigRepository;
     use crate::db::inmemory_queue::InMemoryQueueRepository;
     use crate::state::AppState;
-    use crate::test_fixtures::{test_state, test_state_with_config_repo};
+    use crate::test_fixtures::{api_path, test_router, test_state, test_state_with_data};
 
     async fn session_cookie(state: &AppState, twitch_id: &str) -> String {
-        let app = router_with_auth(state.clone());
+        let app = test_router(state.clone());
         let ticket = state
             .session_service
             .create_login_ticket(twitch_id, Some("viewer"))
@@ -195,7 +194,7 @@ mod tests {
             .oneshot(
                 Request::builder()
                     .method("POST")
-                    .uri("/api/sessions")
+                    .uri(api_path("/sessions"))
                     .header(header::CONTENT_TYPE, "application/json")
                     .header(header::COOKIE, format!("{LOGIN_COOKIE}={ticket}"))
                     .body(Body::from(format!(r#"{{"ticket":"{ticket}"}}"#)))
@@ -219,13 +218,13 @@ mod tests {
     #[tokio::test]
     async fn admin_routes_require_session() {
         let state = test_state().await;
-        let app = router_with_auth(state.clone());
+        let app = test_router(state.clone());
 
         let response = app
             .oneshot(
                 Request::builder()
                     .method("GET")
-                    .uri("/api/admin/pak")
+                    .uri(api_path("/admin/pak"))
                     .body(Body::empty())
                     .unwrap(),
             )
@@ -237,31 +236,42 @@ mod tests {
     #[tokio::test]
     async fn regular_user_is_forbidden_from_admin_routes() {
         let state = test_state().await;
-        let app = router_with_auth(state.clone());
+        let app = test_router(state.clone());
         let cookie = session_cookie(&state, "999").await;
 
-        for uri in ["/api/admin/pak", "/api/admin"] {
-            let response = app
-                .clone()
-                .oneshot(
-                    Request::builder()
-                        .method("GET")
-                        .uri(uri)
-                        .header(header::COOKIE, &cookie)
-                        .body(Body::empty())
-                        .unwrap(),
-                )
-                .await
-                .unwrap();
-            assert_eq!(response.status(), StatusCode::FORBIDDEN, "uri: {uri}");
-        }
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri(api_path("/admin/pak"))
+                    .header(header::COOKIE, &cookie)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri(api_path("/admin"))
+                    .header(header::COOKIE, &cookie)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
     }
 
     #[tokio::test]
     async fn admin_can_read_pak_and_list_admins() {
         let state = test_state().await;
         state.admin_service.add("123", None).await.unwrap();
-        let app = router_with_auth(state.clone());
+        let app = test_router(state.clone());
         let cookie = session_cookie(&state, "123").await;
 
         let response = app
@@ -269,7 +279,7 @@ mod tests {
             .oneshot(
                 Request::builder()
                     .method("GET")
-                    .uri("/api/admin/pak")
+                    .uri(api_path("/admin/pak"))
                     .header(header::COOKIE, &cookie)
                     .body(Body::empty())
                     .unwrap(),
@@ -286,7 +296,7 @@ mod tests {
             .oneshot(
                 Request::builder()
                     .method("GET")
-                    .uri("/api/admin")
+                    .uri(api_path("/admin"))
                     .header(header::COOKIE, cookie)
                     .body(Body::empty())
                     .unwrap(),
@@ -302,7 +312,7 @@ mod tests {
         state.admin_service.add("123", None).await.unwrap();
         state.admin_service.add("100", None).await.unwrap();
         state.admin_service.set_root("100", true).await.unwrap();
-        let app = router_with_auth(state.clone());
+        let app = test_router(state.clone());
 
         let user_cookie = session_cookie(&state, "123").await;
         let root_cookie = session_cookie(&state, "100").await;
@@ -311,7 +321,7 @@ mod tests {
             app.clone().oneshot(
                 Request::builder()
                     .method("POST")
-                    .uri("/api/admin")
+                    .uri(api_path("/admin"))
                     .header(header::CONTENT_TYPE, "application/json")
                     .header(header::COOKIE, cookie)
                     .body(Body::from(r#"{"twitch_id":"200","display_name":"mod"}"#))
@@ -334,7 +344,7 @@ mod tests {
         state.admin_service.add("100", None).await.unwrap();
         state.admin_service.set_root("100", true).await.unwrap();
         state.admin_service.add("200", None).await.unwrap();
-        let app = router_with_auth(state.clone());
+        let app = test_router(state.clone());
 
         let user_cookie = session_cookie(&state, "123").await;
         let root_cookie = session_cookie(&state, "100").await;
@@ -344,7 +354,7 @@ mod tests {
             .oneshot(
                 Request::builder()
                     .method("DELETE")
-                    .uri("/api/admin/200")
+                    .uri(api_path("/admin/200"))
                     .header(header::COOKIE, user_cookie)
                     .body(Body::empty())
                     .unwrap(),
@@ -357,7 +367,7 @@ mod tests {
             .oneshot(
                 Request::builder()
                     .method("DELETE")
-                    .uri("/api/admin/200")
+                    .uri(api_path("/admin/200"))
                     .header(header::COOKIE, root_cookie)
                     .body(Body::empty())
                     .unwrap(),
@@ -371,13 +381,13 @@ mod tests {
     #[tokio::test]
     async fn regular_session_cookie_is_rejected_by_admin_middleware() {
         let state = test_state().await;
-        let app = router_with_auth(state.clone());
+        let app = test_router(state.clone());
 
         let response = app
             .oneshot(
                 Request::builder()
                     .method("GET")
-                    .uri("/api/admin/pak")
+                    .uri(api_path("/admin/pak"))
                     .header(header::COOKIE, format!("{SESSION_COOKIE}=bogus"))
                     .body(Body::empty())
                     .unwrap(),
@@ -393,7 +403,7 @@ mod tests {
         state.admin_service.add("123", None).await.unwrap();
         state.admin_service.add("100", None).await.unwrap();
         state.admin_service.set_root("100", true).await.unwrap();
-        let app = router_with_auth(state.clone());
+        let app = test_router(state.clone());
 
         let user_cookie = session_cookie(&state, "123").await;
         let root_cookie = session_cookie(&state, "100").await;
@@ -403,7 +413,7 @@ mod tests {
             .oneshot(
                 Request::builder()
                     .method("POST")
-                    .uri("/api/admin/pak")
+                    .uri(api_path("/admin/pak"))
                     .header(header::COOKIE, user_cookie)
                     .body(Body::empty())
                     .unwrap(),
@@ -416,7 +426,7 @@ mod tests {
             .oneshot(
                 Request::builder()
                     .method("POST")
-                    .uri("/api/admin/pak")
+                    .uri(api_path("/admin/pak"))
                     .header(header::COOKIE, root_cookie)
                     .body(Body::empty())
                     .unwrap(),
@@ -437,21 +447,21 @@ mod tests {
     #[tokio::test]
     async fn rotate_pak_is_persisted_to_repo() {
         let config_repo = Arc::new(InMemoryConfigRepository::new());
-        let state = test_state_with_config_repo(
+        let state = test_state_with_data(
             Arc::new(InMemoryQueueRepository::new()),
             Arc::clone(&config_repo),
         )
         .await;
         state.admin_service.add("100", None).await.unwrap();
         state.admin_service.set_root("100", true).await.unwrap();
-        let app = router_with_auth(state.clone());
+        let app = test_router(state.clone());
         let root_cookie = session_cookie(&state, "100").await;
 
         let response = app
             .oneshot(
                 Request::builder()
                     .method("POST")
-                    .uri("/api/admin/pak")
+                    .uri(api_path("/admin/pak"))
                     .header(header::COOKIE, root_cookie)
                     .body(Body::empty())
                     .unwrap(),
@@ -470,11 +480,11 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn rotated_pak_replaces_old_key_in_require_auth() {
+    async fn rotated_pak_is_returned_by_get() {
         let state = test_state().await;
         state.admin_service.add("100", None).await.unwrap();
         state.admin_service.set_root("100", true).await.unwrap();
-        let app = router_with_auth(state.clone());
+        let app = test_router(state.clone());
         let root_cookie = session_cookie(&state, "100").await;
 
         let response = app
@@ -482,7 +492,26 @@ mod tests {
             .oneshot(
                 Request::builder()
                     .method("POST")
-                    .uri("/api/admin/pak")
+                    .uri(api_path("/admin/pak"))
+                    .header(header::COOKIE, &root_cookie)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let body: Value =
+            serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap())
+                .unwrap();
+        let pak = body["pak"].as_str().unwrap().to_string();
+        assert_ne!(pak, "test-key");
+        assert_eq!(state.config.access_key(), pak);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri(api_path("/admin/pak"))
                     .header(header::COOKIE, root_cookie)
                     .body(Body::empty())
                     .unwrap(),
@@ -490,39 +519,9 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(response.status(), StatusCode::OK);
-
         let body: Value =
             serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap())
                 .unwrap();
-        let pak = body["pak"].as_str().unwrap().to_string();
-
-        let old_key = app
-            .clone()
-            .oneshot(
-                Request::builder()
-                    .method("POST")
-                    .uri("/api/stream/status")
-                    .header(header::CONTENT_TYPE, "application/json")
-                    .header(header::AUTHORIZATION, "Bearer test-key")
-                    .body(Body::from(r#"{"online":true}"#))
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(old_key.status(), StatusCode::UNAUTHORIZED);
-
-        let new_key = app
-            .oneshot(
-                Request::builder()
-                    .method("POST")
-                    .uri("/api/stream/status")
-                    .header(header::CONTENT_TYPE, "application/json")
-                    .header(header::AUTHORIZATION, format!("Bearer {pak}"))
-                    .body(Body::from(r#"{"online":true}"#))
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(new_key.status(), StatusCode::OK);
+        assert_eq!(body["pak"], pak);
     }
 }

@@ -6,7 +6,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use axum::http::{HeaderValue, Method, header};
-use backend::api::{self, ApiDoc};
+use backend::ApiDoc;
+use backend::api;
 use backend::config::store::ConfigStore;
 use backend::db::inmemory_config::InMemoryConfigRepository;
 use backend::db::inmemory_platform_credential::InMemoryPlatformCredentialRepository;
@@ -14,6 +15,7 @@ use backend::ingress::PlatformService;
 use backend::ingress::twitch::TwitchPlatformService;
 use backend::random::StandartRandomProvider;
 use backend::state::{AppQueueService, AppSessionService, AppState, AppStateBuilder};
+use backend::widget_api;
 use tokio::net::TcpListener;
 use tokio::signal::ctrl_c;
 use tokio::time;
@@ -68,7 +70,8 @@ async fn main() {
         None => CorsLayer::permissive(),
     };
 
-    let app = api::router_with_auth(state.clone())
+    let app = api::router(state.clone())
+        .merge(widget_api::router(state.clone()))
         .layer(cors)
         .layer(TraceLayer::new_for_http())
         .merge(SwaggerUi::new("/docs").url("/api-doc/openapi.json", ApiDoc::openapi()))

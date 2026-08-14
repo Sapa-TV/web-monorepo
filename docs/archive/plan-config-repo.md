@@ -129,6 +129,7 @@
    - `async fn update_runtime(&self, next: RuntimeConfig) -> Result<(), ConfigError>`: `validate()` → `repo.save(&next)` → `*current.write() = next`;
    - `async fn rotate_access_key(&self, key: &str) -> Result<(), ConfigError>`: клон current → заменить `access_key` → `validate` → `repo.save` → применить (частичное обновление);
    - тесты: инвалид не применяется и repo не тронут; `update_runtime` персистит и виден через `source()`; `rotate_access_key` меняет только key.
+
 4. `src/config.rs` — `pub mod static; pub mod runtime; pub mod repository; pub mod store; pub mod twitch;` (модуль `common` временно остаётся), re-export `StaticConfig`, `RuntimeConfig`, `ConfigRepository`, `ConfigStore`, `SharedSettings`, `TwitchConfig`.
 5. `src/config/common.rs` — НЕ удалять до Части 3 (старый `Config` ещё в работе).
 
@@ -170,6 +171,7 @@
    ```
 
    Вайринг: CORS/port/twitch через сторедж; background-таски — sleep-loop с интервалом из `store` (каждый цикл).
+
 6. `src/test_fixtures.rs` — `test_state()`: `ConfigStore<InMemoryConfigRepository>` с `test_runtime("test-key")`; обновить всех потребителей `Config::test_config()`.
 7. Удалить `src/config/common.rs` и `pub mod common;` из `src/config.rs`.
 

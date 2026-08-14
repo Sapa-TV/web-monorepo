@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 
+use crate::api;
 use crate::config::runtime::RuntimeConfig;
 use crate::config::static_config::StaticConfig;
 use crate::config::store::ConfigStore;
@@ -10,16 +11,25 @@ use crate::db::inmemory_platform_credential::InMemoryPlatformCredentialRepositor
 use crate::db::inmemory_queue::InMemoryQueueRepository;
 use crate::random::StandartRandomProvider;
 use crate::state::{AppState, AppStateBuilder};
+use crate::widget_api;
 
 pub async fn test_state() -> AppState {
-    test_state_with_queue_repo(Arc::new(InMemoryQueueRepository::new())).await
+    test_state_with_data(
+        Arc::new(InMemoryQueueRepository::new()),
+        Arc::new(InMemoryConfigRepository::new()),
+    )
+    .await
 }
 
-pub async fn test_state_with_queue_repo(queue_repo: Arc<InMemoryQueueRepository>) -> AppState {
-    test_state_with_config_repo(queue_repo, Arc::new(InMemoryConfigRepository::new())).await
+pub fn test_router(state: AppState) -> axum::Router {
+    api::router(state.clone()).merge(widget_api::router(state))
 }
 
-pub async fn test_state_with_config_repo(
+pub fn api_path(path: &str) -> String {
+    format!("/api{path}")
+}
+
+pub async fn test_state_with_data(
     queue_repo: Arc<InMemoryQueueRepository>,
     config_repo: Arc<InMemoryConfigRepository>,
 ) -> AppState {

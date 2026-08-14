@@ -1,0 +1,17 @@
+language: Rust
+id: no-control-flow-in-api
+message: "no `if`/`match`/`for`/`loop` in api/widget_api handlers: extract params -> call a service -> map to DTO -> return status. Move logic to services (allowlist: auth.rs middleware, widget_api/ws.rs protocol)"
+severity: error
+rule:
+  any:
+    - pattern: "if $C { $$$B }"
+    - pattern: "match $E { $$$A }"
+    - pattern: "for $P in $E { $$$B }"
+    - pattern: "loop { $$$B }"
+files:
+  - "apps/backend/src/api/**/*.rs"
+  - "apps/backend/src/widget_api/**/*.rs"
+ignores:
+  - "apps/backend/src/api/auth.rs"
+  - "apps/backend/src/widget_api/auth.rs"
+  - "apps/backend/src/widget_api/ws.rs"

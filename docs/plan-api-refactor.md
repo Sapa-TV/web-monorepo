@@ -11,7 +11,7 @@
 - 4 миддлвары в `api/auth.rs`: `require_auth` (PAK-ключ, имя врёт), `require_session`, `require_admin`, `require_root`.
 - Юнит-тесты живут в api-слое (~42 через роутер), при этом `queue/service.rs` не имеет своих тестов (0).
 - Фронт ходит только в `/api/queue*` и `/ws` (widget.js, panel.js, dock, roulette). Остальные PAK-роуты (rarities/slots/users/stream POST) внешних потребителей не имеют.
-- Healthcheck деплоя бьёт в `http://127.0.0.1:3000/health` (`deploy/scripts/deploy-backend.sh:30`) — `/health` обязан остаться в корне.
+- Healthcheck деплоя бьёт в `http://127.0.0.1:3000/api/health` (`deploy/scripts/deploy-backend.sh:30`) — он обновляется в шаге 1 вместе с переносом `/health` под `/api`.
 
 ## Цель
 
@@ -33,7 +33,7 @@
 
 | Путь (было)                                                         | Путь (станет)                     | Модуль                         | Защита           |
 | ------------------------------------------------------------------- | --------------------------------- | ------------------------------ | ---------------- |
-| `/health`, `/version`                                               | без изменений (корень)            | `api` (ops)                    | public           |
+| `/health`, `/version`                                               | `/api/health`, `/api/version`     | `api` (ops)                    | public           |
 | `/api/auth/twitch(+/callback)`, `/api/sessions`, `/api/sessions/me` | без изменений                     | `api/session`                  | public / session |
 | `/api/admin*`, `/api/admin/twitch*`, `/api/admin/ingress*`          | без изменений                     | `api/admin{,/twitch,/ingress}` | session / root   |
 | `GET /api/stream/status`                                            | без изменений                     | `api/stream`                   | public           |
@@ -50,60 +50,74 @@
 
 ```
 src/lib.rs                     pub mod api; pub mod widget_api; ApiDoc/MergeSubdocs → backend::ApiDoc
-src/api.rs                     api::router(state): session + admin + stream GET + /health /version
+src/api.rs                     api::router(state): nest("/api", public + session/admin/root) — префикс в одном месте
 src/api/
   auth.rs                      require_session/require_admin/require_root + cookie-хелперы
   session.rs, admin.rs, admin/{twitch,ingress}.rs, stream.rs
-src/widget_api.rs              widget_api::router(state): только require_key
+src/widget_api.rs              widget_api::router(state): nest("/wapi", ws + require_key) — префикс в одном месте
 src/widget_api/
   auth.rs                      require_key
   queue.rs, ws.rs, rarities.rs, roulette_slots.rs, users.rs, stream.rs
 ```
 
-Паттерн «модуль владеет защитой»:
+Роуты и utoipa-аннотации оперируют относительными путями без префикса (`/queue`, `/admin`, `/stream/status`), префиксы `nest`-ауются в корнях деревьев; `/health`/`/version` живут в `api::public_router` и попадают под `/api`:
+
+```rust
+// api.rs
+pub fn router(state: AppState) -> Router {
+    ...
+    Router::new()
+        .nest("/api", public_router().merge(session_protected))
+        .with_state(state)
+}
+// widget_api.rs
+pub fn router(state: AppState) -> Router {
+    let key = from_fn_with_state(state.clone(), require_key);
+    let key_protected = key_protected_routes().route_layer(key);
+    Router::new()
+        .nest("/wapi", Router::new().merge(ws::public_router()).merge(key_protected))
+        .with_state(state)
+}
+```
+
+Паттерн «модуль владеет защитой» (пути относительные):
 
 ```rust
 // widget_api/queue.rs
 pub fn router(state: AppState) -> Router<AppState> {
     let key = from_fn_with_state(state, require_key);
     Router::new()
-        .route("/wapi/queue", post(enqueue))
+        .route("/queue", post(enqueue))
         // ...
         .route_layer(key)
-}
-// widget_api.rs
-pub fn router(state: AppState) -> Router<AppState> {
-    Router::new()
-        .merge(queue::router(state.clone()))
-        .merge(ws::router(state.clone()))
-        // ...
 }
 ```
 
 Порядок лейеров для admin/root (последний `.route_layer()` = внешний, выполняется первым; session-слой ставим последним):
 
 ```rust
-.route("/api/admin", get(list_admins))
+.route("/admin", get(list_admins))
 .route_layer(admin_layer)      // 2-м
 .route_layer(session_layer);   // 1-м → кладёт Session
 ```
 
 ## Шаги
 
-### Шаг 1 — Сплит (структура, префиксы, фронт)
+### Шаг 1 — Сплит + префиксы через nest (структура, фронт)
 
 Чисто механический, без изменения логики.
 
 - Перенос файлов: `widget_api/{queue,ws,rarities,roulette_slots,users,stream}.rs` + `widget_api/auth.rs` (`require_key`); `api.rs` остаётся корневым (session, admin, admin/{twitch,ingress}, stream GET), поднятые подкаталоги `api/admin/*` без изменений.
-- Пути: `/api/queue|slots|rarities|users|platforms` → `/wapi/...`; `/ws` → `/wapi/ws` (в роутерах и utoipa-аннотациях).
-- `lib.rs`: `pub mod api; pub mod widget_api;` (без `mod.rs`). `ApiDoc`/`MergeSubdocs` → `backend::ApiDoc` (обновить `tools/gen-openapi`).
+- Пути: роутеры и utoipa-аннотации переходят на относительные пути (без `/api`/`/wapi`). Префиксы — только в корнях: `api.rs` `nest("/api", ...)`, `widget_api.rs` `nest("/wapi", ...)`. Итог: `/api/...` и `/wapi/...`, `/ws` → `/wapi/ws`, `/health`/`/version` → `/api/health`/`/api/version`.
+- `lib.rs`: `pub mod api; pub mod widget_api;` (без `mod.rs`). `ApiDoc`/`MergeSubdocs` → `backend::ApiDoc`; MergeSubdocs строит сабдоки (`wapi` из widget-модулей, `api`/main из api-модулей) и нэстит их через `OpenApi::nest` — каждый префикс один раз (обновить `tools/gen-openapi`).
 - `main.rs`: `api::router(state.clone()).merge(widget_api::router(state.clone()))` + cors/trace/swagger/redoc сверху.
 - Импорты по edition 2024: `use crate::api::auth::{...}; use crate::widget_api::...` — без цепочек `super::super::`.
 - `require_auth` → `require_key`.
 - Фронт (4 файла): `html/js/widget.js`, `html/js/panel.js`, `src/routes/(panels)/dock/+page.svelte`, `src/routes/(widgets)/roulette/+page.svelte` — `/api/queue*` → `/wapi/queue*`, ws → `/wapi/ws`.
-- Тесты: убрать `#[cfg(test)] router()`; временный cfg-test-no-auth ассемблер в каждом дереве (удаляется в шагах 2–3). Правки тестов = только URI + путь импорта.
+- Тесты: `.uri(...)` остаются полными (`/wapi/queue`, `/api/admin/...`); ассемблер — единый `test_fixtures::test_router(state)` = `api::router(state).merge(widget_api::router_no_auth(state))` (api с auth-леерами, widget без key). `#[cfg(test)] router_no_auth` в `widget_api.rs` — переходный, удаляется в шагах 2–3. Правки тестов = только путь импорта.
+- Healthcheck деплоя: `deploy/scripts/deploy-backend.sh:30` → `/api/health`.
 
-Верификация: `cargo test -p backend`, `cargo clippy`, фронт собирается.
+Верификация: `cargo test -p backend`, `cargo clippy`, `just gen` (пути `/api/*`, `/wapi/*` в spec), фронт собирается.
 
 ### Шаг 2 — Тонкий `widget_api` + lint
 
@@ -130,7 +144,7 @@ pub fn router(state: AppState) -> Router<AppState> {
 
 - Удалить переходный cfg-test код и осиротевшие router-тесты.
 - `just gen` → новый spec (/wapi) + `just gen-client` при необходимости; обновить пути в `docs/plan-{queue,users,ws-open-private}.md`.
-- Проверить: `/health` в корне не тронут (healthcheck деплоя), CORS, swagger/redoc.
+- Проверить: `/api/health` (healthcheck деплоя синхронизирован в шаге 1), CORS, swagger/redoc.
 
 ## Риски
 

@@ -57,7 +57,7 @@ pub struct RarityIdParam {
 
 #[utoipa::path(
     get,
-    path = "/api/rarities",
+    path = "/rarities",
     tag = "rarities",
     responses(
         (status = 200, description = "List of rarities", body = Vec<RarityResponse>),
@@ -74,7 +74,7 @@ pub async fn list_rarities(
 
 #[utoipa::path(
     post,
-    path = "/api/rarities",
+    path = "/rarities",
     tag = "rarities",
     request_body = CreateRarityRequest,
     responses(
@@ -98,7 +98,7 @@ pub async fn create_rarity(
 
 #[utoipa::path(
     put,
-    path = "/api/rarities/{id}",
+    path = "/rarities/{id}",
     tag = "rarities",
     params(RarityIdParam),
     request_body = UpdateRarityRequest,
@@ -129,7 +129,7 @@ pub async fn update_rarity(
 
 #[utoipa::path(
     delete,
-    path = "/api/rarities/{id}",
+    path = "/rarities/{id}",
     tag = "rarities",
     params(RarityIdParam),
     responses(
@@ -141,10 +141,12 @@ pub async fn delete_rarity(
     State(state): State<AppState>,
     Path(params): Path<RarityIdParam>,
 ) -> Result<StatusCode, ApiError> {
-    let deleted = state.rarity_service.delete(params.id).await?;
-    if !deleted {
-        return Err(ApiError::new(StatusCode::NOT_FOUND, "rarity not found"));
-    }
+    state
+        .rarity_service
+        .delete(params.id)
+        .await?
+        .then_some(())
+        .ok_or_else(|| ApiError::new(StatusCode::NOT_FOUND, "rarity not found"))?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -157,11 +159,11 @@ pub async fn delete_rarity(
 #[allow(dead_code)]
 pub(crate) struct RaritiesApiDoc;
 
-pub fn protected_router() -> axum::Router<AppState> {
+pub fn router() -> axum::Router<AppState> {
     use axum::routing::{delete, get, post, put};
     axum::Router::new()
-        .route("/api/rarities", get(list_rarities))
-        .route("/api/rarities", post(create_rarity))
-        .route("/api/rarities/{id}", put(update_rarity))
-        .route("/api/rarities/{id}", delete(delete_rarity))
+        .route("/rarities", get(list_rarities))
+        .route("/rarities", post(create_rarity))
+        .route("/rarities/{id}", put(update_rarity))
+        .route("/rarities/{id}", delete(delete_rarity))
 }

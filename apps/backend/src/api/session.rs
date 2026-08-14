@@ -9,7 +9,6 @@ use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, OpenApi, ToSchema};
 
 use crate::api::auth::{LOGIN_COOKIE, SESSION_COOKIE, cookie_header, read_cookie};
-use crate::error::RepositoryError;
 use crate::error::SessionServiceError;
 use crate::session::Session;
 use crate::state::AppState;
@@ -52,7 +51,7 @@ pub struct SessionResponse {
 
 #[utoipa::path(
     get,
-    path = "/api/auth/twitch",
+    path = "/auth/twitch",
     tag = "auth",
     responses(
         (status = 200, description = "Twitch login authorization URL", body = TwitchLoginStartResponse),
@@ -68,7 +67,7 @@ pub async fn start_twitch_login(
 
 #[utoipa::path(
     get,
-    path = "/api/auth/twitch/callback",
+    path = "/auth/twitch/callback",
     tag = "auth",
     params(TwitchLoginCallbackQuery),
     responses(
@@ -115,7 +114,7 @@ pub async fn twitch_login_callback(
 
 #[utoipa::path(
     post,
-    path = "/api/sessions",
+    path = "/sessions",
     tag = "auth",
     request_body = CreateSessionRequest,
     responses(
@@ -129,45 +128,14 @@ pub async fn create_session(
     Json(body): Json<CreateSessionRequest>,
 ) -> Result<(StatusCode, HeaderMap, Json<SessionResponse>), SessionServiceError> {
     let login_cookie = read_cookie(&headers, LOGIN_COOKIE);
-    if login_cookie.as_deref() != Some(body.ticket.as_str()) {
-        return Err(SessionServiceError::InvalidTicket);
-    }
-
-    let ticket = state
+    let (session, is_root) = state
         .session_service
-        .consume_login_ticket(&body.ticket)
+        .login(
+            state.admin_service.as_ref(),
+            login_cookie.as_deref(),
+            &body.ticket,
+        )
         .await?;
-
-    let is_admin = state
-        .admin_service
-        .is_admin(&ticket.twitch_user_id)
-        .await
-        .map_err(|_| {
-            SessionServiceError::Repo(RepositoryError::Database("admin service".to_string()))
-        })?;
-    if is_admin {
-        state
-            .admin_service
-            .update_display_name(
-                &ticket.twitch_user_id,
-                ticket.twitch_user_name.as_deref().unwrap_or(""),
-            )
-            .await
-            .ok();
-    }
-
-    let session = state
-        .session_service
-        .issue_session(&ticket.twitch_user_id, ticket.twitch_user_name.as_deref())
-        .await?;
-
-    let is_root = state
-        .admin_service
-        .is_root(&session.twitch_user_id)
-        .await
-        .map_err(|_| {
-            SessionServiceError::Repo(RepositoryError::Database("admin service".to_string()))
-        })?;
 
     let mut headers = HeaderMap::new();
     headers.append(
@@ -184,8 +152,8 @@ pub async fn create_session(
         StatusCode::CREATED,
         headers,
         Json(SessionResponse {
-            twitch_user_id: session.twitch_user_id.clone(),
-            twitch_user_name: session.twitch_user_name.clone(),
+            twitch_user_id: session.twitch_user_id,
+            twitch_user_name: session.twitch_user_name,
             is_root,
             expires_at: session.expires_at.to_rfc3339(),
         }),
@@ -194,7 +162,7 @@ pub async fn create_session(
 
 #[utoipa::path(
     get,
-    path = "/api/sessions/me",
+    path = "/sessions/me",
     tag = "auth",
     responses(
         (status = 200, description = "Current session", body = SessionResponse),
@@ -220,7 +188,7 @@ pub async fn get_me(
 
 #[utoipa::path(
     delete,
-    path = "/api/sessions/me",
+    path = "/sessions/me",
     tag = "auth",
     responses(
         (status = 204, description = "Session destroyed"),
@@ -283,16 +251,16 @@ pub(crate) struct SessionApiDoc;
 pub fn public_router() -> axum::Router<AppState> {
     use axum::routing::{get, post};
     axum::Router::new()
-        .route("/api/auth/twitch", get(start_twitch_login))
-        .route("/api/auth/twitch/callback", get(twitch_login_callback))
-        .route("/api/sessions", post(create_session))
+        .route("/auth/twitch", get(start_twitch_login))
+        .route("/auth/twitch/callback", get(twitch_login_callback))
+        .route("/sessions", post(create_session))
 }
 
 pub fn session_router() -> axum::Router<AppState> {
     use axum::routing::{delete, get};
     axum::Router::new()
-        .route("/api/sessions/me", get(get_me))
-        .route("/api/sessions/me", delete(logout))
+        .route("/sessions/me", get(get_me))
+        .route("/sessions/me", delete(logout))
 }
 
 #[cfg(test)]
@@ -306,9 +274,8 @@ mod tests {
     use tower::ServiceExt;
 
     use crate::api::auth::{LOGIN_COOKIE, SESSION_COOKIE};
-    use crate::api::router_with_auth;
     use crate::state::AppState;
-    use crate::test_fixtures::test_state;
+    use crate::test_fixtures::{api_path, test_router, test_state};
 
     async fn login_ticket(state: &AppState, twitch_id: &str) -> String {
         state
@@ -322,13 +289,13 @@ mod tests {
     }
 
     async fn create_session(state: &AppState, twitch_id: &str) -> Response {
-        let app = router_with_auth(state.clone());
+        let app = test_router(state.clone());
         let ticket = login_ticket(state, twitch_id).await;
 
         app.oneshot(
             Request::builder()
                 .method("POST")
-                .uri("/api/sessions")
+                .uri(api_path("/sessions"))
                 .header(header::CONTENT_TYPE, "application/json")
                 .header(header::COOKIE, format!("{LOGIN_COOKIE}={ticket}"))
                 .body(Body::from(format!(r#"{{"ticket":"{ticket}"}}"#)))
@@ -354,59 +321,17 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn create_session_returns_cookie_for_admin() {
-        let state = test_state().await;
-        state.admin_service.add("123", None).await.unwrap();
-
-        let cookie = session_cookie(&state, "123").await;
-        assert!(cookie.starts_with(&format!("{SESSION_COOKIE}=")));
-    }
-
-    #[tokio::test]
-    async fn create_session_allows_regular_user() {
-        let state = test_state().await;
-
-        let response = create_session(&state, "999").await;
-        assert_eq!(response.status(), StatusCode::CREATED);
-
-        let body: Value =
-            serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap())
-                .unwrap();
-        assert_eq!(body["twitch_user_id"], "999");
-        assert_eq!(body["is_root"], false);
-    }
-
-    #[tokio::test]
-    async fn create_session_rejects_ticket_without_matching_cookie() {
-        let state = test_state().await;
-        let app = router_with_auth(state.clone());
-
-        let response = app
-            .oneshot(
-                Request::builder()
-                    .method("POST")
-                    .uri("/api/sessions")
-                    .header(header::CONTENT_TYPE, "application/json")
-                    .body(Body::from(r#"{"ticket":"stolen-ticket"}"#))
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
-    }
-
-    #[tokio::test]
     async fn me_requires_session() {
         let state = test_state().await;
         state.admin_service.add("123", None).await.unwrap();
-        let app = router_with_auth(state.clone());
+        let app = test_router(state.clone());
 
         let response = app
             .clone()
             .oneshot(
                 Request::builder()
                     .method("GET")
-                    .uri("/api/sessions/me")
+                    .uri(api_path("/sessions/me"))
                     .body(Body::empty())
                     .unwrap(),
             )
@@ -419,7 +344,7 @@ mod tests {
             .oneshot(
                 Request::builder()
                     .method("GET")
-                    .uri("/api/sessions/me")
+                    .uri(api_path("/sessions/me"))
                     .header(header::COOKIE, &cookie)
                     .body(Body::empty())
                     .unwrap(),
@@ -436,14 +361,14 @@ mod tests {
     #[tokio::test]
     async fn me_works_for_regular_user() {
         let state = test_state().await;
-        let app = router_with_auth(state.clone());
+        let app = test_router(state.clone());
 
         let cookie = session_cookie(&state, "999").await;
         let response = app
             .oneshot(
                 Request::builder()
                     .method("GET")
-                    .uri("/api/sessions/me")
+                    .uri(api_path("/sessions/me"))
                     .header(header::COOKIE, cookie)
                     .body(Body::empty())
                     .unwrap(),
@@ -457,13 +382,13 @@ mod tests {
     async fn invalid_session_cookie_is_rejected() {
         let state = test_state().await;
         state.admin_service.add("123", None).await.unwrap();
-        let app = router_with_auth(state.clone());
+        let app = test_router(state.clone());
 
         let response = app
             .oneshot(
                 Request::builder()
                     .method("GET")
-                    .uri("/api/sessions/me")
+                    .uri(api_path("/sessions/me"))
                     .header(header::COOKIE, format!("{SESSION_COOKIE}=bogus"))
                     .body(Body::empty())
                     .unwrap(),
@@ -477,7 +402,7 @@ mod tests {
     async fn logout_destroys_session() {
         let state = test_state().await;
         state.admin_service.add("123", None).await.unwrap();
-        let app = router_with_auth(state.clone());
+        let app = test_router(state.clone());
         let cookie = session_cookie(&state, "123").await;
 
         let response = app
@@ -485,7 +410,7 @@ mod tests {
             .oneshot(
                 Request::builder()
                     .method("DELETE")
-                    .uri("/api/sessions/me")
+                    .uri(api_path("/sessions/me"))
                     .header(header::COOKIE, cookie.clone())
                     .body(Body::empty())
                     .unwrap(),
@@ -498,7 +423,7 @@ mod tests {
             .oneshot(
                 Request::builder()
                     .method("GET")
-                    .uri("/api/sessions/me")
+                    .uri(api_path("/sessions/me"))
                     .header(header::COOKIE, cookie)
                     .body(Body::empty())
                     .unwrap(),

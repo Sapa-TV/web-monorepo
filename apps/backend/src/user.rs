@@ -60,3 +60,19 @@ pub struct UserPlatform {
     pub platform_user_id: String,
     pub platform_username: String,
 }
+
+#[derive(Debug, Clone)]
+#[non_exhaustive]
+pub struct ResolvedUserPlatform {
+    pub id: UserPlatformId,
+    pub platform_name: String,
+    pub platform_user_id: String,
+    pub platform_username: String,
+}
+
+#[derive(Debug, Clone)]
+#[non_exhaustive]
+pub struct UserView {
+    pub user: User,
+    pub platforms: Vec<ResolvedUserPlatform>,
+}
