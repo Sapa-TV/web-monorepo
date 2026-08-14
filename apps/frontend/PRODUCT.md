@@ -27,7 +27,7 @@ sapa-tv.ru — небольшой персональный хаб канала �
 
 - Зрители приходят с Twitch/VK/YouTube или по прямой ссылке; главная сейчас — лаунчер «скоро открытие» с кнопками на каналы.
 - Прямой эфир открывается на `/stream`: FLV-поток через mpegts.js + чат Twitch iframe, кнопки донатов.
-- Раздача: очередь `/api/queue` (REST) + события через WebSocket `/ws` (`spin_started`, `spin_completed`, `spin_error`). Слоты имеют редкость (common / uncommon / rare / mythical / legendary / track-ы).
+- Раздача: очередь `/wapi/queue` (REST) + события через WebSocket `/wapi/ws` (`spin_started`, `spin_completed`, `spin_error`). Слоты имеют редкость (common / uncommon / rare / mythical / legendary / track-ы).
 - Док-панель `/dock`: управление очередью (dequeue, complete, cancel, добавить, лог). Виджет `/roulette`: отображение спина в OBS. Обе только с `?pak=КЛЮЧ`.
 - API на `localhost:3000` (в dev); планируются и другие страницы канала.
 
@@ -37,7 +37,7 @@ sapa-tv.ru — небольшой персональный хаб канала �
 - Требование владельца: дизайн-токены светлой и тёмной темы должны **вычисляться из базовой(ых) цветов(!) через OKLCH**, а не задаваться каждому — не каждый токен вручную в hex.
 - Токенов уже выдержаны Material-имена (`--primary`, `--surface-container-*`, `--on-*`, `--outline-*` и т.п.); семантические роли менять не требуется, важна их производная структура.
 - Русскоязычный интерфейс (кроме англ. полей API: статусы очереди `Pending|Spinning|Completed|Cancelled|Error`).
-- Имиджи аватара персонажа `static/avatar.png`; изображения редкости слотов в `html/static/roulette/`.
+- Имиджи аватара персонажа `static/avatar.png`; изображения редкости слотов в `static/roulette/`.
 - Статический prerender: все внешние данные приходят клиентом по fetch/WS.
 
 ## Brand Commitments
@@ -49,7 +49,7 @@ sapa-tv.ru — небольшой персональный хаб канала �
 
 ## Evidence on Hand
 
-- Существующий код-инвентори: `src/styles/theme.css` — полные токены light/dark, `src/styles/site.css`, страницы `/`, `/stream`, `/links`, `/dock`, `/roulette`, `html/` — старая статическая версия.
+- Существующий код-инвентори: `src/styles/theme.css` — полные токены light/dark, `src/styles/site.css`, страницы `/`, `/stream`, `/links`, `/dock`, `/roulette`.
 - Демо-контент для редизайна нужен; референсы собираются из существующих страниц.
 - Нет официальной палитры-вербалки, нет фирменного шрифта.
 
