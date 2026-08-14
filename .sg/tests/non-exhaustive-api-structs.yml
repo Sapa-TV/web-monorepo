@@ -6,6 +6,10 @@ valid:
   - "pub struct MixedField {\n  value: u8,\n  pub other: String,\n}"
   # targeted, has non_exhaustive above with intermediate attrs
   - "#[derive(OpenApi)]\n#[non_exhaustive]\n#[allow(dead_code)]\npub struct ApiDoc;\n"
+  # tuple struct marked non_exhaustive
+  - "#[non_exhaustive]\npub struct Tuple(pub u8);"
+  # generic struct marked non_exhaustive
+  - "#[non_exhaustive]\npub struct Gen<T> {\n  pub value: T,\n}"
 invalid:
   # unit struct without attribute
   - "pub struct Unit;"
@@ -13,3 +17,7 @@ invalid:
   - "pub struct Tuple(pub u8);"
   # all public fields, no attribute
   - "pub struct AllPublic {\n  pub value: u8,\n  pub other: String,\n}"
+  # derive-only attribute is not enough, non_exhaustive still required
+  - "#[derive(Debug)]\npub struct Derived;\n"
+  # generic struct with all pub fields, no attribute
+  - "pub struct Gen<T> {\n  pub value: T,\n}"

@@ -2,6 +2,52 @@ id: new-returns-self
 snapshots:
   ? |-
     impl Foo {
+      fn new() -> &'static Self {
+        &Foo
+      }
+    }
+  : labels:
+    - source: |-
+        fn new() -> &'static Self {
+            &Foo
+          }
+      style: primary
+      start: 13
+      end: 53
+    - source: |-
+        impl Foo {
+          fn new() -> &'static Self {
+            &Foo
+          }
+        }
+      style: secondary
+      start: 0
+      end: 55
+  ? |-
+    impl Foo {
+      fn new() -> &Self {
+        &Foo
+      }
+    }
+  : labels:
+    - source: |-
+        fn new() -> &Self {
+            &Foo
+          }
+      style: primary
+      start: 13
+      end: 45
+    - source: |-
+        impl Foo {
+          fn new() -> &Self {
+            &Foo
+          }
+        }
+      style: secondary
+      start: 0
+      end: 47
+  ? |-
+    impl Foo {
       fn new() -> Arc<Self> {
       Arc::new(Self)
       }

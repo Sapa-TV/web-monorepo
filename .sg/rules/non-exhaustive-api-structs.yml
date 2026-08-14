@@ -8,6 +8,9 @@ rule:
         - pattern: "pub struct $NAME;"
         - pattern: "pub struct $NAME($$$FIELDS);"
         - pattern: "pub struct $NAME { $$$FIELDS }"
+        - pattern: "pub struct $NAME<$$$TYPE>;"
+        - pattern: "pub struct $NAME<$$$TYPE>($$$FIELDS);"
+        - pattern: "pub struct $NAME<$$$TYPE> { $$$FIELDS }"
     - regex: "^pub struct"
     - not:
         follows:

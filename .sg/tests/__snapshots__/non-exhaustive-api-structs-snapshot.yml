@@ -1,5 +1,13 @@
 id: non-exhaustive-api-structs
 snapshots:
+  ? |
+    #[derive(Debug)]
+    pub struct Derived;
+  : labels:
+    - source: pub struct Derived;
+      style: primary
+      start: 17
+      end: 36
   ? |-
     pub struct AllPublic {
       pub value: u8,
@@ -14,6 +22,18 @@ snapshots:
       style: primary
       start: 0
       end: 62
+  ? |-
+    pub struct Gen<T> {
+      pub value: T,
+    }
+  : labels:
+    - source: |-
+        pub struct Gen<T> {
+          pub value: T,
+        }
+      style: primary
+      start: 0
+      end: 37
   pub struct Tuple(pub u8);:
     labels:
     - source: pub struct Tuple(pub u8);

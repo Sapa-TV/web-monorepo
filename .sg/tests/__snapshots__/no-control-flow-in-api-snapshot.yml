@@ -79,3 +79,79 @@ snapshots:
       style: primary
       start: 21
       end: 48
+  ? |-
+    async fn status(State(state): State<AppState>) -> Result<StatusCode, ApiError> {
+        if state.busy() {
+            Ok(StatusCode::SERVICE_UNAVAILABLE)
+        } else {
+            Ok(StatusCode::OK)
+        }
+    }
+  : labels:
+    - source: |-
+        if state.busy() {
+                Ok(StatusCode::SERVICE_UNAVAILABLE)
+            } else {
+                Ok(StatusCode::OK)
+            }
+      style: primary
+      start: 85
+      end: 192
+  ? |-
+    async fn which(State(state): State<AppState>) -> Result<StatusCode, ApiError> {
+        if state.a() {
+            Ok(StatusCode::OK)
+        } else if state.b() {
+            Ok(StatusCode::ACCEPTED)
+        } else {
+            Err(ApiError::new(StatusCode::NOT_FOUND, "none"))
+        }
+    }
+  : labels:
+    - source: |-
+        if state.a() {
+                Ok(StatusCode::OK)
+            } else if state.b() {
+                Ok(StatusCode::ACCEPTED)
+            } else {
+                Err(ApiError::new(StatusCode::NOT_FOUND, "none"))
+            }
+      style: primary
+      start: 84
+      end: 261
+  ? |-
+    impl From<QueueEntry> for QueueEntryResponse {
+        fn from(entry: QueueEntry) -> Self {
+            match entry.status {
+                QueueStatus::Pending => Self { id: entry.id, user_name: entry.user_name },
+                QueueStatus::Done => Self { id: entry.id, user_name: entry.user_name },
+            }
+        }
+    }
+  : labels:
+    - source: |-
+        match entry.status {
+                    QueueStatus::Pending => Self { id: entry.id, user_name: entry.user_name },
+                    QueueStatus::Done => Self { id: entry.id, user_name: entry.user_name },
+                }
+      style: primary
+      start: 96
+      end: 297
+  ? |-
+    let entries = page.entries.iter().map(|entry| {
+        if entry.active {
+            QueueEntryResponse::from(entry)
+        } else {
+            QueueEntryResponse::from(entry).with_status(entry.status)
+        }
+    }).collect();
+  : labels:
+    - source: |-
+        if entry.active {
+                QueueEntryResponse::from(entry)
+            } else {
+                QueueEntryResponse::from(entry).with_status(entry.status)
+            }
+      style: primary
+      start: 52
+      end: 194

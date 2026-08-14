@@ -4,6 +4,8 @@ valid:
   - "impl Foo {\n  fn new() -> Self {\n    Self\n  }\n}"
   # different method name, any return
   - "impl Foo {\n  fn make() -> Option<Self> {\n    None\n  }\n}"
+  # generic impl still returns Self directly
+  - "impl<T> Foo<T> {\n  fn new() -> Self {\n    Self\n  }\n}"
 invalid:
   # unit return (no arrow)
   - "impl Foo {\n  fn new() {}\n}"
@@ -17,3 +19,7 @@ invalid:
   - "impl Foo {\n  fn new() -> Arc<Self> {\n  Arc::new(Self)\n  }\n}"
   # impl Trait
   - "impl Foo {\n  fn new() -> impl Debug {\n  Self\n  }\n}"
+  # borrowed Self
+  - "impl Foo {\n  fn new() -> &Self {\n    &Foo\n  }\n}"
+  # 'static borrowed Self
+  - "impl Foo {\n  fn new() -> &'static Self {\n    &Foo\n  }\n}"
