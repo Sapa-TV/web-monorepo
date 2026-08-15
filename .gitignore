@@ -1,5 +1,4 @@
 /target/
-/generated/
 /**/node_modules/
 /db/
 .env

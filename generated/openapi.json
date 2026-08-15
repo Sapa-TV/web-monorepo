@@ -1,0 +1,1992 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "backend API",
+    "description": "",
+    "license": {
+      "name": ""
+    },
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/admin": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "list_admins",
+        "responses": {
+          "200": {
+            "description": "List all admins",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "add_admin",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddAdminRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Admin added",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Admin already exists"
+          }
+        }
+      }
+    },
+    "/api/admin/ingress/credentials": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "get_ingress_credentials",
+        "responses": {
+          "200": {
+            "description": "Whether ingress credentials are configured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngressCredentialsResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "revoke_ingress_credentials",
+        "responses": {
+          "204": {
+            "description": "Ingress credentials revoked"
+          },
+          "500": {
+            "description": "Failed to clear credentials"
+          }
+        }
+      }
+    },
+    "/api/admin/pak": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "get_admin_pak",
+        "responses": {
+          "200": {
+            "description": "Widget access key (PAK)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PakResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "rotate_admin_pak",
+        "responses": {
+          "200": {
+            "description": "PAK rotated, new key generated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PakResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/twitch/auth": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "start_twitch_auth",
+        "responses": {
+          "200": {
+            "description": "Twitch authorization URL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TwitchAuthStartResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Twitch not configured"
+          }
+        }
+      }
+    },
+    "/api/admin/twitch/auth/callback": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "twitch_auth_callback",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Token exchanged and refresh token persisted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TwitchAuthCallbackResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Twitch not configured"
+          },
+          "403": {
+            "description": "CSRF state mismatch or flow never started"
+          }
+        }
+      }
+    },
+    "/api/admin/{twitch_id}": {
+      "delete": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "remove_admin",
+        "parameters": [
+          {
+            "name": "twitch_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Admin removed"
+          },
+          "403": {
+            "description": "Cannot remove the last root admin"
+          },
+          "404": {
+            "description": "Admin not found"
+          }
+        }
+      }
+    },
+    "/api/auth/twitch": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "operationId": "start_twitch_login",
+        "responses": {
+          "200": {
+            "description": "Twitch login authorization URL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TwitchLoginStartResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Twitch not configured"
+          }
+        }
+      }
+    },
+    "/api/auth/twitch/callback": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "operationId": "twitch_login_callback",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Identity exchanged, one-time login ticket issued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TwitchLoginCallbackResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Twitch not configured"
+          },
+          "403": {
+            "description": "CSRF state mismatch or flow never started"
+          }
+        }
+      }
+    },
+    "/api/sessions": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "operationId": "create_session",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSessionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Session created, sapa_session cookie set",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or already consumed login ticket"
+          }
+        }
+      }
+    },
+    "/api/sessions/me": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "operationId": "get_me",
+        "responses": {
+          "200": {
+            "description": "Current session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "auth"
+        ],
+        "operationId": "logout",
+        "responses": {
+          "204": {
+            "description": "Session destroyed"
+          },
+          "401": {
+            "description": "Not authenticated"
+          }
+        }
+      }
+    },
+    "/api/stream/status": {
+      "get": {
+        "tags": [
+          "stream"
+        ],
+        "operationId": "get_stream_status",
+        "responses": {
+          "200": {
+            "description": "Current stream status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StreamStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wapi/platforms": {
+      "get": {
+        "tags": [
+          "users"
+        ],
+        "operationId": "list_platforms",
+        "responses": {
+          "200": {
+            "description": "List all platforms",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PlatformResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wapi/queue": {
+      "get": {
+        "tags": [
+          "queue"
+        ],
+        "operationId": "list",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/components/schemas/QueueStatus"
+                }
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/components/schemas/QueueEntryId"
+                }
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Page of queue entries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "queue"
+        ],
+        "operationId": "enqueue",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnqueueRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Entry enqueued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueEntryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wapi/queue/anonymous": {
+      "post": {
+        "tags": [
+          "queue"
+        ],
+        "operationId": "enqueue_anonymous",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnonymousEnqueueRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Entry enqueued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueEntryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wapi/queue/next": {
+      "get": {
+        "tags": [
+          "queue"
+        ],
+        "operationId": "peek_next",
+        "responses": {
+          "200": {
+            "description": "Next entry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueEntryResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No pending or error entries"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "queue"
+        ],
+        "operationId": "dequeue_next",
+        "responses": {
+          "200": {
+            "description": "Spin started",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NextResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No pending or error entries"
+          },
+          "409": {
+            "description": "A spin is already active"
+          },
+          "422": {
+            "description": "No slots configured"
+          }
+        }
+      }
+    },
+    "/wapi/queue/stats": {
+      "get": {
+        "tags": [
+          "queue"
+        ],
+        "operationId": "stats",
+        "responses": {
+          "200": {
+            "description": "Queue statistics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueStats"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wapi/queue/{id}": {
+      "get": {
+        "tags": [
+          "queue"
+        ],
+        "operationId": "get_by_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/QueueEntryId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Queue entry found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueEntryResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Queue entry not found"
+          }
+        }
+      }
+    },
+    "/wapi/queue/{id}/cancel": {
+      "post": {
+        "tags": [
+          "queue"
+        ],
+        "operationId": "cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/QueueEntryId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Entry cancelled"
+          },
+          "404": {
+            "description": "Queue entry not found"
+          },
+          "409": {
+            "description": "Only pending or error entries can be cancelled"
+          }
+        }
+      }
+    },
+    "/wapi/queue/{id}/complete": {
+      "post": {
+        "tags": [
+          "queue"
+        ],
+        "operationId": "complete",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/QueueEntryId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Spin completed"
+          },
+          "404": {
+            "description": "Queue entry not found"
+          },
+          "409": {
+            "description": "Entry is not in spinning state"
+          }
+        }
+      }
+    },
+    "/wapi/rarities": {
+      "get": {
+        "tags": [
+          "rarities"
+        ],
+        "operationId": "list_rarities",
+        "responses": {
+          "200": {
+            "description": "List of rarities",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RarityResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "rarities"
+        ],
+        "operationId": "create_rarity",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRarityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Rarity created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RarityResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wapi/rarities/{id}": {
+      "put": {
+        "tags": [
+          "rarities"
+        ],
+        "operationId": "update_rarity",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/RarityId"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRarityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Rarity updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RarityResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rarity not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "rarities"
+        ],
+        "operationId": "delete_rarity",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/RarityId"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Rarity deleted"
+          },
+          "404": {
+            "description": "Rarity not found"
+          }
+        }
+      }
+    },
+    "/wapi/slots": {
+      "get": {
+        "tags": [
+          "slots"
+        ],
+        "operationId": "list_slots",
+        "responses": {
+          "200": {
+            "description": "List all slots",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RouletteSlotResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "slots"
+        ],
+        "operationId": "create_slot",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRouletteSlotRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Slot created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouletteSlotResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          }
+        }
+      }
+    },
+    "/wapi/slots/{id}": {
+      "put": {
+        "tags": [
+          "slots"
+        ],
+        "operationId": "update_slot",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/RouletteSlotId"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRouletteSlotRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Slot updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouletteSlotResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Slot not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "slots"
+        ],
+        "operationId": "delete_slot",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/RouletteSlotId"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Slot deleted"
+          },
+          "404": {
+            "description": "Slot not found"
+          }
+        }
+      }
+    },
+    "/wapi/stream/status": {
+      "post": {
+        "tags": [
+          "stream"
+        ],
+        "operationId": "set_stream_status",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetStreamStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Stream status updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StreamStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wapi/users": {
+      "get": {
+        "tags": [
+          "users"
+        ],
+        "operationId": "find_user",
+        "parameters": [
+          {
+            "name": "platform",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "platform_user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unknown platform"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "users"
+        ],
+        "operationId": "create_user",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "User created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wapi/users/{id}": {
+      "get": {
+        "tags": [
+          "users"
+        ],
+        "operationId": "get_user",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UserId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "users"
+        ],
+        "operationId": "delete_user",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UserId"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "User deleted"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "users"
+        ],
+        "operationId": "update_user",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UserId"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "User updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      }
+    },
+    "/wapi/users/{id}/platforms": {
+      "post": {
+        "tags": [
+          "users"
+        ],
+        "operationId": "link_platform",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UserId"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkPlatformRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Platform linked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unknown platform"
+          },
+          "404": {
+            "description": "User not found"
+          },
+          "409": {
+            "description": "Platform already linked"
+          }
+        }
+      }
+    },
+    "/wapi/users/{id}/platforms/{platform}": {
+      "delete": {
+        "tags": [
+          "users"
+        ],
+        "operationId": "delete_platform",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UserId"
+            }
+          },
+          {
+            "name": "platform",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Platform unlinked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unknown platform"
+          },
+          "404": {
+            "description": "User or platform link not found"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "users"
+        ],
+        "operationId": "update_platform_username",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UserId"
+            }
+          },
+          {
+            "name": "platform",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePlatformRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Platform username updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unknown platform"
+          },
+          "404": {
+            "description": "User or platform link not found"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AddAdminRequest": {
+        "type": "object",
+        "required": [
+          "twitch_id"
+        ],
+        "properties": {
+          "display_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "twitch_id": {
+            "type": "string"
+          }
+        }
+      },
+      "AdminResponse": {
+        "type": "object",
+        "required": [
+          "twitch_id",
+          "is_root",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "is_root": {
+            "type": "boolean"
+          },
+          "twitch_id": {
+            "type": "string"
+          }
+        }
+      },
+      "AnonymousEnqueueRequest": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateRarityRequest": {
+        "type": "object",
+        "required": [
+          "name",
+          "display_name",
+          "image",
+          "color"
+        ],
+        "properties": {
+          "color": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateRouletteSlotRequest": {
+        "type": "object",
+        "required": [
+          "name",
+          "rarity_id",
+          "weight",
+          "action"
+        ],
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "rarity_id": {
+            "$ref": "#/components/schemas/RarityId"
+          },
+          "weight": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "CreateSessionRequest": {
+        "type": "object",
+        "required": [
+          "ticket"
+        ],
+        "properties": {
+          "ticket": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateUserRequest": {
+        "type": "object",
+        "required": [
+          "display_name"
+        ],
+        "properties": {
+          "display_name": {
+            "type": "string"
+          }
+        }
+      },
+      "EnqueueRequest": {
+        "type": "object",
+        "required": [
+          "user_id",
+          "user_name"
+        ],
+        "properties": {
+          "user_id": {
+            "$ref": "#/components/schemas/UserId"
+          },
+          "user_name": {
+            "type": "string"
+          }
+        }
+      },
+      "IngressCredentialsResponse": {
+        "type": "object",
+        "required": [
+          "configured"
+        ],
+        "properties": {
+          "configured": {
+            "type": "boolean"
+          }
+        }
+      },
+      "LinkPlatformRequest": {
+        "type": "object",
+        "required": [
+          "platform",
+          "platform_user_id",
+          "platform_username"
+        ],
+        "properties": {
+          "platform": {
+            "type": "string"
+          },
+          "platform_user_id": {
+            "type": "string"
+          },
+          "platform_username": {
+            "type": "string"
+          }
+        }
+      },
+      "NextResponse": {
+        "type": "object",
+        "required": [
+          "entry",
+          "slot"
+        ],
+        "properties": {
+          "entry": {
+            "$ref": "#/components/schemas/QueueEntryResponse"
+          },
+          "slot": {
+            "$ref": "#/components/schemas/RouletteSlot"
+          }
+        }
+      },
+      "PakResponse": {
+        "type": "object",
+        "required": [
+          "pak"
+        ],
+        "properties": {
+          "pak": {
+            "type": "string"
+          }
+        }
+      },
+      "PlatformId": {
+        "type": "integer",
+        "format": "int32",
+        "minimum": 0
+      },
+      "PlatformResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/PlatformId"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "QueueEntryId": {
+        "type": "integer",
+        "format": "int32",
+        "minimum": 0
+      },
+      "QueueEntryResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "user_id",
+          "user_name",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string"
+          },
+          "id": {
+            "$ref": "#/components/schemas/QueueEntryId"
+          },
+          "result_slot_id": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RouletteSlotId"
+              }
+            ]
+          },
+          "slot_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/QueueStatus"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "user_id": {
+            "$ref": "#/components/schemas/UserId"
+          },
+          "user_name": {
+            "type": "string"
+          }
+        }
+      },
+      "QueueListResponse": {
+        "type": "object",
+        "required": [
+          "entries"
+        ],
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QueueEntryResponse"
+            }
+          },
+          "next_cursor": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/QueueEntryId"
+              }
+            ]
+          }
+        }
+      },
+      "QueueStats": {
+        "type": "object",
+        "required": [
+          "pending",
+          "spinning",
+          "completed",
+          "error",
+          "cancelled"
+        ],
+        "properties": {
+          "cancelled": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "completed": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "error": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "pending": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "spinning": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "QueueStatus": {
+        "type": "string",
+        "enum": [
+          "Pending",
+          "Spinning",
+          "Completed",
+          "Error",
+          "Cancelled"
+        ]
+      },
+      "RarityId": {
+        "type": "integer",
+        "format": "int32",
+        "minimum": 0
+      },
+      "RarityResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "display_name",
+          "image",
+          "color"
+        ],
+        "properties": {
+          "color": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "id": {
+            "$ref": "#/components/schemas/RarityId"
+          },
+          "image": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "RouletteSlot": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "rarity_id",
+          "weight",
+          "action"
+        ],
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "id": {
+            "$ref": "#/components/schemas/RouletteSlotId"
+          },
+          "name": {
+            "type": "string"
+          },
+          "rarity_id": {
+            "$ref": "#/components/schemas/RarityId"
+          },
+          "weight": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "RouletteSlotId": {
+        "type": "integer",
+        "format": "int32",
+        "minimum": 0
+      },
+      "RouletteSlotResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "rarity_id",
+          "weight",
+          "action"
+        ],
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "id": {
+            "$ref": "#/components/schemas/RouletteSlotId"
+          },
+          "name": {
+            "type": "string"
+          },
+          "rarity_id": {
+            "$ref": "#/components/schemas/RarityId"
+          },
+          "weight": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "SessionResponse": {
+        "type": "object",
+        "required": [
+          "twitch_user_id",
+          "is_root",
+          "expires_at"
+        ],
+        "properties": {
+          "expires_at": {
+            "type": "string"
+          },
+          "is_root": {
+            "type": "boolean"
+          },
+          "twitch_user_id": {
+            "type": "string"
+          },
+          "twitch_user_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "SetStreamStatusRequest": {
+        "type": "object",
+        "required": [
+          "online"
+        ],
+        "properties": {
+          "online": {
+            "type": "boolean"
+          }
+        }
+      },
+      "StreamStatusResponse": {
+        "type": "object",
+        "required": [
+          "online"
+        ],
+        "properties": {
+          "online": {
+            "type": "boolean"
+          }
+        }
+      },
+      "TwitchAuthCallbackResponse": {
+        "type": "object",
+        "required": [
+          "user_id"
+        ],
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "user_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "TwitchAuthStartResponse": {
+        "type": "object",
+        "required": [
+          "auth_url"
+        ],
+        "properties": {
+          "auth_url": {
+            "type": "string"
+          }
+        }
+      },
+      "TwitchLoginCallbackResponse": {
+        "type": "object",
+        "required": [
+          "ticket",
+          "twitch_user_id"
+        ],
+        "properties": {
+          "ticket": {
+            "type": "string"
+          },
+          "twitch_user_id": {
+            "type": "string"
+          },
+          "twitch_user_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "TwitchLoginStartResponse": {
+        "type": "object",
+        "required": [
+          "auth_url"
+        ],
+        "properties": {
+          "auth_url": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdatePlatformRequest": {
+        "type": "object",
+        "required": [
+          "platform_username"
+        ],
+        "properties": {
+          "platform_username": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateRarityRequest": {
+        "type": "object",
+        "required": [
+          "name",
+          "display_name",
+          "image",
+          "color"
+        ],
+        "properties": {
+          "color": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateRouletteSlotRequest": {
+        "type": "object",
+        "required": [
+          "name",
+          "rarity_id",
+          "weight",
+          "action"
+        ],
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "rarity_id": {
+            "$ref": "#/components/schemas/RarityId"
+          },
+          "weight": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "UpdateUserRequest": {
+        "type": "object",
+        "required": [
+          "display_name"
+        ],
+        "properties": {
+          "display_name": {
+            "type": "string"
+          }
+        }
+      },
+      "UserId": {
+        "type": "integer",
+        "format": "int32",
+        "minimum": 0
+      },
+      "UserPlatformId": {
+        "type": "integer",
+        "format": "int32",
+        "minimum": 0
+      },
+      "UserPlatformResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "platform",
+          "platform_user_id",
+          "platform_username"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/UserPlatformId"
+          },
+          "platform": {
+            "type": "string"
+          },
+          "platform_user_id": {
+            "type": "string"
+          },
+          "platform_username": {
+            "type": "string"
+          }
+        }
+      },
+      "UserResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "display_name",
+          "platforms",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "id": {
+            "$ref": "#/components/schemas/UserId"
+          },
+          "platforms": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserPlatformResponse"
+            }
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "slots",
+      "description": "Roulette slot management"
+    },
+    {
+      "name": "rarities",
+      "description": "Rarity management"
+    },
+    {
+      "name": "roulette",
+      "description": "Roulette gameplay"
+    },
+    {
+      "name": "users",
+      "description": "User management"
+    },
+    {
+      "name": "queue",
+      "description": "Spin queue"
+    },
+    {
+      "name": "stream",
+      "description": "Stream status"
+    },
+    {
+      "name": "auth",
+      "description": "Sessions and login"
+    },
+    {
+      "name": "admin",
+      "description": "Administrative endpoints"
+    }
+  ]
+}
