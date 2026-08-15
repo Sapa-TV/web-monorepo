@@ -6,6 +6,7 @@ use crate::platform::PlatformId;
 #[non_exhaustive]
 pub struct PlatformEvent {
     pub platform: PlatformId,
+    pub event_id: String,
     pub sent_at: DateTime<Utc>,
     pub payload: PlatformEventPayload,
 }
@@ -13,12 +14,14 @@ pub struct PlatformEvent {
 impl PlatformEvent {
     pub fn chat_message(
         platform: PlatformId,
+        event_id: impl Into<String>,
         user_id: String,
         user_name: String,
         text: String,
     ) -> Self {
         Self {
             platform,
+            event_id: event_id.into(),
             sent_at: Utc::now(),
             payload: PlatformEventPayload::ChatMessage(ChatMessage {
                 user_id,
@@ -59,11 +62,13 @@ mod tests {
     fn chat_message_payload_type_name() {
         let event = PlatformEvent::chat_message(
             PlatformId::TWITCH,
+            "msg-1",
             "1".to_string(),
             "viewer".to_string(),
             "hello".to_string(),
         );
         assert_eq!(event.payload.type_name(), "chat_message");
+        assert_eq!(event.event_id, "msg-1");
         match &event.payload {
             PlatformEventPayload::ChatMessage(msg) => assert_eq!(msg.text, "hello"),
         }

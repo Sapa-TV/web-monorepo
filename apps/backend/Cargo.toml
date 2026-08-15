@@ -40,3 +40,4 @@ twitch_api = { workspace = true, features = [
 reqwest = { workspace = true }
 twitch_oauth2 = { workspace = true }
 url = { workspace = true }
+uuid = { workspace = true, features = ["v7"] }

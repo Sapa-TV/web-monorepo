@@ -1,3 +1,4 @@
+use std::collections::{HashSet, VecDeque};
 use std::sync::Arc;
 
 use tokio::sync::{broadcast, mpsc};
@@ -5,8 +6,12 @@ use tokio::sync::{broadcast, mpsc};
 use crate::error::ingress::PlatformError;
 use crate::ingress::event::{PlatformEvent, PlatformEventPayload};
 use crate::ingress::platform::EventSink;
+use crate::platform::PlatformId;
 
 const CHANNEL_CAPACITY: usize = 64;
+const DEDUP_WINDOW: usize = 1024;
+
+type EventKey = (PlatformId, String);
 
 #[non_exhaustive]
 pub struct EventIngress {
@@ -20,7 +25,24 @@ impl EventIngress {
         let (out, _) = broadcast::channel::<Arc<PlatformEvent>>(CHANNEL_CAPACITY);
         let pump = out.clone();
         tokio::spawn(async move {
+            let mut seen: HashSet<EventKey> = HashSet::with_capacity(DEDUP_WINDOW);
+            let mut order: VecDeque<EventKey> = VecDeque::with_capacity(DEDUP_WINDOW);
             while let Some(event) = rx.recv().await {
+                let key = (event.platform, event.event_id.clone());
+                if !seen.insert(key.clone()) {
+                    tracing::debug!(
+                        platform = ?key.0,
+                        event_id = %key.1,
+                        "ingress: duplicate event dropped"
+                    );
+                    continue;
+                }
+                order.push_back(key);
+                if order.len() > DEDUP_WINDOW
+                    && let Some(evicted) = order.pop_front()
+                {
+                    seen.remove(&evicted);
+                }
                 let event = Arc::new(event);
                 if pump.send(Arc::clone(&event)).is_err() {
                     tracing::debug!("ingress: no subscribers, dropping event");
@@ -96,6 +118,7 @@ mod tests {
         let platform = PlatformId::TWITCH;
         let event = PlatformEvent::chat_message(
             platform,
+            "msg-1",
             "1".to_string(),
             "viewer".to_string(),
             "hello".to_string(),
@@ -105,6 +128,7 @@ mod tests {
 
         let received = rx.recv().await.unwrap();
         assert_eq!(received.platform, platform);
+        assert_eq!(received.event_id, "msg-1");
         match &received.payload {
             PlatformEventPayload::ChatMessage(msg) => assert_eq!(msg.text, "hello"),
         }
@@ -115,10 +139,32 @@ mod tests {
         let ingress = EventIngress::new();
         let event = PlatformEvent::chat_message(
             PlatformId::YOUTUBE,
+            "msg-1",
             "1".to_string(),
             "viewer".to_string(),
             "hello".to_string(),
         );
         ingress.publish(event).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn duplicate_event_id_is_dropped() {
+        let ingress = EventIngress::new();
+        let mut rx = ingress.subscribe();
+        let event = PlatformEvent::chat_message(
+            PlatformId::TWITCH,
+            "dup-1",
+            "1".to_string(),
+            "viewer".to_string(),
+            "hello".to_string(),
+        );
+        let duplicate = event.clone();
+
+        ingress.publish(event).await.unwrap();
+        ingress.publish(duplicate).await.unwrap();
+
+        let received = rx.recv().await.unwrap();
+        assert_eq!(received.event_id, "dup-1");
+        assert!(rx.try_recv().is_err(), "duplicate event must be dropped");
     }
 }

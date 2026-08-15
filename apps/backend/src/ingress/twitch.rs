@@ -104,6 +104,7 @@ where
                     {
                         let event = chat_event_from(
                             platform,
+                            data.message_id.as_ref(),
                             data.chatter_user_id.as_ref(),
                             data.chatter_user_name.as_ref(),
                             data.message.text.as_str(),
@@ -161,12 +162,14 @@ where
 
 fn chat_event_from(
     platform: PlatformId,
+    event_id: &str,
     user_id: &str,
     user_name: &str,
     text: &str,
 ) -> PlatformEvent {
     PlatformEvent::chat_message(
         platform,
+        event_id.to_owned(),
         user_id.to_owned(),
         user_name.to_owned(),
         text.to_owned(),
@@ -181,8 +184,15 @@ mod tests {
 
     #[test]
     fn maps_chat_message_fields() {
-        let event = chat_event_from(PlatformId::TWITCH, "4145994", "viewer32", "Hi chat");
+        let event = chat_event_from(
+            PlatformId::TWITCH,
+            "msg-1",
+            "4145994",
+            "viewer32",
+            "Hi chat",
+        );
         assert_eq!(event.platform, PlatformId::TWITCH);
+        assert_eq!(event.event_id, "msg-1");
         match &event.payload {
             PlatformEventPayload::ChatMessage(msg) => {
                 assert_eq!(msg.user_id, "4145994");
