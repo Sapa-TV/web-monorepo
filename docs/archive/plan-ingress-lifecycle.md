@@ -1,5 +1,24 @@
 # План: lifecycle-менеджер ingress-сервисов (start/restart/stop по credentials)
 
+> Статус: **выполнено**.
+
+## Результаты
+
+- **Шаг 1–2.** `PlatformCredentialService<C>` (`src/platform.rs`) — единая точка записи кредов с сигналом
+  `watch::Sender<u64>` (ревизия) + `IngressSupervisor<C>` (`src/ingress/supervisor.rs`) с матрицей reconcile
+  `(configured, running)` → старт/стоп/рестарт/no-op; стартовый reconcile подхватывает креды из репо после рестарта процесса.
+- **Шаг 3.** `UniAppState.credentials: Arc<PlatformCredentialService<C>>` (`src/state.rs`), создаётся один раз в `build()`.
+- **Шаг 4.** `AdminAuthService` (`src/admin/auth.rs`) — `complete()`/`revoke_ingress_credentials()`/`is_ingress_credentials_configured()`
+  через `PlatformCredentialService` (`save_credential`/`clear_credential`/`load_credential`, с сигналом).
+- **Шаг 5.** `TwitchAuthService` (`src/ingress/twitch_auth.rs`) — `Mutex<Option<UserToken>>` удалён; `user_token()` минтит токен
+  из репо при каждом вызове; `persist_rotated()` → `save_rotated` (без сигнала, ротация не перезапускает ингресс).
+- **Шаг 6.** `src/main.rs` — ad-hoc спавн заменён на `IngressSupervisor` + match-фабрика `build_ingress` (без `Box<dyn>`),
+  реестр платформ `[TWITCH]` / `[]` по наличию twitch-конфига.
+- **Шаг 7.** `src/test_fixtures.rs` — под новые сигнатуры (ломающего не было), добавлен `save_twitch_credentials`-хелпер.
+- **Шаг 8.** Верификация: `cargo nextest run --package backend` 185/185 зелёный, `cargo clippy --all-targets` чисто, `cargo fmt --check` ок.
+
+---
+
 Статус: **запланировано / не начато**. Запись для реализации.
 
 Дата: 2026-08-17

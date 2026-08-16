@@ -8,7 +8,7 @@ use tracing::debug;
 use twitch_oauth2::{CsrfToken, Scope, TwitchToken, UserTokenBuilder};
 
 use crate::config::TwitchConfig;
-use crate::platform::{PlatformCredentialRepository, PlatformId};
+use crate::platform::{PlatformCredentialRepository, PlatformCredentialService, PlatformId};
 
 const ADMIN_SCOPES: &[Scope] = &[Scope::ChatRead, Scope::UserBot, Scope::ChannelBot];
 
@@ -47,18 +47,21 @@ where
 {
     config: Option<Arc<TwitchConfig>>,
     pending_csrf: Mutex<BTreeMap<String, Instant>>,
-    credentials_repo: Arc<R>,
+    credentials: Arc<PlatformCredentialService<R>>,
 }
 
 impl<R> AdminAuthService<R>
 where
     R: PlatformCredentialRepository,
 {
-    pub fn new(config: Option<Arc<TwitchConfig>>, credentials_repo: Arc<R>) -> Self {
+    pub fn new(
+        config: Option<Arc<TwitchConfig>>,
+        credentials: Arc<PlatformCredentialService<R>>,
+    ) -> Self {
         Self {
             config,
             pending_csrf: Mutex::new(BTreeMap::new()),
-            credentials_repo,
+            credentials,
         }
     }
 
@@ -107,7 +110,7 @@ where
             tracing::error!("twitch oauth returned no refresh token");
             return Err(AdminAuthError::Exchange);
         };
-        self.credentials_repo
+        self.credentials
             .save_credential(PlatformId::TWITCH, refresh_token.secret())
             .await
             .inspect_err(|e| tracing::error!("failed to persist twitch refresh token: {e}"))
@@ -165,7 +168,7 @@ where
 
     pub async fn is_ingress_credentials_configured(&self) -> Result<bool, AdminAuthError> {
         Ok(self
-            .credentials_repo
+            .credentials
             .load_credential(PlatformId::TWITCH)
             .await
             .map_err(|_| AdminAuthError::Persist)?
@@ -173,7 +176,7 @@ where
     }
 
     pub async fn revoke_ingress_credentials(&self) -> Result<(), AdminAuthError> {
-        self.credentials_repo
+        self.credentials
             .clear_credential(PlatformId::TWITCH)
             .await
             .map_err(|_| AdminAuthError::Persist)
@@ -199,6 +202,7 @@ mod tests {
     use std::time::{Duration, Instant};
 
     use crate::db::inmemory_platform_credential::InMemoryPlatformCredentialRepository;
+    use crate::platform::PlatformCredentialService;
 
     use super::*;
 
@@ -218,7 +222,9 @@ mod tests {
     ) -> AdminAuthService<InMemoryPlatformCredentialRepository> {
         AdminAuthService::new(
             config,
-            Arc::new(InMemoryPlatformCredentialRepository::new()),
+            Arc::new(PlatformCredentialService::new(Arc::new(
+                InMemoryPlatformCredentialRepository::new(),
+            ))),
         )
     }
 
@@ -332,7 +338,7 @@ mod tests {
         assert!(!service.is_ingress_credentials_configured().await.unwrap());
 
         service
-            .credentials_repo
+            .credentials
             .save_credential(PlatformId::TWITCH, "tok")
             .await
             .unwrap();

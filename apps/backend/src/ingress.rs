@@ -1,6 +1,7 @@
 pub mod event;
 pub mod platform;
 pub mod service;
+pub mod supervisor;
 pub mod twitch;
 pub mod twitch_auth;
 

@@ -9,6 +9,7 @@ use crate::config::store::ConfigStore;
 use crate::db::inmemory_config::InMemoryConfigRepository;
 use crate::db::inmemory_platform_credential::InMemoryPlatformCredentialRepository;
 use crate::db::inmemory_queue::InMemoryQueueRepository;
+use crate::platform::PlatformId;
 use crate::random::StandartRandomProvider;
 use crate::state::{AppState, AppStateBuilder};
 use crate::widget_api;
@@ -48,4 +49,12 @@ pub async fn test_state_with_data(
     .build()
     .await
     .expect("failed to build test state")
+}
+
+pub async fn save_twitch_credentials(state: &AppState, token: &str) {
+    state
+        .credentials
+        .save_credential(PlatformId::TWITCH, token)
+        .await
+        .expect("failed to save twitch credentials")
 }

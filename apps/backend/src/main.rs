@@ -12,12 +12,16 @@ use backend::config::store::ConfigStore;
 use backend::db::inmemory_config::InMemoryConfigRepository;
 use backend::db::inmemory_platform_credential::InMemoryPlatformCredentialRepository;
 use backend::ingress::PlatformService;
+use backend::ingress::platform::EventSink;
+use backend::ingress::supervisor::IngressSupervisor;
 use backend::ingress::twitch::TwitchPlatformService;
+use backend::platform::{PlatformCredentialService, PlatformId};
 use backend::random::StandartRandomProvider;
 use backend::state::{AppQueueService, AppSessionService, AppState, AppStateBuilder};
 use backend::widget_api;
 use tokio::net::TcpListener;
 use tokio::signal::ctrl_c;
+use tokio::task::JoinHandle;
 use tokio::time;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
@@ -48,26 +52,56 @@ async fn main() {
     .await
     .expect("failed to build app state");
 
-    if let Some(twitch) = config_store.twitch() {
-        let service =
-            TwitchPlatformService::new(Arc::new(twitch.clone()), Arc::clone(&credentials_repo));
-        let sink = state.ingress.sink();
-        tracing::info!(
-            "twitch config ready: client_id={}, broadcaster_id={}, redirect_uri={}, credentials_redirect_uri={}",
-            twitch.client_id,
-            twitch.broadcaster_id,
-            twitch.redirect_uri,
-            twitch.credentials_redirect_uri
-        );
-        tracing::info!("starting {} ingress", service.platform().as_name());
-        tokio::spawn(async move {
-            if let Err(e) = service.run(sink).await {
-                tracing::error!("twitch ingress stopped: {e}");
-            }
-        });
-    } else {
-        tracing::info!("twitch config NOT configured: twitch login and ingress will not work");
+    match config_store.twitch() {
+        Some(twitch) => {
+            tracing::info!(
+                "twitch config ready: client_id={}, broadcaster_id={}, redirect_uri={}, credentials_redirect_uri={}",
+                twitch.client_id,
+                twitch.broadcaster_id,
+                twitch.redirect_uri,
+                twitch.credentials_redirect_uri
+            );
+        }
+        None => {
+            tracing::info!("twitch config NOT configured: twitch login and ingress will not work");
+        }
     }
+
+    let platforms: &'static [PlatformId] = match config_store.twitch() {
+        Some(_) => &[PlatformId::TWITCH],
+        None => &[],
+    };
+    let twitch_config = config_store.twitch().map(|t| Arc::new(t.clone()));
+    let build_ingress =
+        move |platform: PlatformId,
+              credentials: Arc<PlatformCredentialService<InMemoryPlatformCredentialRepository>>,
+              sink: EventSink|
+              -> Option<JoinHandle<()>> {
+            match platform {
+                PlatformId::TWITCH => match &twitch_config {
+                    Some(config) => {
+                        let config = Arc::clone(config);
+                        Some(tokio::spawn(async move {
+                            let service = TwitchPlatformService::new(config, credentials);
+                            if let Err(e) = service.run(sink).await {
+                                tracing::error!(
+                                    "{} ingress stopped: {e}",
+                                    service.platform().as_name()
+                                );
+                            }
+                        }))
+                    }
+                    None => None,
+                },
+                _ => None,
+            }
+        };
+    let supervisor = IngressSupervisor::new(
+        Arc::clone(&state.credentials),
+        state.ingress.sink(),
+        platforms,
+    );
+    tokio::spawn(supervisor.run(build_ingress));
     let cors = match config_store.cors_origins() {
         Some(origins) => {
             let origins: Vec<HeaderValue> = origins.iter().filter_map(|o| o.parse().ok()).collect();

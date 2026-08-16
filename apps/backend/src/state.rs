@@ -17,7 +17,9 @@ use crate::db::inmemory_user::InMemoryUserRepository;
 use crate::error::RepositoryError;
 use crate::event::BroadcastEventPublisher;
 use crate::ingress::{EventIngress, spawn_logging_handler};
-use crate::platform::{PlatformCredentialRepository, PlatformRepository};
+use crate::platform::{
+    PlatformCredentialRepository, PlatformCredentialService, PlatformRepository,
+};
 use crate::queue::repository::QueueRepository;
 use crate::queue::service::QueueService;
 use crate::random::StandartRandomProvider;
@@ -56,6 +58,7 @@ where
     pub stream_status: Arc<StreamStatus>,
     pub ingress: Arc<EventIngress>,
     pub admin_auth: Arc<AdminAuthService<C>>,
+    pub credentials: Arc<PlatformCredentialService<C>>,
 }
 
 impl<Q, R, U, P, S, A, Se, C, K> Clone for UniAppState<Q, R, U, P, S, A, Se, C, K>
@@ -83,6 +86,7 @@ where
             stream_status: Arc::clone(&self.stream_status),
             ingress: Arc::clone(&self.ingress),
             admin_auth: Arc::clone(&self.admin_auth),
+            credentials: Arc::clone(&self.credentials),
         }
     }
 }
@@ -179,9 +183,12 @@ impl AppStateBuilder {
             admin_service.seed(admin_id).await?;
         }
         let session_service = Arc::new(SessionService::new(session_repo, settings));
+        let credentials = Arc::new(PlatformCredentialService::new(Arc::clone(
+            &self.credentials_repo,
+        )));
         let admin_auth = Arc::new(AdminAuthService::new(
             self.config.twitch().map(|twitch| Arc::new(twitch.clone())),
-            self.credentials_repo,
+            Arc::clone(&credentials),
         ));
 
         Ok(AppState {
@@ -196,6 +203,7 @@ impl AppStateBuilder {
             stream_status: Arc::new(StreamStatus::new()),
             ingress,
             admin_auth,
+            credentials,
         })
     }
 }

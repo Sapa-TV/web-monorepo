@@ -15,7 +15,9 @@ use crate::error::ingress::PlatformError;
 use crate::ingress::event::PlatformEvent;
 use crate::ingress::platform::{EventSink, PlatformService};
 use crate::ingress::twitch_auth::TwitchAuthService;
-use crate::platform::{Platform, PlatformCredentialRepository, PlatformId};
+use crate::platform::{
+    Platform, PlatformCredentialRepository, PlatformCredentialService, PlatformId,
+};
 
 const EVENTSUB_WS_URL: &str = "wss://eventsub.wss.twitch.tv/ws";
 const INITIAL_RECONNECT_DELAY: Duration = Duration::from_secs(1);
@@ -35,10 +37,10 @@ impl<R> TwitchPlatformService<R>
 where
     R: PlatformCredentialRepository,
 {
-    pub fn new(config: Arc<TwitchConfig>, credentials_repo: Arc<R>) -> Self {
+    pub fn new(config: Arc<TwitchConfig>, credentials: Arc<PlatformCredentialService<R>>) -> Self {
         Self {
             config: Arc::clone(&config),
-            auth: Arc::new(TwitchAuthService::new(config, credentials_repo)),
+            auth: Arc::new(TwitchAuthService::new(config, credentials)),
             platform: PlatformId::TWITCH,
         }
     }

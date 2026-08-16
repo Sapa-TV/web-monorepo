@@ -1,12 +1,11 @@
 use std::sync::Arc;
 
-use tokio::sync::Mutex;
 use twitch_api::helix::HelixClient;
 use twitch_oauth2::{ClientId, ClientSecret, RefreshToken, Scope, TwitchToken, UserToken};
 
 use crate::config::TwitchConfig;
 use crate::error::ingress::PlatformError;
-use crate::platform::{PlatformCredentialRepository, PlatformId};
+use crate::platform::{PlatformCredentialRepository, PlatformCredentialService, PlatformId};
 
 const REQUIRED_SCOPES: &[Scope] = &[Scope::ChatRead, Scope::UserBot];
 
@@ -17,20 +16,18 @@ where
 {
     config: Arc<TwitchConfig>,
     http: reqwest::Client,
-    token: Mutex<Option<UserToken>>,
-    credentials_repo: Arc<R>,
+    credentials: Arc<PlatformCredentialService<R>>,
 }
 
 impl<R> TwitchAuthService<R>
 where
     R: PlatformCredentialRepository,
 {
-    pub fn new(config: Arc<TwitchConfig>, credentials_repo: Arc<R>) -> Self {
+    pub fn new(config: Arc<TwitchConfig>, credentials: Arc<PlatformCredentialService<R>>) -> Self {
         Self {
             config,
             http: reqwest::Client::new(),
-            token: Mutex::new(None),
-            credentials_repo,
+            credentials,
         }
     }
 
@@ -39,31 +36,6 @@ where
     }
 
     pub async fn user_token(&self) -> Result<UserToken, PlatformError> {
-        let mut cached = self.token.lock().await;
-        match &mut *cached {
-            Some(token) if !token.is_elapsed() => Ok(token.clone()),
-            Some(_) => {
-                tracing::warn!("twitch token expired, refreshing");
-                let token = cached.as_mut().expect("token is set");
-                token
-                    .refresh_token(&self.http)
-                    .await
-                    .map_err(|e| PlatformError::Auth(e.to_string()))?;
-                self.persist_rotated(token).await;
-                let token = cached.as_ref().expect("token is set").clone();
-                self.log_scopes(&token);
-                Ok(token)
-            }
-            None => {
-                let token = self.refresh().await?;
-                self.log_scopes(&token);
-                *cached = Some(token.clone());
-                Ok(token)
-            }
-        }
-    }
-
-    async fn refresh(&self) -> Result<UserToken, PlatformError> {
         let refresh_token = self.current_refresh_token().await?;
         let token = UserToken::from_refresh_token(
             &self.http,
@@ -74,11 +46,12 @@ where
         .await
         .map_err(|e| PlatformError::Auth(e.to_string()))?;
         self.persist_rotated(&token).await;
+        self.log_scopes(&token);
         Ok(token)
     }
 
     async fn current_refresh_token(&self) -> Result<String, PlatformError> {
-        self.credentials_repo
+        self.credentials
             .load_credential(PlatformId::TWITCH)
             .await
             .map_err(|e| PlatformError::Auth(e.to_string()))?
@@ -93,8 +66,8 @@ where
             return;
         };
         if let Err(e) = self
-            .credentials_repo
-            .save_credential(PlatformId::TWITCH, refresh_token.secret())
+            .credentials
+            .save_rotated(PlatformId::TWITCH, refresh_token.secret())
             .await
         {
             tracing::warn!("{e}");
@@ -124,7 +97,7 @@ mod tests {
     use std::sync::Arc;
 
     use crate::db::inmemory_platform_credential::InMemoryPlatformCredentialRepository;
-    use crate::platform::PlatformId;
+    use crate::platform::{PlatformCredentialService, PlatformId};
 
     use super::*;
 
@@ -145,23 +118,59 @@ mod tests {
         })
     }
 
+    fn test_credentials() -> Arc<PlatformCredentialService<InMemoryPlatformCredentialRepository>> {
+        Arc::new(PlatformCredentialService::new(Arc::new(
+            InMemoryPlatformCredentialRepository::new(),
+        )))
+    }
+
     #[tokio::test]
     async fn current_refresh_token_reads_from_repo() {
-        let repo = Arc::new(InMemoryPlatformCredentialRepository::new());
-        repo.save_credential(PlatformId::TWITCH, "from_repo")
+        let credentials = test_credentials();
+        credentials
+            .save_rotated(PlatformId::TWITCH, "from_repo")
             .await
             .unwrap();
-        let service = TwitchAuthService::new(test_config(), repo);
+        let service = TwitchAuthService::new(test_config(), credentials);
         assert_eq!(service.current_refresh_token().await.unwrap(), "from_repo");
     }
 
     #[tokio::test]
     async fn current_refresh_token_errors_when_repo_empty() {
-        let repo = Arc::new(InMemoryPlatformCredentialRepository::new());
-        let service = TwitchAuthService::new(test_config(), repo);
+        let service = TwitchAuthService::new(test_config(), test_credentials());
         assert!(matches!(
             service.current_refresh_token().await,
             Err(PlatformError::Auth(_))
         ));
+    }
+
+    #[tokio::test]
+    async fn current_refresh_token_reads_replaced_credential() {
+        let credentials = test_credentials();
+        credentials
+            .save_credential(PlatformId::TWITCH, "first")
+            .await
+            .unwrap();
+        let service = TwitchAuthService::new(test_config(), credentials);
+
+        assert_eq!(service.current_refresh_token().await.unwrap(), "first");
+
+        service
+            .credentials
+            .save_credential(PlatformId::TWITCH, "second")
+            .await
+            .unwrap();
+        assert_eq!(service.current_refresh_token().await.unwrap(), "second");
+    }
+
+    #[tokio::test]
+    async fn save_rotated_does_not_bump_lifecycle() {
+        let credentials = test_credentials();
+        let rx = credentials.subscribe_lifecycle();
+        credentials
+            .save_rotated(PlatformId::TWITCH, "rotated")
+            .await
+            .unwrap();
+        assert_eq!(*rx.borrow(), 0);
     }
 }
