@@ -4,6 +4,7 @@ use std::sync::nonpoison::Mutex;
 use std::time::{Duration, Instant};
 
 use axum::http::StatusCode;
+use tracing::debug;
 use twitch_oauth2::{CsrfToken, Scope, TwitchToken, UserTokenBuilder};
 
 use crate::config::TwitchConfig;
@@ -165,9 +166,14 @@ where
 }
 
 fn exchanged_of(token: &twitch_oauth2::UserToken) -> ExchangedToken {
+    let user_id = token.user_id().map(|u| u.to_string()).unwrap_or_default();
+    let user_name = token.login().map(|u| u.to_string());
+    debug!(
+        "twitch oauth exchanged: twitch_user_id={user_id}, twitch_user_name={user_name:?}"
+    );
     ExchangedToken {
-        user_id: token.user_id().map(|u| u.to_string()).unwrap_or_default(),
-        user_name: token.login().map(|u| u.to_string()),
+        user_id,
+        user_name,
     }
 }
 

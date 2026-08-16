@@ -4,7 +4,15 @@ import adapter from "@sveltejs/adapter-static";
 import { sveltekit } from "@sveltejs/kit/vite";
 import Icons from "unplugin-icons/vite";
 
+const backendTarget = process.env.VITE_BACKEND_URL ?? "http://localhost:3000";
+
 export default defineConfig({
+	server: {
+		proxy: {
+			"/api": { target: backendTarget, changeOrigin: true },
+			"/wapi": { target: backendTarget, changeOrigin: true, ws: true },
+		},
+	},
 	plugins: [
 		sveltekit({
 			compilerOptions: {

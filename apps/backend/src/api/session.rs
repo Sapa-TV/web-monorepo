@@ -178,6 +178,11 @@ pub async fn get_me(
         .is_root(&session.twitch_user_id)
         .await
         .map_err(|_| Unauthorized)?;
+    tracing::debug!(
+        "get_me: twitch_user_id={}, is_root={}",
+        session.twitch_user_id,
+        is_root
+    );
     Ok(Json(SessionResponse {
         twitch_user_id: session.twitch_user_id.clone(),
         twitch_user_name: session.twitch_user_name.clone(),

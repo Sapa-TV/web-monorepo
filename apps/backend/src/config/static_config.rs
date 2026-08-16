@@ -14,7 +14,6 @@ pub struct StaticConfig {
     #[serde(deserialize_with = "deserialize_cors_origins")]
     pub cors_origins: Option<Vec<String>>,
     pub cookie_secure: bool,
-    pub admin_twitch_id: Option<String>,
     pub twitch: Option<Arc<TwitchConfig>>,
 }
 
@@ -24,7 +23,6 @@ impl Default for StaticConfig {
             port: 3000,
             cors_origins: None,
             cookie_secure: false,
-            admin_twitch_id: None,
             twitch: None,
         }
     }
@@ -32,13 +30,15 @@ impl Default for StaticConfig {
 
 impl StaticConfig {
     pub fn load() -> (Self, Option<RuntimeConfig>) {
-        if let Err(e) = dotenvy::dotenv() {
+        if let Err(e) = dotenvy::dotenv()
+            && !e.not_found()
+        {
             tracing::warn!("failed to load .env: {e}");
         }
 
         let settings = ::config::Config::builder()
             .add_source(File::with_name("config").required(false))
-            .add_source(Environment::default())
+            .add_source(Environment::default().separator("__"))
             .build()
             .expect("failed to load configuration");
         let raw: RawConfig = settings.try_deserialize().expect("invalid configuration");
@@ -50,7 +50,6 @@ impl StaticConfig {
             port: raw.port,
             cors_origins: raw.cors_origins,
             cookie_secure: raw.cookie_secure,
-            admin_twitch_id: raw.admin_twitch_id,
             twitch: raw.twitch,
         };
         let seed = RuntimeConfig {
@@ -78,7 +77,6 @@ struct RawConfig {
     #[serde(deserialize_with = "deserialize_cors_origins")]
     cors_origins: Option<Vec<String>>,
     twitch: Option<Arc<TwitchConfig>>,
-    admin_twitch_id: Option<String>,
     session_ttl_secs: u64,
     cookie_secure: bool,
 }
@@ -97,7 +95,6 @@ impl Default for RawConfig {
             port: static_cfg.port,
             cors_origins: static_cfg.cors_origins,
             twitch: static_cfg.twitch,
-            admin_twitch_id: static_cfg.admin_twitch_id,
             cookie_secure: static_cfg.cookie_secure,
         }
     }
@@ -153,7 +150,13 @@ mod tests {
                 "port": 4321,
                 "cors_origins": ["https://a.com", "https://b.com"],
                 "cookie_secure": true,
-                "admin_twitch_id": "42",
+                "twitch": {
+                    "client_id": "cid",
+                    "client_secret": "cs",
+                    "broadcaster_id": "bc",
+                    "redirect_uri": "https://localhost/cb",
+                    "csrf_ttl_secs": 600
+                },
                 "roulette_timeout_secs": 30,
                 "session_ttl_secs": 3600
             }"#,
@@ -168,7 +171,10 @@ mod tests {
             &["https://a.com", "https://b.com"]
         );
         assert!(static_cfg.cookie_secure);
-        assert_eq!(static_cfg.admin_twitch_id.as_deref(), Some("42"));
+        assert_eq!(
+            static_cfg.twitch.as_deref().unwrap().broadcaster_id,
+            "bc"
+        );
 
         let seed = seed.expect("seed present");
         assert_eq!(seed.roulette_timeout_secs, 30);

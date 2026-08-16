@@ -50,6 +50,11 @@ pub async fn require_admin(
         .is_admin(&session.twitch_user_id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    tracing::debug!(
+        "require_admin: twitch_user_id={}, is_admin={}",
+        session.twitch_user_id,
+        is_admin
+    );
     if !is_admin {
         return Err(StatusCode::FORBIDDEN);
     }
@@ -73,6 +78,11 @@ pub async fn require_root(
         .is_root(&session.twitch_user_id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    tracing::debug!(
+        "require_root: twitch_user_id={}, is_root={}",
+        session.twitch_user_id,
+        is_root
+    );
     if !is_root {
         return Err(StatusCode::FORBIDDEN);
     }

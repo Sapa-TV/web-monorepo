@@ -1,4 +1,4 @@
-import { ResultAsync, errAsync, okAsync } from "neverthrow";
+import { Result, ResultAsync, errAsync, okAsync } from "neverthrow";
 
 export interface ApiConfig {
 	baseUrl: string;
@@ -85,6 +85,7 @@ export class HttpClient<SecurityDataType = unknown> {
 			method,
 			headers: headersInit,
 			signal: controller.signal,
+			credentials: "include",
 			body:
 				body instanceof FormData
 					? body
@@ -93,28 +94,26 @@ export class HttpClient<SecurityDataType = unknown> {
 						: undefined,
 		};
 
-		let response: Response;
 		try {
-			response = await fetch(url.toString(), fetchOptions);
-
-			const isNoContent = response.status === 204;
-			let data: any = null;
-
-			if (!isNoContent) {
-				try {
-					data = await response.json();
-				} catch (err) {
-					return errAsync(new ParseError(err));
-				}
-			}
+			const response = await fetch(url.toString(), fetchOptions);
+			const body = await this.readBody(response);
 
 			if (!response.ok) {
+				const data = await body.match(
+					(raw) => parseJson(raw).unwrapOr(raw),
+					() => null,
+				);
 				return errAsync(
 					new HttpError(response.status, response.statusText, data as E),
 				);
 			}
 
-			return okAsync(data as T);
+			if (response.status === 204) {
+				return okAsync(null as T);
+			}
+
+			const parsed = await body.andThen(parseJson);
+			return parsed.map((data) => data as T);
 		} catch (err) {
 			if (err instanceof DOMException && err.name === "AbortError") {
 				return errAsync(new TimeoutError(this.timeoutMs));
@@ -124,4 +123,18 @@ export class HttpClient<SecurityDataType = unknown> {
 			clearTimeout(timeoutId);
 		}
 	}
+
+	private async readBody(
+		response: Response,
+	): Promise<ResultAsync<string, ParseError>> {
+		return ResultAsync.fromPromise(
+			response.text(),
+			(err) => new ParseError(err),
+		);
+	}
 }
+
+const parseJson = Result.fromThrowable(
+	(raw: string) => JSON.parse(raw) as unknown,
+	(err) => new ParseError(err),
+);

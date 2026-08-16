@@ -52,12 +52,22 @@ async fn main() {
         let service =
             TwitchPlatformService::new(Arc::new(twitch.clone()), Arc::clone(&credentials_repo));
         let sink = state.ingress.sink();
+        tracing::info!(
+            "twitch config ready: client_id={}, broadcaster_id={}, redirect_uri={}",
+            twitch.client_id,
+            twitch.broadcaster_id,
+            twitch.redirect_uri
+        );
         tracing::info!("starting {} ingress", service.platform().as_name());
         tokio::spawn(async move {
             if let Err(e) = service.run(sink).await {
                 tracing::error!("twitch ingress stopped: {e}");
             }
         });
+    } else {
+        tracing::info!(
+            "twitch config NOT configured: twitch login and ingress will not work"
+        );
     }
     let cors = match config_store.cors_origins() {
         Some(origins) => {

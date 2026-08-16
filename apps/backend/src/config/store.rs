@@ -81,7 +81,10 @@ impl<R: ConfigRepository> ConfigStore<R> {
     }
 
     pub fn admin_twitch_id(&self) -> Option<&str> {
-        self.static_cfg.admin_twitch_id.as_deref()
+        self.static_cfg
+            .twitch
+            .as_deref()
+            .map(|twitch| twitch.broadcaster_id.as_str())
     }
 
     pub fn cors_origins(&self) -> Option<&[String]> {
@@ -162,6 +165,29 @@ mod tests {
         assert_eq!(store.admin_twitch_id(), None);
         assert_eq!(store.cors_origins(), None);
         assert!(store.twitch().is_none());
+    }
+
+    #[test]
+    fn admin_twitch_id_comes_from_twitch_broadcaster_id() {
+        let repo = Arc::new(InMemoryConfigRepository::new());
+        let static_cfg = Arc::new(StaticConfig {
+            port: 3000,
+            cors_origins: None,
+            cookie_secure: false,
+            twitch: Some(Arc::new(crate::config::TwitchConfig {
+                client_id: "cid".to_string(),
+                client_secret: "cs".to_string(),
+                broadcaster_id: "42".to_string(),
+                redirect_uri: "https://localhost/cb".to_string(),
+                csrf_ttl_secs: 600,
+            })),
+        });
+        let store = ConfigStore::new(
+            static_cfg,
+            RuntimeConfig::test_runtime("secret"),
+            Arc::clone(&repo),
+        );
+        assert_eq!(store.admin_twitch_id(), Some("42"));
     }
 
     #[tokio::test]

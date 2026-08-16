@@ -121,6 +121,11 @@ where
         let is_admin = admin.is_admin(&ticket.twitch_user_id).await.map_err(|_| {
             SessionServiceError::Repo(RepositoryError::Database("admin service".to_string()))
         })?;
+        tracing::debug!(
+            "login: twitch_user_id={}, is_admin={}",
+            ticket.twitch_user_id,
+            is_admin
+        );
         if is_admin {
             admin
                 .update_display_name(
@@ -138,6 +143,12 @@ where
         let is_root = admin.is_root(&session.twitch_user_id).await.map_err(|_| {
             SessionServiceError::Repo(RepositoryError::Database("admin service".to_string()))
         })?;
+
+        tracing::debug!(
+            "session issued: twitch_user_id={}, is_root={}",
+            session.twitch_user_id,
+            is_root
+        );
 
         Ok((session, is_root))
     }

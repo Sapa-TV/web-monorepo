@@ -10,6 +10,7 @@
 #   just astg-pat   — check an ast-grep pattern against Rust code from stdin
 
 set dotenv-load
+set dotenv-filename := ".env.dev"
 
 # Default: show recipes
 default:

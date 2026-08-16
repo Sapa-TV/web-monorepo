@@ -175,6 +175,7 @@ impl AppStateBuilder {
         let user_service = Arc::new(UserService::new(user_repo, platform_repo));
         let admin_service = Arc::new(AdminService::new(admin_repo));
         if let Some(admin_id) = self.config.admin_twitch_id() {
+            tracing::info!("seeding root admin: twitch_user_id={admin_id}");
             admin_service.seed(admin_id).await?;
         }
         let session_service = Arc::new(SessionService::new(session_repo, settings));
