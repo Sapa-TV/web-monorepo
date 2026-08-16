@@ -174,11 +174,12 @@ mod tests {
             port: 3000,
             cors_origins: None,
             cookie_secure: false,
-            twitch: Some(Arc::new(crate::config::TwitchConfig {
+            twitch: Some(Arc::new(TwitchConfig {
                 client_id: "cid".to_string(),
                 client_secret: "cs".to_string(),
                 broadcaster_id: "42".to_string(),
                 redirect_uri: "https://localhost/cb".to_string(),
+                credentials_redirect_uri: "https://localhost/creds/cb".to_string(),
                 csrf_ttl_secs: 600,
             })),
         });

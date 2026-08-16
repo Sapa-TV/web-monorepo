@@ -10,6 +10,7 @@ pub struct TwitchConfig {
     pub client_secret: String,
     pub broadcaster_id: String,
     pub redirect_uri: String,
+    pub credentials_redirect_uri: String,
     pub csrf_ttl_secs: u64,
 }
 
@@ -19,6 +20,7 @@ impl TwitchConfig {
         client_secret: String,
         broadcaster_id: String,
         redirect_uri: String,
+        credentials_redirect_uri: String,
         csrf_ttl_secs: u64,
     ) -> Result<Self, ConfigError> {
         let required = [
@@ -26,6 +28,10 @@ impl TwitchConfig {
             ("client_secret", client_secret.as_str()),
             ("broadcaster_id", broadcaster_id.as_str()),
             ("redirect_uri", redirect_uri.as_str()),
+            (
+                "credentials_redirect_uri",
+                credentials_redirect_uri.as_str(),
+            ),
         ];
         for (name, value) in required {
             if value.is_empty() {
@@ -40,6 +46,7 @@ impl TwitchConfig {
             client_secret,
             broadcaster_id,
             redirect_uri,
+            credentials_redirect_uri,
             csrf_ttl_secs,
         })
     }
@@ -56,6 +63,7 @@ impl<'de> Deserialize<'de> for TwitchConfig {
             client_secret: String,
             broadcaster_id: String,
             redirect_uri: String,
+            credentials_redirect_uri: String,
             csrf_ttl_secs: u64,
         }
 
@@ -65,6 +73,7 @@ impl<'de> Deserialize<'de> for TwitchConfig {
             raw.client_secret,
             raw.broadcaster_id,
             raw.redirect_uri,
+            raw.credentials_redirect_uri,
             raw.csrf_ttl_secs,
         )
         .map_err(D::Error::custom)
@@ -84,6 +93,7 @@ mod tests {
             "client_secret": "client_secret",
             "broadcaster_id": "broadcaster_id",
             "redirect_uri": "https://localhost/callback",
+            "credentials_redirect_uri": "https://localhost/creds/callback",
             "csrf_ttl_secs": 600,
         })
     }
@@ -92,6 +102,10 @@ mod tests {
     fn valid_config_is_accepted() {
         let config = from_value::<TwitchConfig>(twitch_json()).expect("should deserialize");
         assert_eq!(config.csrf_ttl_secs, 600);
+        assert_eq!(
+            config.credentials_redirect_uri,
+            "https://localhost/creds/callback"
+        );
     }
 
     #[test]
@@ -101,11 +115,30 @@ mod tests {
             "secret".to_string(),
             "broadcaster".to_string(),
             "https://localhost/callback".to_string(),
+            "https://localhost/creds/callback".to_string(),
             600,
         );
         assert!(matches!(
             config,
             Err(ConfigError::MissingField { field: "client_id" })
+        ));
+    }
+
+    #[test]
+    fn empty_credentials_redirect_uri_fails_validation() {
+        let config = TwitchConfig::build(
+            "client_id".to_string(),
+            "secret".to_string(),
+            "broadcaster".to_string(),
+            "https://localhost/callback".to_string(),
+            String::new(),
+            600,
+        );
+        assert!(matches!(
+            config,
+            Err(ConfigError::MissingField {
+                field: "credentials_redirect_uri"
+            })
         ));
     }
 
@@ -117,6 +150,10 @@ mod tests {
             value["client_secret"].as_str().unwrap().to_string(),
             value["broadcaster_id"].as_str().unwrap().to_string(),
             value["redirect_uri"].as_str().unwrap().to_string(),
+            value["credentials_redirect_uri"]
+                .as_str()
+                .unwrap()
+                .to_string(),
             0,
         );
         assert!(matches!(config, Err(ConfigError::InvalidCsrfTtl)));

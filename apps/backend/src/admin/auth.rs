@@ -63,17 +63,23 @@ where
     }
 
     pub fn start(&self) -> Result<String, AdminAuthError> {
-        self.start_with_scopes(ADMIN_SCOPES.to_vec())
+        self.start_with_scopes(ADMIN_SCOPES.to_vec(), |twitch| {
+            &twitch.credentials_redirect_uri
+        })
     }
 
     pub fn start_login(&self) -> Result<String, AdminAuthError> {
-        self.start_with_scopes(Vec::new())
+        self.start_with_scopes(Vec::new(), |twitch| &twitch.redirect_uri)
     }
 
-    fn start_with_scopes(&self, scopes: Vec<Scope>) -> Result<String, AdminAuthError> {
+    fn start_with_scopes(
+        &self,
+        scopes: Vec<Scope>,
+        redirect: impl FnOnce(&TwitchConfig) -> &str,
+    ) -> Result<String, AdminAuthError> {
         let twitch = self.config.as_ref().ok_or(AdminAuthError::NotConfigured)?;
-        let redirect_url = url::Url::parse(&twitch.redirect_uri)
-            .map_err(|_| AdminAuthError::InvalidRedirectUri)?;
+        let redirect_url =
+            url::Url::parse(redirect(twitch)).map_err(|_| AdminAuthError::InvalidRedirectUri)?;
         let mut builder = UserTokenBuilder::new(
             twitch.client_id.clone(),
             twitch.client_secret.clone(),
@@ -94,15 +100,24 @@ where
         code: &str,
         auth_state: &str,
     ) -> Result<ExchangedToken, AdminAuthError> {
-        let token = self.exchange(code, auth_state).await?;
+        let token = self
+            .exchange(code, auth_state, |twitch| &twitch.credentials_redirect_uri)
+            .await?;
         let Some(refresh_token) = token.refresh_token.as_ref() else {
+            tracing::error!("twitch oauth returned no refresh token");
             return Err(AdminAuthError::Exchange);
         };
         self.credentials_repo
             .save_credential(PlatformId::TWITCH, refresh_token.secret())
             .await
+            .inspect_err(|e| tracing::error!("failed to persist twitch refresh token: {e}"))
             .map_err(|_| AdminAuthError::Persist)?;
-        Ok(exchanged_of(&token))
+        let exchanged = exchanged_of(&token);
+        tracing::info!(
+            "twitch credentials persisted for backend: twitch_user_id={}",
+            exchanged.user_id
+        );
+        Ok(exchanged)
     }
 
     pub async fn complete_login(
@@ -110,7 +125,9 @@ where
         code: &str,
         auth_state: &str,
     ) -> Result<ExchangedToken, AdminAuthError> {
-        let token = self.exchange(code, auth_state).await?;
+        let token = self
+            .exchange(code, auth_state, |twitch| &twitch.redirect_uri)
+            .await?;
         Ok(exchanged_of(&token))
     }
 
@@ -118,15 +135,19 @@ where
         &self,
         code: &str,
         auth_state: &str,
+        redirect: impl FnOnce(&TwitchConfig) -> &str,
     ) -> Result<twitch_oauth2::UserToken, AdminAuthError> {
         let twitch = self.config.as_ref().ok_or(AdminAuthError::NotConfigured)?;
         self.prune_expired();
         if self.pending_csrf.lock().remove(auth_state).is_none() {
+            tracing::warn!(
+                "twitch oauth csrf mismatch or flow never started (state consumed/expired)"
+            );
             return Err(AdminAuthError::CsrfMismatch);
         }
 
-        let redirect_url = url::Url::parse(&twitch.redirect_uri)
-            .map_err(|_| AdminAuthError::InvalidRedirectUri)?;
+        let redirect_url =
+            url::Url::parse(redirect(twitch)).map_err(|_| AdminAuthError::InvalidRedirectUri)?;
         let mut builder = UserTokenBuilder::new(
             twitch.client_id.clone(),
             twitch.client_secret.clone(),
@@ -138,6 +159,7 @@ where
         builder
             .get_user_token(&http, auth_state, code)
             .await
+            .inspect_err(|e| tracing::error!("twitch token exchange failed: {e}"))
             .map_err(|_| AdminAuthError::Exchange)
     }
 
@@ -168,13 +190,8 @@ where
 fn exchanged_of(token: &twitch_oauth2::UserToken) -> ExchangedToken {
     let user_id = token.user_id().map(|u| u.to_string()).unwrap_or_default();
     let user_name = token.login().map(|u| u.to_string());
-    debug!(
-        "twitch oauth exchanged: twitch_user_id={user_id}, twitch_user_name={user_name:?}"
-    );
-    ExchangedToken {
-        user_id,
-        user_name,
-    }
+    debug!("twitch oauth exchanged: twitch_user_id={user_id}, twitch_user_name={user_name:?}");
+    ExchangedToken { user_id, user_name }
 }
 
 #[cfg(test)]
@@ -191,6 +208,7 @@ mod tests {
             client_secret: "client_secret".to_string(),
             broadcaster_id: String::new(),
             redirect_uri: "https://localhost:8080/callback".to_string(),
+            credentials_redirect_uri: "https://localhost:8080/creds/callback".to_string(),
             csrf_ttl_secs: 600,
         }))
     }
@@ -218,6 +236,44 @@ mod tests {
         let service = test_service(test_config());
         let url = service.start().expect("start should succeed");
         assert!(url.starts_with("https://id.twitch.tv/oauth2/authorize"));
+    }
+
+    fn auth_url_redirect_uri(auth_url: &str) -> String {
+        url::Url::parse(auth_url)
+            .expect("auth url parses")
+            .query_pairs()
+            .find(|(key, _)| key == "redirect_uri")
+            .map(|(_, value)| value.into_owned())
+            .expect("auth url carries redirect_uri")
+    }
+
+    #[test]
+    fn start_uses_credentials_redirect_uri() {
+        let service = test_service(test_config());
+        let url = service.start().expect("start should succeed");
+        assert_eq!(
+            auth_url_redirect_uri(&url),
+            "https://localhost:8080/creds/callback"
+        );
+    }
+
+    #[test]
+    fn start_login_uses_login_redirect_uri() {
+        let service = test_service(test_config());
+        let url = service.start_login().expect("start_login should succeed");
+        assert_eq!(
+            auth_url_redirect_uri(&url),
+            "https://localhost:8080/callback"
+        );
+    }
+
+    #[test]
+    fn start_login_requires_twitch_config() {
+        let service = test_service(None);
+        assert!(matches!(
+            service.start_login(),
+            Err(AdminAuthError::NotConfigured)
+        ));
     }
 
     #[test]

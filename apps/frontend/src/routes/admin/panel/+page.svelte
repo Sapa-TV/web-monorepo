@@ -1,16 +1,16 @@
 <script lang="ts">
-	import { onDestroy, onMount } from "svelte";
-	import { goto } from "$app/navigation";
-	import { api } from "#lib/api";
 	import { guardAdmin, GuardStatus, logout } from "#lib/admin/session";
-	import type { AdminResponse } from "@sapa-tv-ru/api-client";
+	import { api } from "#lib/api";
+	import { goto } from "$app/navigation";
+	import { HttpError, type AdminResponse } from "@sapa-tv-ru/api-client";
+	import { onDestroy, onMount } from "svelte";
+	import IconCheck from "~icons/lucide/check";
+	import IconCopy from "~icons/lucide/copy";
+	import IconLogOut from "~icons/lucide/log-out";
+	import IconRefreshCw from "~icons/lucide/refresh-cw";
+	import IconTrash2 from "~icons/lucide/trash-2";
 	import IconTwitch from "~icons/lucide/twitch";
 	import IconUserPlus from "~icons/lucide/user-plus";
-	import IconTrash2 from "~icons/lucide/trash-2";
-	import IconCopy from "~icons/lucide/copy";
-	import IconRefreshCw from "~icons/lucide/refresh-cw";
-	import IconLogOut from "~icons/lucide/log-out";
-	import IconCheck from "~icons/lucide/check";
 
 	let isRoot = $state(false);
 	let loaded = $state(false);
@@ -33,6 +33,9 @@
 	let authorizeBusy = $state(false);
 	let credsPollTimer: ReturnType<typeof setInterval> | null = null;
 	const CREDS_POLL_MS = 3000;
+	const CREDS_POLL_MAX_TRIES = 100;
+	const UNAUTHORIZED = 401;
+	const FORBIDDEN = 403;
 
 	function setError(err: unknown) {
 		error = err instanceof Error ? err.message : String(err);
@@ -130,15 +133,31 @@
 
 	function startCredsPoll() {
 		clearCredsPoll();
+		let tries = 0;
 		credsPollTimer = setInterval(async () => {
+			tries += 1;
 			try {
 				await loadCreds();
 				if (credsConfigured) {
 					clearCredsPoll();
 					actionMsg = "Twitch credentials авторизованы.";
+				} else if (tries >= CREDS_POLL_MAX_TRIES) {
+					clearCredsPoll();
+					error =
+						"Таймаут авторизации: подтверди доступ в окне Twitch и нажми «Авторизовать» ещё раз.";
 				}
-			} catch {
-				// keep polling
+			} catch (err) {
+				const http = err instanceof HttpError ? err : null;
+				if (
+					http &&
+					(http.status === UNAUTHORIZED || http.status === FORBIDDEN)
+				) {
+					clearCredsPoll();
+					error = "Сессия истекла: перелогинься и попробуй снова.";
+				} else if (tries >= CREDS_POLL_MAX_TRIES) {
+					clearCredsPoll();
+					error = "Не удалось получить статус credentials. Попробуй ещё раз.";
+				}
 			}
 		}, CREDS_POLL_MS);
 	}
@@ -146,15 +165,24 @@
 	async function authorizeTwitch() {
 		authorizeBusy = true;
 		error = "";
-		const win = window.open("", "_blank", "noopener");
+		const win = window.open(
+			"",
+			"sapa_twitch_auth",
+			"popup,width=560,height=720",
+		);
 		try {
 			const res = await api.startTwitchAuth();
 			if (res.isErr()) throw res.error;
-			if (win) win.location.assign(res.value.auth_url);
-			else window.open(res.value.auth_url, "_blank", "noopener");
-			actionMsg = "Авторизуйся во вкладке — статус обновится сам.";
-			startCredsPoll();
+			if (win) {
+				win.location.assign(res.value.auth_url);
+				actionMsg = "Авторизуйся во всплывающем окне — статус обновится сам.";
+				startCredsPoll();
+			} else {
+				actionMsg =
+					"Всплывающее окно заблокировано: разреши попапы для этого сайта и нажми «Авторизовать» ещё раз.";
+			}
 		} catch (err) {
+			win?.close();
 			setError(err);
 		} finally {
 			authorizeBusy = false;

@@ -140,6 +140,7 @@ mod tests {
             client_secret: "secret".to_string(),
             broadcaster_id: "broadcaster".to_string(),
             redirect_uri: String::new(),
+            credentials_redirect_uri: String::new(),
             csrf_ttl_secs: 600,
         })
     }

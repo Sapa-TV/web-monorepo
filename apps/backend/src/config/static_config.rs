@@ -155,6 +155,7 @@ mod tests {
                     "client_secret": "cs",
                     "broadcaster_id": "bc",
                     "redirect_uri": "https://localhost/cb",
+                    "credentials_redirect_uri": "https://localhost/creds/cb",
                     "csrf_ttl_secs": 600
                 },
                 "roulette_timeout_secs": 30,
@@ -171,10 +172,7 @@ mod tests {
             &["https://a.com", "https://b.com"]
         );
         assert!(static_cfg.cookie_secure);
-        assert_eq!(
-            static_cfg.twitch.as_deref().unwrap().broadcaster_id,
-            "bc"
-        );
+        assert_eq!(static_cfg.twitch.as_deref().unwrap().broadcaster_id, "bc");
 
         let seed = seed.expect("seed present");
         assert_eq!(seed.roulette_timeout_secs, 30);
@@ -206,6 +204,7 @@ mod tests {
                     "client_secret": "cs",
                     "broadcaster_id": "bc",
                     "redirect_uri": "https://localhost/cb",
+                    "credentials_redirect_uri": "https://localhost/creds/cb",
                     "csrf_ttl_secs": 600
                 }
             }"#,
