@@ -90,7 +90,7 @@ jobs:
           ssh -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" "mkdir -p /srv/web-app/app"
           scp -P "$VPS_PORT" deploy/docker-compose.yml "$VPS_USER@$VPS_HOST:/srv/web-app/app/docker-compose.yml"
           scp -P "$VPS_PORT" apps/backend/config.toml "$VPS_USER@$VPS_HOST:/srv/web-app/app/config.toml"
-          scp -P "$VPS_PORT" deploy/.env.sops "$VPS_USER@$VPS_HOST:/srv/web-app/app/.env.sops"
+          scp -P "$VPS_PORT" .env.sops "$VPS_USER@$VPS_HOST:/srv/web-app/app/.env.sops"
       - name: Login to GHCR on VPS
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}

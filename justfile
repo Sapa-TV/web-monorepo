@@ -53,10 +53,10 @@ astg-inspect:
 astg-pat pattern:
     pnpm exec ast-grep run -p '{{pattern}}' -l rust --stdin
 
-# Encrypt deploy/.env -> deploy/.env.sops (needs sops + age, uses deploy/.sops.yaml)
+# Encrypt .env -> .env.sops (needs sops + age, uses .sops.yaml)
 encrypt-env:
-    sops -e --input-type dotenv --output-type dotenv deploy/.env > deploy/.env.sops
+    sops -e --input-type dotenv --output-type dotenv .env > .env.sops
 
-# Decrypt deploy/.env.sops -> deploy/.env (local inspection only, file is gitignored)
+# Decrypt .env.sops -> .env (local inspection only, file is gitignored)
 decrypt-env:
-    sops -d --input-type dotenv --output-type dotenv deploy/.env.sops > deploy/.env
+    sops -d --input-type dotenv --output-type dotenv .env.sops > .env

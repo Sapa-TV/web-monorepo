@@ -4,6 +4,9 @@ generated
 node_modules
 **/node_modules
 .svelte-kit
+.env
+.env.dev
+.env.sops
 apps/frontend
 packages
 deploy
