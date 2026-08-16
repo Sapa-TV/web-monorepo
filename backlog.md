@@ -3,15 +3,6 @@
 - [ ] Переделать на axum-extra (cookie) `let mut cookie = format!("{name}={value}; Path=/; HttpOnly; SameSite=Lax");`
 - [ ] Перенести все const в config, для части сделать default значения
 - [ ] Разделить config - сейчас куча всего лежит в common
-- [x] перейти с .env ACCESS_KEY на генерируемый при старте и с root ендпойнотом для замены ключа
-- [x] посмотреть конфиги - зачем нужен refresh token в .env config? он будет храниться в db repo
-- [x] посмотреть current_refresh_token - почему ошибка Auth вместо Fail-Fast при загрузке конфигурации во время инициализации
-- [x] apps/backend/src/ingress/twitch_auth.rs - сейчас сохраняется в файл, надо переделать на inmemory repo.
-      c трейтом и инмемори реализацией, позже это будет храниться в sqlite db
-- [x] Объединить .env / .env.example (сейчас два набора: корневой — дев (читает dotenvy при cargo run), deploy/.env + deploy/.env.example — прод/sops-раундтрип).
-      Реализован вариант A: все env-файлы в корне — .env (прод, gitignored, источник для sops), .env.sops (шифрованный, tracked), .env.dev (дев, gitignored),
-      .env.example (единый шаблон). justfile sops-раундтрип: .env -> .env.sops. scp в deploy-backend.yml и path_regex в .sops.yaml обновлены на корневые файлы.
-      Удалены deploy/.env.example и deploy/.env. VPS (deploy-backend.sh, docker-compose.yml env_file: .env) не менялся. .env* добавлены в .dockerignore.
 - [ ] Бекенд выдаёт query-параметры в openapi.json как `in: path` (у `GET /api/queue` status/limit/cursor, у `GET /api/users` platform/platform_user_id и т.п.).
       Из-за этого в сгенерированном клиенте они объявлены аргументами, но в запрос не попадают.
       Починить генерацию спеки на бекенде (стоит пометить: поправить utoipa/introspection, чтобы параметры были `in: query`), затем выполнить `just gen-client`.
@@ -25,3 +16,7 @@
 - [ ] Зашивать commit/GIT_SHA в финальную сборку фронта (env при vite build / build.json в статике) — чтобы знать, какой билд фронта на сервере
 - [ ] Добавить юз-кейс/e2e тесты (сейчас межмодульные сценарии вроде «ротация PAK → старый ключ на widget-эндпоинте не работает» покрыты только unit-тестами)
 - [ ] Переделать создание структур - все структуры должны создаваться в одном месте - через методы new\build\builder, для этого во все добавить не публичное zero-size поле ()
+- [ ] Админка - root admin невозможно удалить - как на фронтенде, так и на бекенде
+- [ ] Админка - процесс обновления access_key - подверждение надо или сделать через нормальные диалоги, или убрать
+- [ ] Админка - добавление администратора - нужен поиск по username - чтобы twitch_id само вставлялось
+- [ ] админка - пересмотреть процесс добавления twitch credentials
