@@ -5,7 +5,11 @@ use futures_util::StreamExt;
 use tokio::time::sleep;
 use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::Message as WsMessage;
-use twitch_api::eventsub::channel::ChannelChatMessageV1;
+use twitch_api::eventsub::channel::channel_points_custom_reward_redemption::RedemptionStatus;
+use twitch_api::eventsub::channel::{
+    ChannelChatMessageV1, ChannelPointsCustomRewardRedemptionAddV1,
+    ChannelPointsCustomRewardRedemptionAddV1Payload,
+};
 use twitch_api::eventsub::{Event, EventsubWebsocketData, Message, Transport};
 use twitch_api::helix::HelixClient;
 use twitch_oauth2::{TwitchToken, UserToken};
@@ -79,13 +83,23 @@ where
             .user_id()
             .ok_or_else(|| PlatformError::Auth("token has no user_id".to_string()))?
             .to_string();
-        let subscription = ChannelChatMessageV1::new(broadcaster_id, user_id);
         let transport = Transport::websocket(session_id);
+        let subscription = ChannelChatMessageV1::new(broadcaster_id.clone(), user_id);
         helix
-            .create_eventsub_subscription(subscription, transport, token)
+            .create_eventsub_subscription(subscription, transport.clone(), token)
             .await
             .map_err(|e| PlatformError::Subscription(e.to_string()))?;
         tracing::info!("twitch eventsub subscribed to channel.chat.message");
+
+        let redemption_subscription =
+            ChannelPointsCustomRewardRedemptionAddV1::broadcaster_user_id(broadcaster_id);
+        helix
+            .create_eventsub_subscription(redemption_subscription, transport, token)
+            .await
+            .map_err(|e| PlatformError::Subscription(e.to_string()))?;
+        tracing::info!(
+            "twitch eventsub subscribed to channel.channel_points_custom_reward_redemption.add"
+        );
 
         while let Some(msg) = ws.next().await {
             let msg = msg.map_err(|e| PlatformError::WebSocket(e.to_string()))?;
@@ -103,8 +117,8 @@ where
             };
             match data {
                 EventsubWebsocketData::Notification { payload, .. } => {
-                    if let Event::ChannelChatMessageV1(payload) = payload
-                        && let Message::Notification(data) = payload.message
+                    if let Event::ChannelChatMessageV1(payload) = &payload
+                        && let Message::Notification(data) = &payload.message
                     {
                         let event = chat_event_from(
                             platform,
@@ -113,6 +127,14 @@ where
                             data.chatter_user_name.as_ref(),
                             data.message.text.as_str(),
                         );
+                        if sink.send(event).await.is_err() {
+                            return Err(PlatformError::SinkClosed);
+                        }
+                    }
+                    if let Event::ChannelPointsCustomRewardRedemptionAddV1(payload) = &payload
+                        && let Message::Notification(data) = &payload.message
+                    {
+                        let event = reward_redemption_event_from(platform, data);
                         if sink.send(event).await.is_err() {
                             return Err(PlatformError::SinkClosed);
                         }
@@ -180,6 +202,32 @@ fn chat_event_from(
     )
 }
 
+fn reward_redemption_event_from(
+    platform: PlatformId,
+    data: &ChannelPointsCustomRewardRedemptionAddV1Payload,
+) -> PlatformEvent {
+    PlatformEvent::reward_redemption(
+        platform,
+        data.id.as_str().to_string(),
+        data.user_id.as_str().to_string(),
+        data.user_name.as_str().to_string(),
+        data.reward.id.as_str().to_string(),
+        data.reward.title.clone(),
+        data.reward.cost,
+        data.user_input.clone(),
+        redemption_status_to_str(&data.status).to_string(),
+    )
+}
+
+fn redemption_status_to_str(status: &RedemptionStatus) -> &'static str {
+    match status {
+        RedemptionStatus::Unfulfilled => "unfulfilled",
+        RedemptionStatus::Fulfilled => "fulfilled",
+        RedemptionStatus::Canceled => "canceled",
+        RedemptionStatus::Unknown | _ => "unknown",
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -203,7 +251,48 @@ mod tests {
                 assert_eq!(msg.user_name, "viewer32");
                 assert_eq!(msg.text, "Hi chat");
             }
+            PlatformEventPayload::RewardRedemption(_) => unreachable!(),
         }
         assert_eq!(event.payload.type_name(), "chat_message");
+    }
+
+    #[test]
+    fn maps_reward_redemption_fields() {
+        let data: ChannelPointsCustomRewardRedemptionAddV1Payload = serde_json::from_str(
+            r##"{
+                    "id": "1234",
+                    "broadcaster_user_id": "1337",
+                    "broadcaster_user_login": "cool_user",
+                    "broadcaster_user_name": "Cool_User",
+                    "user_id": "9001",
+                    "user_login": "cooler_user",
+                    "user_name": "Cooler_User",
+                    "user_input": "pogchamp",
+                    "status": "unfulfilled",
+                    "reward": {
+                        "id": "9001",
+                        "title": "title",
+                        "cost": 100,
+                        "prompt": "reward prompt"
+                    },
+                    "redeemed_at": "2020-07-15T17:16:03.17106713Z"
+                }"##,
+        )
+        .expect("payload should deserialize");
+        let event = reward_redemption_event_from(PlatformId::TWITCH, &data);
+        assert_eq!(event.event_id, "1234");
+        match &event.payload {
+            PlatformEventPayload::ChatMessage(_) => unreachable!(),
+            PlatformEventPayload::RewardRedemption(red) => {
+                assert_eq!(red.user_id, "9001");
+                assert_eq!(red.user_name, "Cooler_User");
+                assert_eq!(red.reward_id, "9001");
+                assert_eq!(red.reward_title, "title");
+                assert_eq!(red.reward_cost, 100);
+                assert_eq!(red.user_input, "pogchamp");
+                assert_eq!(red.status, "unfulfilled");
+            }
+        }
+        assert_eq!(event.payload.type_name(), "reward_redemption");
     }
 }

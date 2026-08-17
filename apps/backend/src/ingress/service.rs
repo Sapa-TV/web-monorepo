@@ -94,6 +94,19 @@ pub fn spawn_logging_handler(rx: broadcast::Receiver<Arc<PlatformEvent>>) {
                                 "ingress event received"
                             );
                         }
+                        PlatformEventPayload::RewardRedemption(red) => {
+                            tracing::info!(
+                                platform = ?event.platform,
+                                sent_at = ?event.sent_at,
+                                payload_type,
+                                user_id = %red.user_id,
+                                user_name = %red.user_name,
+                                reward_title = %red.reward_title,
+                                reward_cost = red.reward_cost,
+                                status = %red.status,
+                                "ingress event received"
+                            );
+                        }
                     }
                 }
                 Err(broadcast::error::RecvError::Lagged(skipped)) => {
@@ -131,6 +144,7 @@ mod tests {
         assert_eq!(received.event_id, "msg-1");
         match &received.payload {
             PlatformEventPayload::ChatMessage(msg) => assert_eq!(msg.text, "hello"),
+            PlatformEventPayload::RewardRedemption(_) => unreachable!(),
         }
     }
 

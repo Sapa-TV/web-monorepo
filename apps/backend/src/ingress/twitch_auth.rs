@@ -1,9 +1,7 @@
 use std::sync::Arc;
 
-use twitch_api::eventsub::EventSubscription;
-use twitch_api::eventsub::channel::ChannelChatMessageV1;
 use twitch_api::helix::HelixClient;
-use twitch_oauth2::{ClientId, ClientSecret, RefreshToken, Scope, TwitchToken, UserToken};
+use twitch_oauth2::{ClientId, ClientSecret, RefreshToken, Scope, UserToken};
 
 use crate::config::TwitchConfig;
 use crate::error::ingress::PlatformError;
@@ -14,6 +12,7 @@ pub(crate) const INGRESS_SCOPES: &[Scope] = &[
     Scope::UserBot,
     Scope::ChannelBot,
     Scope::UserReadChat,
+    Scope::ChannelReadRedemptions,
 ];
 
 #[non_exhaustive]
@@ -53,7 +52,6 @@ where
         .await
         .map_err(|e| PlatformError::Auth(e.to_string()))?;
         self.persist_rotated(&token).await;
-        self.log_scopes(&token);
         Ok(token)
     }
 
@@ -79,21 +77,6 @@ where
         {
             tracing::warn!("{e}");
         }
-    }
-
-    fn log_scopes(&self, token: &UserToken) {
-        let scopes = token.scopes();
-        if let Some(missing) = <ChannelChatMessageV1 as EventSubscription>::SCOPE.missing(scopes) {
-            tracing::warn!(
-                "twitch token is missing required scope(s) for channel.chat.message: {missing}"
-            );
-        }
-        tracing::info!(
-            login = ?token.login(),
-            user_id = ?token.user_id(),
-            scopes = ?scopes,
-            "twitch token validated"
-        );
     }
 }
 
