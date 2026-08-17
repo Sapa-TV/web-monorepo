@@ -8,9 +8,8 @@ use tracing::debug;
 use twitch_oauth2::{CsrfToken, Scope, TwitchToken, UserTokenBuilder};
 
 use crate::config::TwitchConfig;
+use crate::ingress::twitch_auth::INGRESS_SCOPES;
 use crate::platform::{PlatformCredentialRepository, PlatformCredentialService, PlatformId};
-
-const ADMIN_SCOPES: &[Scope] = &[Scope::ChatRead, Scope::UserBot, Scope::ChannelBot];
 
 #[non_exhaustive]
 pub struct ExchangedToken {
@@ -66,7 +65,7 @@ where
     }
 
     pub fn start(&self) -> Result<String, AdminAuthError> {
-        self.start_with_scopes(ADMIN_SCOPES.to_vec(), |twitch| {
+        self.start_with_scopes(INGRESS_SCOPES.to_vec(), |twitch| {
             &twitch.credentials_redirect_uri
         })
     }

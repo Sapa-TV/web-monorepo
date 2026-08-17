@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use twitch_api::eventsub::EventSubscription;
+use twitch_api::eventsub::channel::ChannelChatMessageV1;
 use twitch_api::helix::HelixClient;
 use twitch_oauth2::{ClientId, ClientSecret, RefreshToken, Scope, TwitchToken, UserToken};
 
@@ -7,7 +9,12 @@ use crate::config::TwitchConfig;
 use crate::error::ingress::PlatformError;
 use crate::platform::{PlatformCredentialRepository, PlatformCredentialService, PlatformId};
 
-const REQUIRED_SCOPES: &[Scope] = &[Scope::ChatRead, Scope::UserBot];
+pub(crate) const INGRESS_SCOPES: &[Scope] = &[
+    Scope::ChatRead,
+    Scope::UserBot,
+    Scope::ChannelBot,
+    Scope::UserReadChat,
+];
 
 #[non_exhaustive]
 pub struct TwitchAuthService<R>
@@ -76,12 +83,10 @@ where
 
     fn log_scopes(&self, token: &UserToken) {
         let scopes = token.scopes();
-        for required in REQUIRED_SCOPES {
-            if !scopes.contains(required) {
-                tracing::warn!(
-                    "twitch token is missing required scope {required:?}, channel.chat.message may not fire"
-                );
-            }
+        if let Some(missing) = <ChannelChatMessageV1 as EventSubscription>::SCOPE.missing(scopes) {
+            tracing::warn!(
+                "twitch token is missing required scope(s) for channel.chat.message: {missing}"
+            );
         }
         tracing::info!(
             login = ?token.login(),
@@ -100,12 +105,6 @@ mod tests {
     use crate::platform::{PlatformCredentialService, PlatformId};
 
     use super::*;
-
-    #[test]
-    fn required_scopes_cover_chat_reading() {
-        assert!(REQUIRED_SCOPES.contains(&Scope::ChatRead));
-        assert!(REQUIRED_SCOPES.contains(&Scope::UserBot));
-    }
 
     fn test_config() -> Arc<TwitchConfig> {
         Arc::new(TwitchConfig {
