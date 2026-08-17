@@ -25,7 +25,7 @@ pub async fn require_key(
     let authorized = token
         .map(|t| {
             t.as_bytes()
-                .ct_eq(state.config.access_key().as_bytes())
+                .ct_eq(state.config.widget_access_key().as_bytes())
                 .into()
         })
         .unwrap_or(false);

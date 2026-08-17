@@ -18,7 +18,7 @@
 	let actionMsg = $state("");
 
 	let accessKey = $state("");
-	let pakBusy = $state(false);
+	let wakBusy = $state(false);
 	let copied = $state(false);
 	let copyTimer: ReturnType<typeof setTimeout> | null = null;
 	const COPY_FEEDBACK_MS = 1500;
@@ -42,25 +42,25 @@
 	}
 
 	async function loadPak() {
-		const res = await api.getAdminPak();
+		const res = await api.getWidgetAccessKey();
 		if (res.isErr()) throw res.error;
-		accessKey = res.value.pak;
+		accessKey = res.value.widget_access_key;
 	}
 
 	async function rotatePak() {
 		if (!confirm("Сгенерировать новый access_key? Старый перестанет работать."))
 			return;
-		pakBusy = true;
+		wakBusy = true;
 		error = "";
 		try {
-			const res = await api.rotateAdminPak();
+			const res = await api.rotateWidgetAccessKey();
 			if (res.isErr()) throw res.error;
-			accessKey = res.value.pak;
+			accessKey = res.value.widget_access_key;
 			actionMsg = "Access key обновлён.";
 		} catch (err) {
 			setError(err);
 		} finally {
-			pakBusy = false;
+			wakBusy = false;
 		}
 	}
 
@@ -282,10 +282,10 @@
 			class="btn btn--primary"
 			type="button"
 			onclick={rotatePak}
-			disabled={pakBusy}
+			disabled={wakBusy}
 		>
 			<IconRefreshCw aria-hidden="true" />
-			{pakBusy ? "Генерация..." : "Сгенерировать новый"}
+			{wakBusy ? "Генерация..." : "Сгенерировать новый"}
 		</button>
 	</section>
 

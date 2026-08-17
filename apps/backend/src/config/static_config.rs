@@ -53,7 +53,7 @@ impl StaticConfig {
             twitch: raw.twitch,
         };
         let seed = RuntimeConfig {
-            access_key: String::new(),
+            widget_access_key: String::new(),
             roulette_timeout_secs: raw.roulette_timeout_secs,
             retention_secs: raw.retention_secs,
             queue_cleanup_interval_secs: raw.queue_cleanup_interval_secs,
@@ -178,7 +178,7 @@ mod tests {
         assert_eq!(seed.roulette_timeout_secs, 30);
         assert_eq!(seed.session_ttl_secs, 3600);
         assert_eq!(seed.retention_secs, RuntimeConfig::default().retention_secs);
-        assert!(seed.access_key.is_empty());
+        assert!(seed.widget_access_key.is_empty());
     }
 
     #[test]

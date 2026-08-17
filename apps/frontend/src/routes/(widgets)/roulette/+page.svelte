@@ -10,9 +10,10 @@
 	const WS_RETRY_MAX_MS = 15_000;
 	const UNAUTHORIZED = 401;
 
-	const pak =
+	const widgetAccessKey =
 		typeof window !== "undefined"
-			? (new URLSearchParams(window.location.search).get("pak") ?? "")
+			? (new URLSearchParams(window.location.search).get("widget_access_key") ??
+				"")
 			: "";
 
 	let phase = $state<"idle" | "spinning" | "completed" | "error" | "denied">(
@@ -64,7 +65,10 @@
 		}
 		clearTimeout(idleTimer);
 		setConn("disconnected", "не авторизован");
-		setKeyBadge(pak ? "bad" : "missing", pak ? "ключ неверный" : "нет ключа");
+		setKeyBadge(
+			widgetAccessKey ? "bad" : "missing",
+			widgetAccessKey ? "ключ неверный" : "нет ключа",
+		);
 		phase = "denied";
 		stateLabel = "Доступ запрещён";
 		idleText = "Ошибка подключения виджета.";
@@ -89,7 +93,7 @@
 				apiFetch(
 					`${WAPI_BASE}/queue/${currentEntryId}/complete`,
 					{ method: "POST" },
-					pak,
+					widgetAccessKey,
 				).catch(() => {});
 				setCompleted();
 			}
@@ -117,7 +121,8 @@
 
 		ws.onopen = () => {
 			setConn("connected", "подключено");
-			if (pak) ws?.send(JSON.stringify({ type: "auth", token: pak }));
+			if (widgetAccessKey)
+				ws?.send(JSON.stringify({ type: "auth", token: widgetAccessKey }));
 		};
 
 		ws.onmessage = (e) => {
@@ -178,13 +183,13 @@
 	}
 
 	onMount(() => {
-		if (!pak) {
+		if (!widgetAccessKey) {
 			failAuth();
 			return;
 		}
 
 		setIdle();
-		apiFetch(`${WAPI_BASE}/queue`, {}, pak)
+		apiFetch(`${WAPI_BASE}/queue`, {}, widgetAccessKey)
 			.then((res) => {
 				if (res.status === UNAUTHORIZED) {
 					failAuth();

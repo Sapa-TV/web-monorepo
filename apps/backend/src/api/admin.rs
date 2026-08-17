@@ -47,8 +47,8 @@ pub struct TwitchIdParam {
 
 #[derive(Debug, Serialize, ToSchema)]
 #[non_exhaustive]
-pub struct PakResponse {
-    pub pak: String,
+pub struct WidgetAccessKeyResponse {
+    pub widget_access_key: String,
 }
 
 #[utoipa::path(
@@ -108,37 +108,43 @@ pub async fn remove_admin(
 
 #[utoipa::path(
     get,
-    path = "/admin/pak",
+    path = "/admin/widget-access-key",
     tag = "admin",
     responses(
-        (status = 200, description = "Widget access key (PAK)", body = PakResponse),
+        (status = 200, description = "Widget access key", body = WidgetAccessKeyResponse),
     )
 )]
-pub async fn get_admin_pak(State(state): State<AppState>) -> Json<PakResponse> {
-    Json(PakResponse {
-        pak: state.config.access_key(),
+pub async fn get_widget_access_key(State(state): State<AppState>) -> Json<WidgetAccessKeyResponse> {
+    Json(WidgetAccessKeyResponse {
+        widget_access_key: state.config.widget_access_key(),
     })
 }
 
 #[utoipa::path(
     post,
-    path = "/admin/pak",
+    path = "/admin/widget-access-key",
     tag = "admin",
     responses(
-        (status = 200, description = "PAK rotated, new key generated", body = PakResponse),
+        (status = 200, description = "Widget access key rotated, new key generated", body = WidgetAccessKeyResponse),
     )
 )]
-pub async fn rotate_admin_pak(
+pub async fn rotate_widget_access_key(
     State(state): State<AppState>,
-) -> Result<Json<PakResponse>, ApiError> {
-    let pak = state.config.rotate_access_key_generated().await?;
-    Ok(Json(PakResponse { pak }))
+) -> Result<Json<WidgetAccessKeyResponse>, ApiError> {
+    let widget_access_key = state.config.rotate_widget_access_key_generated().await?;
+    Ok(Json(WidgetAccessKeyResponse { widget_access_key }))
 }
 
 #[derive(OpenApi)]
 #[openapi(
-    paths(list_admins, add_admin, remove_admin, get_admin_pak, rotate_admin_pak),
-    components(schemas(AdminResponse, AddAdminRequest, PakResponse,))
+    paths(
+        list_admins,
+        add_admin,
+        remove_admin,
+        get_widget_access_key,
+        rotate_widget_access_key,
+    ),
+    components(schemas(AdminResponse, AddAdminRequest, WidgetAccessKeyResponse,))
 )]
 #[non_exhaustive]
 #[allow(dead_code)]
@@ -148,7 +154,7 @@ pub fn session_router() -> axum::Router<AppState> {
     use axum::routing::get;
     axum::Router::new()
         .route("/admin", get(list_admins))
-        .route("/admin/pak", get(get_admin_pak))
+        .route("/admin/widget-access-key", get(get_widget_access_key))
 }
 
 pub fn root_router() -> axum::Router<AppState> {
@@ -156,7 +162,7 @@ pub fn root_router() -> axum::Router<AppState> {
     axum::Router::new()
         .route("/admin", post(add_admin))
         .route("/admin/{twitch_id}", delete(remove_admin))
-        .route("/admin/pak", post(rotate_admin_pak))
+        .route("/admin/widget-access-key", post(rotate_widget_access_key))
         .merge(twitch::root_router())
         .merge(ingress::root_router())
 }
@@ -224,7 +230,7 @@ mod tests {
             .oneshot(
                 Request::builder()
                     .method("GET")
-                    .uri(api_path("/admin/pak"))
+                    .uri(api_path("/admin/widget-access-key"))
                     .body(Body::empty())
                     .unwrap(),
             )
@@ -244,7 +250,7 @@ mod tests {
             .oneshot(
                 Request::builder()
                     .method("GET")
-                    .uri(api_path("/admin/pak"))
+                    .uri(api_path("/admin/widget-access-key"))
                     .header(header::COOKIE, &cookie)
                     .body(Body::empty())
                     .unwrap(),
@@ -268,7 +274,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn admin_can_read_pak_and_list_admins() {
+    async fn admin_can_read_widget_access_key_and_list_admins() {
         let state = test_state().await;
         state.admin_service.add("123", None).await.unwrap();
         let app = test_router(state.clone());
@@ -279,7 +285,7 @@ mod tests {
             .oneshot(
                 Request::builder()
                     .method("GET")
-                    .uri(api_path("/admin/pak"))
+                    .uri(api_path("/admin/widget-access-key"))
                     .header(header::COOKIE, &cookie)
                     .body(Body::empty())
                     .unwrap(),
@@ -290,7 +296,7 @@ mod tests {
         let body: Value =
             serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap())
                 .unwrap();
-        assert_eq!(body["pak"], "test-key");
+        assert_eq!(body["widget_access_key"], "test-key");
 
         let response = app
             .oneshot(
@@ -387,7 +393,7 @@ mod tests {
             .oneshot(
                 Request::builder()
                     .method("GET")
-                    .uri(api_path("/admin/pak"))
+                    .uri(api_path("/admin/widget-access-key"))
                     .header(header::COOKIE, format!("{SESSION_COOKIE}=bogus"))
                     .body(Body::empty())
                     .unwrap(),
@@ -398,7 +404,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn only_root_can_rotate_pak() {
+    async fn only_root_can_rotate_widget_access_key() {
         let state = test_state().await;
         state.admin_service.add("123", None).await.unwrap();
         state.admin_service.add("100", None).await.unwrap();
@@ -413,7 +419,7 @@ mod tests {
             .oneshot(
                 Request::builder()
                     .method("POST")
-                    .uri(api_path("/admin/pak"))
+                    .uri(api_path("/admin/widget-access-key"))
                     .header(header::COOKIE, user_cookie)
                     .body(Body::empty())
                     .unwrap(),
@@ -426,7 +432,7 @@ mod tests {
             .oneshot(
                 Request::builder()
                     .method("POST")
-                    .uri(api_path("/admin/pak"))
+                    .uri(api_path("/admin/widget-access-key"))
                     .header(header::COOKIE, root_cookie)
                     .body(Body::empty())
                     .unwrap(),
@@ -438,14 +444,14 @@ mod tests {
         let body: Value =
             serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap())
                 .unwrap();
-        let pak = body["pak"].as_str().unwrap().to_string();
-        assert!(!pak.is_empty());
-        assert_ne!(pak, "test-key");
-        assert_eq!(state.config.access_key(), pak);
+        let widget_access_key = body["widget_access_key"].as_str().unwrap().to_string();
+        assert!(!widget_access_key.is_empty());
+        assert_ne!(widget_access_key, "test-key");
+        assert_eq!(state.config.widget_access_key(), widget_access_key);
     }
 
     #[tokio::test]
-    async fn rotate_pak_is_persisted_to_repo() {
+    async fn rotate_widget_access_key_is_persisted_to_repo() {
         let config_repo = Arc::new(InMemoryConfigRepository::new());
         let state = test_state_with_data(
             Arc::new(InMemoryQueueRepository::new()),
@@ -461,7 +467,7 @@ mod tests {
             .oneshot(
                 Request::builder()
                     .method("POST")
-                    .uri(api_path("/admin/pak"))
+                    .uri(api_path("/admin/widget-access-key"))
                     .header(header::COOKIE, root_cookie)
                     .body(Body::empty())
                     .unwrap(),
@@ -473,14 +479,14 @@ mod tests {
         let body: Value =
             serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap())
                 .unwrap();
-        let pak = body["pak"].as_str().unwrap().to_string();
+        let widget_access_key = body["widget_access_key"].as_str().unwrap().to_string();
 
         let stored = config_repo.load().await.unwrap().unwrap();
-        assert_eq!(stored.access_key, pak);
+        assert_eq!(stored.widget_access_key, widget_access_key);
     }
 
     #[tokio::test]
-    async fn rotated_pak_is_returned_by_get() {
+    async fn rotated_widget_access_key_is_returned_by_get() {
         let state = test_state().await;
         state.admin_service.add("100", None).await.unwrap();
         state.admin_service.set_root("100", true).await.unwrap();
@@ -492,7 +498,7 @@ mod tests {
             .oneshot(
                 Request::builder()
                     .method("POST")
-                    .uri(api_path("/admin/pak"))
+                    .uri(api_path("/admin/widget-access-key"))
                     .header(header::COOKIE, &root_cookie)
                     .body(Body::empty())
                     .unwrap(),
@@ -503,15 +509,15 @@ mod tests {
         let body: Value =
             serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap())
                 .unwrap();
-        let pak = body["pak"].as_str().unwrap().to_string();
-        assert_ne!(pak, "test-key");
-        assert_eq!(state.config.access_key(), pak);
+        let widget_access_key = body["widget_access_key"].as_str().unwrap().to_string();
+        assert_ne!(widget_access_key, "test-key");
+        assert_eq!(state.config.widget_access_key(), widget_access_key);
 
         let response = app
             .oneshot(
                 Request::builder()
                     .method("GET")
-                    .uri(api_path("/admin/pak"))
+                    .uri(api_path("/admin/widget-access-key"))
                     .header(header::COOKIE, root_cookie)
                     .body(Body::empty())
                     .unwrap(),
@@ -522,6 +528,6 @@ mod tests {
         let body: Value =
             serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap())
                 .unwrap();
-        assert_eq!(body["pak"], pak);
+        assert_eq!(body["widget_access_key"], widget_access_key);
     }
 }

@@ -15,13 +15,13 @@ import {
   AdminResponse,
   CreateSessionRequest,
   IngressCredentialsResponse,
-  PakResponse,
   SessionResponse,
   StreamStatusResponse,
   TwitchAuthCallbackResponse,
   TwitchAuthStartResponse,
   TwitchLoginCallbackResponse,
   TwitchLoginStartResponse,
+  WidgetAccessKeyResponse,
 } from "./data-contracts";
 import { ContentType, HttpClient, RequestParams } from "./http-client";
 
@@ -89,34 +89,6 @@ export class Api<
    * No description
    *
    * @tags admin
-   * @name GetAdminPak
-   * @request GET:/api/admin/pak
-   */
-  getAdminPak = (params: RequestParams = {}) =>
-    this.request<PakResponse, any>({
-      path: `/api/admin/pak`,
-      method: "GET",
-      format: "json",
-      ...params,
-    });
-  /**
-   * No description
-   *
-   * @tags admin
-   * @name RotateAdminPak
-   * @request POST:/api/admin/pak
-   */
-  rotateAdminPak = (params: RequestParams = {}) =>
-    this.request<PakResponse, any>({
-      path: `/api/admin/pak`,
-      method: "POST",
-      format: "json",
-      ...params,
-    });
-  /**
-   * No description
-   *
-   * @tags admin
    * @name StartTwitchAuth
    * @request GET:/api/admin/twitch/auth
    */
@@ -142,6 +114,34 @@ export class Api<
     this.request<TwitchAuthCallbackResponse, void>({
       path: `/api/admin/twitch/auth/callback`,
       method: "GET",
+      format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags admin
+   * @name GetWidgetAccessKey
+   * @request GET:/api/admin/widget-access-key
+   */
+  getWidgetAccessKey = (params: RequestParams = {}) =>
+    this.request<WidgetAccessKeyResponse, any>({
+      path: `/api/admin/widget-access-key`,
+      method: "GET",
+      format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags admin
+   * @name RotateWidgetAccessKey
+   * @request POST:/api/admin/widget-access-key
+   */
+  rotateWidgetAccessKey = (params: RequestParams = {}) =>
+    this.request<WidgetAccessKeyResponse, any>({
+      path: `/api/admin/widget-access-key`,
+      method: "POST",
       format: "json",
       ...params,
     });

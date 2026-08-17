@@ -6,17 +6,17 @@
 
 ## Контекст (текущее состояние)
 
-WS-соединение в `apps/backend/src/widget_api/ws.rs` — защищённое, требует PAK:
+WS-соединение в `apps/backend/src/widget_api/ws.rs` — защищённое, требует widget access key:
 
 - Обработчик `handle_socket` жёстко требует, чтобы **первое сообщение** было `{type: "auth", token}`.
-- Без `AuthOk` (валидный `ct_eq` с `config.access_key`) соединение закрывается.
+- Без `AuthOk` (валидный `ct_eq` с `config.widget_access_key`) соединение закрывается.
 - После авторизации клиент подписывается на `state.event_publisher` (broadcast с `Arc<SpinEvent>`).
 - Все события `SpinEvent` (`spin_started`, `spin_completed`, `spin_error`) рассылаются всем авторизованным клиентам.
 
 Клиенты:
 
-- `apps/frontend/html/js/widget.js` — оверлей, шлёт `auth` с PAK, при отсутствии PAK показывает «Доступ запрещён» и не подключается (`if (!PAK) failAuth()`).
-- `apps/frontend/html/js/panel.js` — панель управления, всегда с PAK, без изменений планируется.
+- `apps/frontend/html/js/widget.js` — оверлей, шлёт `auth` с widget access key, при отсутствии ключа показывает «Доступ запрещён» и не подключается (`if (!WIDGET_ACCESS_KEY) failAuth()`).
+- `apps/frontend/html/js/panel.js` — панель управления, всегда с widget access key, без изменений планируется.
 
 События публикуются в `apps/backend/src/queue/service.rs` (Started/Completed/Error) через `publish_spin`.
 
@@ -24,8 +24,8 @@ WS-соединение в `apps/backend/src/widget_api/ws.rs` — защищё�
 
 Разделить WS на открытый (public) и закрытый (private) варианты:
 
-- **Открытый** (без PAK) — только открытые события, просмотр.
-- **Закрытый** (с PAK) — все события.
+- **Открытый** (без widget access key) — только открытые события, просмотр.
+- **Закрытый** (с widget access key) — все события.
 
 Уточнения от заказчика:
 
@@ -35,11 +35,11 @@ WS-соединение в `apps/backend/src/widget_api/ws.rs` — защищё�
 
 ## Ключевой технический факт
 
-Браузерный `new WebSocket(url)` **не позволяет ставить кастомные заголовки** (`Authorization`). Поэтому приватное подключение браузером авторизуется либо телом `{type:"auth", token}`, либо `?pak=` в URL (видим в логах/реферере). Значит вариант с двумя эндпоинтами не получает главного преимущества — жёсткого `require_auth` на уровне middleware по заголовку (в `apps/backend/src/widget_api/auth.rs` проверяется только `Bearer` в заголовке).
+Браузерный `new WebSocket(url)` **не позволяет ставить кастомные заголовки** (`Authorization`). Поэтому приватное подключение браузером авторизуется либо телом `{type:"auth", token}`, либо `?widget_access_key=` в URL (видим в логах/реферере). Значит вариант с двумя эндпоинтами не получает главного преимущества — жёсткого `require_auth` на уровне middleware по заголовку (в `apps/backend/src/widget_api/auth.rs` проверяется только `Bearer` в заголовке).
 
-## Вариант А — один `/wapi/ws`, PAK необязательный
+## Вариант А — один `/wapi/ws`, widget access key необязательный
 
-Сервер сам определяет уровень доступа по соединению: без PAK → публичный режим, с PAK → полный.
+Сервер сам определяет уровень доступа по соединению: без widget access key → публичный режим, с ним → полный.
 
 ### Плюсы
 
@@ -63,7 +63,7 @@ WS-соединение в `apps/backend/src/widget_api/ws.rs` — защищё�
 
 ### Минусы
 
-- Для браузера приватный WS всё равно шлёт `{type:"auth"}` (или `?pak=`), т.е. тот же in-band auth только на другой URL — выгоды от middleware фактически нет.
+- Для браузера приватный WS всё равно шлёт `{type:"auth"}` (или `?widget_access_key=`), т.е. тот же in-band auth только на другой URL — выгоды от middleware фактически нет.
 - Клиенты обязаны знать, куда идти; при ошибочном эндпоинте молча получают не тот поток.
 - Небольшое дублирование (можно вынести общий хендлер).
 
@@ -97,13 +97,13 @@ impl SpinEvent {
 - В цикле: `Auth { token }` валидирует через `ct_eq` → `authorized = true`, ответ `AuthOk`; повторный auth — идемпотентно; неверный — `AuthErr` (не закрываем, остаёмся публичным).
 - `Complete` обрабатывать только при `authorized`, иначе — `CompleteErr` (приватные confirm/ack не достигают публичных клиентов).
 - При отправке события: `if authorized || event.is_public() { socket.send(...) }` — единственная точка фильтрации.
-- `ServerMessage::AuthOk/AuthErr/CompleteOk/CompleteErr` остаются приватными — отвечают только на клиентские команды с валидным PAK и не рассылаются открытым клиентам.
+- `ServerMessage::AuthOk/AuthErr/CompleteOk/CompleteErr` остаются приватными — отвечают только на клиентские команды с валидным widget access key и не рассылаются открытым клиентам.
 
 ### 3. `apps/frontend/html/js/widget.js`
 
-- Убрать блок `if (!PAK) failAuth();` (тыл виджета).
-- Без PAK → публичный режим: открыть `/wapi/ws`, без `auth`, получать `spin_started/completed/error`, **без** авто-`complete`.
-- С PAK → сегодняшний флоу (валидация ключа, `auth`, авто-complete).
+- Убрать блок `if (!WIDGET_ACCESS_KEY) failAuth();` (тыл виджета).
+- Без widget access key → публичный режим: открыть `/wapi/ws`, без `auth`, получать `spin_started/completed/error`, **без** авто-`complete`.
+- С widget access key → сегодняшний флоу (валидация ключа, `auth`, авто-complete).
 - Публичный оверлей: отдельный `html`-файл либо тот же `widget.html` по флагу — решить при реализации.
 
 ### 4. `apps/frontend/html/js/panel.js`
@@ -112,7 +112,7 @@ impl SpinEvent {
 
 ## Открытые вопросы для обдумывания
 
-1. Публичный оверлей — отдельный HTML-файл (например `overlay.html`) или тот же `widget.html` с флагом `?public` / по отсутствию PAK.
+1. Публичный оверлей — отдельный HTML-файл (например `overlay.html`) или тот же `widget.html` с флагом `?public` / по отсутствию widget access key.
 2. Какие именно будущие события будут приватными (подтверждения `complete`/`dequeue`, админ-логи, очередь?) — это определит набор веток в `is_public()`.
 3. Нужно ли публичному режиму показывать `user_name` / `slot_rarity` полностью или обезличенно.
 4. Поведение публичного виджета при таймауте: просто ждать следующего события без `complete`.

@@ -65,7 +65,7 @@ mod tests {
         repo.save(&second).await.unwrap();
 
         let loaded = repo.load().await.unwrap().unwrap();
-        assert_eq!(loaded.access_key, "second");
+        assert_eq!(loaded.widget_access_key, "second");
     }
 
     #[tokio::test]
@@ -83,7 +83,7 @@ mod tests {
         handle_a.await.unwrap().unwrap();
         handle_b.await.unwrap().unwrap();
 
-        let key = repo.load().await.unwrap().unwrap().access_key;
+        let key = repo.load().await.unwrap().unwrap().widget_access_key;
         assert!(key == "a" || key == "b");
     }
 }

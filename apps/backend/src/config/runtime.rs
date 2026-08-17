@@ -6,7 +6,7 @@ use crate::error::ConfigError;
 #[non_exhaustive]
 #[serde(default)]
 pub struct RuntimeConfig {
-    pub access_key: String,
+    pub widget_access_key: String,
     pub roulette_timeout_secs: u64,
     pub retention_secs: u64,
     pub queue_cleanup_interval_secs: u64,
@@ -18,7 +18,7 @@ pub struct RuntimeConfig {
 impl Default for RuntimeConfig {
     fn default() -> Self {
         Self {
-            access_key: String::new(),
+            widget_access_key: String::new(),
             roulette_timeout_secs: 10,
             retention_secs: 24 * 60 * 60,
             queue_cleanup_interval_secs: 60 * 60,
@@ -31,8 +31,8 @@ impl Default for RuntimeConfig {
 
 impl RuntimeConfig {
     pub fn validate(&self) -> Result<(), ConfigError> {
-        if self.access_key.is_empty() {
-            return Err(ConfigError::InvalidAccessKey);
+        if self.widget_access_key.is_empty() {
+            return Err(ConfigError::InvalidWidgetAccessKey);
         }
         for (field, value) in [
             ("roulette_timeout_secs", self.roulette_timeout_secs),
@@ -58,9 +58,9 @@ impl RuntimeConfig {
 
 #[cfg(test)]
 impl RuntimeConfig {
-    pub fn test_runtime(access_key: &str) -> Self {
+    pub fn test_runtime(widget_access_key: &str) -> Self {
         Self {
-            access_key: access_key.to_string(),
+            widget_access_key: widget_access_key.to_string(),
             ..Self::default()
         }
     }
@@ -71,10 +71,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn default_has_empty_access_key() {
+    fn default_has_empty_widget_access_key() {
         let cfg = RuntimeConfig::default();
-        assert!(cfg.access_key.is_empty());
-        assert!(matches!(cfg.validate(), Err(ConfigError::InvalidAccessKey)));
+        assert!(cfg.widget_access_key.is_empty());
+        assert!(matches!(
+            cfg.validate(),
+            Err(ConfigError::InvalidWidgetAccessKey)
+        ));
     }
 
     #[test]
@@ -123,9 +126,9 @@ mod tests {
 
     #[test]
     fn serde_unknown_field_ignored() {
-        let json = r#"{"access_key":"secret","unknown_field":42}"#;
+        let json = r#"{"widget_access_key":"secret","unknown_field":42}"#;
         let cfg: RuntimeConfig = serde_json::from_str(json).unwrap();
-        assert_eq!(cfg.access_key, "secret");
+        assert_eq!(cfg.widget_access_key, "secret");
     }
 
     fn apply_u64(cfg: &mut RuntimeConfig, field: &str, value: u64) {

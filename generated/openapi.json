@@ -97,44 +97,6 @@
         }
       }
     },
-    "/api/admin/pak": {
-      "get": {
-        "tags": [
-          "admin"
-        ],
-        "operationId": "get_admin_pak",
-        "responses": {
-          "200": {
-            "description": "Widget access key (PAK)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PakResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "admin"
-        ],
-        "operationId": "rotate_admin_pak",
-        "responses": {
-          "200": {
-            "description": "PAK rotated, new key generated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PakResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/admin/twitch/auth": {
       "get": {
         "tags": [
@@ -198,6 +160,44 @@
           },
           "403": {
             "description": "CSRF state mismatch or flow never started"
+          }
+        }
+      }
+    },
+    "/api/admin/widget-access-key": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "get_widget_access_key",
+        "responses": {
+          "200": {
+            "description": "Widget access key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WidgetAccessKeyResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "rotate_widget_access_key",
+        "responses": {
+          "200": {
+            "description": "Widget access key rotated, new key generated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WidgetAccessKeyResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -1464,17 +1464,6 @@
           }
         }
       },
-      "PakResponse": {
-        "type": "object",
-        "required": [
-          "pak"
-        ],
-        "properties": {
-          "pak": {
-            "type": "string"
-          }
-        }
-      },
       "PlatformId": {
         "type": "integer",
         "format": "int32",
@@ -1949,6 +1938,17 @@
             }
           },
           "updated_at": {
+            "type": "string"
+          }
+        }
+      },
+      "WidgetAccessKeyResponse": {
+        "type": "object",
+        "required": [
+          "widget_access_key"
+        ],
+        "properties": {
+          "widget_access_key": {
             "type": "string"
           }
         }

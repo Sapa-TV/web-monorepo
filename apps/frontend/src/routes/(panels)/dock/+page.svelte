@@ -15,9 +15,10 @@
 	import IconX from "~icons/lucide/x";
 	import IconCheck from "~icons/lucide/check";
 
-	const pak =
+	const widgetAccessKey =
 		typeof window !== "undefined"
-			? (new URLSearchParams(window.location.search).get("pak") ?? "")
+			? (new URLSearchParams(window.location.search).get("widget_access_key") ??
+				"")
 			: "";
 
 	const LOG_LIMIT = 50;
@@ -66,12 +67,12 @@
 	async function loadAll() {
 		try {
 			const [listRes, statsRes] = await Promise.all([
-				apiFetch(`${WAPI_BASE}/queue`, {}, pak),
-				apiFetch(`${WAPI_BASE}/queue/stats`, {}, pak),
+				apiFetch(`${WAPI_BASE}/queue`, {}, widgetAccessKey),
+				apiFetch(`${WAPI_BASE}/queue/stats`, {}, widgetAccessKey),
 			]);
 
 			if (listRes.status === UNAUTHORIZED) {
-				setKeyState(pak ? "bad" : "missing");
+				setKeyState(widgetAccessKey ? "bad" : "missing");
 			} else {
 				setKeyState("ok");
 			}
@@ -103,7 +104,7 @@
 			const r = await apiFetch(
 				`${WAPI_BASE}/queue/next`,
 				{ method: "POST" },
-				pak,
+				widgetAccessKey,
 			);
 			const data = (await r.json()) as {
 				slot?: { name: string };
@@ -130,7 +131,7 @@
 			const r = await apiFetch(
 				`${WAPI_BASE}/queue/${id}/complete`,
 				{ method: "POST" },
-				pak,
+				widgetAccessKey,
 			);
 			if (r.ok) {
 				addEvent(`✔ #${id} завершён`, "complete");
@@ -148,7 +149,7 @@
 			const r = await apiFetch(
 				`${WAPI_BASE}/queue/${id}/cancel`,
 				{ method: "POST" },
-				pak,
+				widgetAccessKey,
 			);
 			if (r.ok) {
 				addEvent(`✕ #${id} отменён`, "error");
@@ -173,7 +174,7 @@
 					headers: { "Content-Type": "application/json" },
 					body: JSON.stringify({ name }),
 				},
-				pak,
+				widgetAccessKey,
 			);
 			if (r.ok) {
 				enqName = "";
@@ -198,7 +199,8 @@
 		ws = new WebSocket(WS_URL);
 		ws.onopen = () => {
 			connState = "connected";
-			if (pak) ws?.send(JSON.stringify({ type: "auth", token: pak }));
+			if (widgetAccessKey)
+				ws?.send(JSON.stringify({ type: "auth", token: widgetAccessKey }));
 		};
 		ws.onclose = () => {
 			connState = "disconnected";
@@ -226,7 +228,7 @@
 					break;
 				case "auth_err":
 					wsRejected = true;
-					setKeyState(pak ? "bad" : "missing");
+					setKeyState(widgetAccessKey ? "bad" : "missing");
 					break;
 				case "spin_started":
 					addEvent(

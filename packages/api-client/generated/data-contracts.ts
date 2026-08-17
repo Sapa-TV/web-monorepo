@@ -80,10 +80,6 @@ export interface NextResponse {
   slot: RouletteSlot;
 }
 
-export interface PakResponse {
-  pak: string;
-}
-
 /**
  * @format int32
  * @min 0
@@ -274,4 +270,8 @@ export interface UserResponse {
   id: UserId;
   platforms: UserPlatformResponse[];
   updated_at: string;
+}
+
+export interface WidgetAccessKeyResponse {
+  widget_access_key: string;
 }

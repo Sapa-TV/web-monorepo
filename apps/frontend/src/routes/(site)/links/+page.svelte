@@ -12,7 +12,7 @@
 		<h1 class="catalog-title">Ссылки на страницы</h1>
 		<p class="hint">
 			Просто список. Для виджета и док-панели нужен ключ: добавь
-			<code>?pak=КЛЮЧ</code>.
+			<code>?widget_access_key=КЛЮЧ</code>.
 		</p>
 	</header>
 
@@ -37,21 +37,21 @@
 			</a>
 		</li>
 		<li class="item">
-			<a class="card" href="/roulette?pak=КЛЮЧ">
+			<a class="card" href="/roulette?widget_access_key=КЛЮЧ">
 				<span class="card__idx" aria-hidden="true">03</span>
 				<span class="card__body">
 					<span class="name">Виджет «Рулетка»</span>
-					<span class="url">/roulette?pak=КЛЮЧ</span>
+					<span class="url">/roulette?widget_access_key=КЛЮЧ</span>
 				</span>
 				<span class="card__chip" aria-hidden="true">для OBS</span>
 			</a>
 		</li>
 		<li class="item">
-			<a class="card" href="/dock?pak=КЛЮЧ">
+			<a class="card" href="/dock?widget_access_key=КЛЮЧ">
 				<span class="card__idx" aria-hidden="true">04</span>
 				<span class="card__body">
 					<span class="name">Док-панель</span>
-					<span class="url">/dock?pak=КЛЮЧ</span>
+					<span class="url">/dock?widget_access_key=КЛЮЧ</span>
 				</span>
 				<span class="card__chip" aria-hidden="true">для OBS</span>
 			</a>

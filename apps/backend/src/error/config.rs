@@ -12,8 +12,8 @@ pub enum ConfigError {
     MissingField { field: &'static str },
     #[error("twitch config `csrf_ttl_secs` must be greater than zero")]
     InvalidCsrfTtl,
-    #[error("runtime config must not be empty")]
-    InvalidAccessKey,
+    #[error("runtime config widget access key must not be empty")]
+    InvalidWidgetAccessKey,
     #[error("runtime config field `{field}` must be greater than zero")]
     InvalidValue { field: &'static str },
     #[error("config repository: {0}")]
@@ -26,7 +26,7 @@ impl From<ConfigError> for ApiError {
             ConfigError::Repo(re) => ApiError::from(re),
             ConfigError::MissingField { .. }
             | ConfigError::InvalidCsrfTtl
-            | ConfigError::InvalidAccessKey
+            | ConfigError::InvalidWidgetAccessKey
             | ConfigError::InvalidValue { .. } => {
                 ApiError::new(StatusCode::BAD_REQUEST, e.to_string())
             }

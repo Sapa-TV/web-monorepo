@@ -44,8 +44,8 @@ impl<R: ConfigRepository> ConfigStore<R> {
         SharedSettings(Arc::clone(&self.runtime_cfg))
     }
 
-    pub fn access_key(&self) -> String {
-        self.runtime_cfg.read().access_key.clone()
+    pub fn widget_access_key(&self) -> String {
+        self.runtime_cfg.read().widget_access_key.clone()
     }
 
     pub fn queue_default_limit(&self) -> usize {
@@ -102,18 +102,18 @@ impl<R: ConfigRepository> ConfigStore<R> {
         Ok(())
     }
 
-    async fn rotate_access_key(&self, key: &str) -> Result<(), ConfigError> {
+    async fn rotate_widget_access_key(&self, key: &str) -> Result<(), ConfigError> {
         let mut next = self.runtime_cfg.read().clone();
-        next.access_key = key.to_string();
+        next.widget_access_key = key.to_string();
         next.validate()?;
         self.repo.save(&next).await?;
         *self.runtime_cfg.write() = next;
         Ok(())
     }
 
-    pub async fn rotate_access_key_generated(&self) -> Result<String, ConfigError> {
+    pub async fn rotate_widget_access_key_generated(&self) -> Result<String, ConfigError> {
         let key = generate_secret();
-        self.rotate_access_key(&key).await?;
+        self.rotate_widget_access_key(&key).await?;
         Ok(key)
     }
 }
@@ -126,7 +126,7 @@ impl ConfigStore<InMemoryConfigRepository> {
             Some(runtime) => runtime,
             None => {
                 let mut seed = file_seed.unwrap_or_default();
-                seed.access_key = generate_secret();
+                seed.widget_access_key = generate_secret();
                 repo.save(&seed).await?;
                 seed
             }
@@ -157,7 +157,7 @@ mod tests {
     #[test]
     fn accessors_return_configured_values() {
         let (store, _) = test_store();
-        assert_eq!(store.access_key(), "secret");
+        assert_eq!(store.widget_access_key(), "secret");
         assert_eq!(store.queue_default_limit(), 20);
         assert_eq!(store.session_ttl_secs(), 24 * 60 * 60);
         assert_eq!(store.port(), 3000);
@@ -200,7 +200,7 @@ mod tests {
         store.update_runtime(next.clone()).await.unwrap();
 
         assert_eq!(store.source().read().session_ttl_secs, 42);
-        assert_eq!(store.access_key(), "other");
+        assert_eq!(store.widget_access_key(), "other");
         assert_eq!(repo.load().await.unwrap().unwrap(), next);
     }
 
@@ -213,43 +213,46 @@ mod tests {
             .await
             .unwrap_err();
 
-        assert!(matches!(err, ConfigError::InvalidAccessKey));
+        assert!(matches!(err, ConfigError::InvalidWidgetAccessKey));
         assert!(repo.load().await.unwrap().is_none());
-        assert_eq!(store.access_key(), "secret");
+        assert_eq!(store.widget_access_key(), "secret");
     }
 
     #[tokio::test]
     async fn rotate_access_key_changes_only_key() {
         let (store, repo) = test_store();
 
-        store.rotate_access_key("rotated").await.unwrap();
+        store.rotate_widget_access_key("rotated").await.unwrap();
 
-        assert_eq!(store.source().read().access_key, "rotated");
+        assert_eq!(store.source().read().widget_access_key, "rotated");
         assert_eq!(store.source().read().session_ttl_secs, 24 * 60 * 60);
         assert_eq!(store.source().read().queue_default_limit, 20);
-        assert_eq!(repo.load().await.unwrap().unwrap().access_key, "rotated");
+        assert_eq!(
+            repo.load().await.unwrap().unwrap().widget_access_key,
+            "rotated"
+        );
     }
 
     #[tokio::test]
     async fn rotate_access_key_empty_rejected() {
         let (store, repo) = test_store();
 
-        let err = store.rotate_access_key("").await.unwrap_err();
+        let err = store.rotate_widget_access_key("").await.unwrap_err();
 
-        assert!(matches!(err, ConfigError::InvalidAccessKey));
+        assert!(matches!(err, ConfigError::InvalidWidgetAccessKey));
         assert!(repo.load().await.unwrap().is_none());
-        assert_eq!(store.access_key(), "secret");
+        assert_eq!(store.widget_access_key(), "secret");
     }
 
     #[tokio::test]
     async fn rotate_access_key_generated_persists_and_is_visible() {
         let (store, repo) = test_store();
 
-        let key = store.rotate_access_key_generated().await.unwrap();
+        let key = store.rotate_widget_access_key_generated().await.unwrap();
 
         assert!(!key.is_empty());
-        assert_eq!(store.source().read().access_key, key);
-        assert_eq!(store.access_key(), key);
-        assert_eq!(repo.load().await.unwrap().unwrap().access_key, key);
+        assert_eq!(store.source().read().widget_access_key, key);
+        assert_eq!(store.widget_access_key(), key);
+        assert_eq!(repo.load().await.unwrap().unwrap().widget_access_key, key);
     }
 }

@@ -34,9 +34,14 @@ export interface QueueStats {
 	cancelled: number;
 }
 
-export function apiFetch(path: string, init: RequestInit = {}, pak = "") {
+export function apiFetch(
+	path: string,
+	init: RequestInit = {},
+	widgetAccessKey = "",
+) {
 	const headers = new Headers(init.headers);
-	if (pak) headers.set("Authorization", `Bearer ${pak}`);
+	if (widgetAccessKey)
+		headers.set("Authorization", `Bearer ${widgetAccessKey}`);
 	return fetch(`${API_BASE}${path}`, {
 		...init,
 		headers,
