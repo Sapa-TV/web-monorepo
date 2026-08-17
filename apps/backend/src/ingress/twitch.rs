@@ -62,11 +62,13 @@ where
                 .await
                 .ok_or(PlatformError::Disconnected)?
                 .map_err(|e| PlatformError::WebSocket(e.to_string()))?;
-            let text = msg
-                .to_text()
-                .map_err(|e| PlatformError::WebSocket(e.to_string()))?;
+            let text = match msg {
+                WsMessage::Text(text) => text,
+                WsMessage::Close(_) => return Err(PlatformError::Disconnected),
+                _ => continue,
+            };
             let data =
-                Event::parse_websocket(text).map_err(|e| PlatformError::Parse(e.to_string()))?;
+                Event::parse_websocket(&text).map_err(|e| PlatformError::Parse(e.to_string()))?;
             if let EventsubWebsocketData::Welcome { payload, .. } = data {
                 break payload.session.id.to_string();
             }

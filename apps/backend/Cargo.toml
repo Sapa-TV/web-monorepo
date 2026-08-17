@@ -29,7 +29,7 @@ futures-util = { workspace = true }
 dotenvy = { workspace = true }
 subtle = { workspace = true }
 config = { workspace = true }
-tokio-tungstenite = { workspace = true }
+tokio-tungstenite = { workspace = true, features = ["rustls-tls-webpki-roots"] }
 twitch_api = { workspace = true, features = [
     "eventsub",
     "helix",
