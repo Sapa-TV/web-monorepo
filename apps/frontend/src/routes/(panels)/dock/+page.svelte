@@ -78,7 +78,11 @@
 			}
 
 			if (listRes.ok) {
-				entries = (await listRes.json()) as QueueEntry[];
+				const data = (await listRes.json()) as {
+					entries: QueueEntry[];
+					next_cursor: number | null;
+				};
+				entries = data.entries;
 			}
 
 			const hasSpinning = entries.some((e) => e.status === "Spinning");

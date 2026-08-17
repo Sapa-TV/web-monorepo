@@ -19,7 +19,7 @@
 
 	let accessKey = $state("");
 	let wakBusy = $state(false);
-	let copied = $state(false);
+	let copied = $state<"key" | "dock" | "widget" | null>(null);
 	let copyTimer: ReturnType<typeof setTimeout> | null = null;
 	const COPY_FEEDBACK_MS = 1500;
 
@@ -67,9 +67,24 @@
 	async function copyPak() {
 		try {
 			await navigator.clipboard.writeText(accessKey);
-			copied = true;
+			copied = "key";
 			if (copyTimer) clearTimeout(copyTimer);
-			copyTimer = setTimeout(() => (copied = false), COPY_FEEDBACK_MS);
+			copyTimer = setTimeout(() => (copied = null), COPY_FEEDBACK_MS);
+		} catch {
+			// clipboard unavailable
+		}
+	}
+
+	function linkFor(path: string) {
+		return `${location.origin}${path}?widget_access_key=${encodeURIComponent(accessKey)}`;
+	}
+
+	async function copyLink(target: "dock" | "widget", path: string) {
+		try {
+			await navigator.clipboard.writeText(linkFor(path));
+			copied = target;
+			if (copyTimer) clearTimeout(copyTimer);
+			copyTimer = setTimeout(() => (copied = null), COPY_FEEDBACK_MS);
 		} catch {
 			// clipboard unavailable
 		}
@@ -271,11 +286,41 @@
 				disabled={!accessKey}
 				aria-label="Скопировать ключ"
 			>
-				{#if copied}
+				{#if copied === "key"}
 					<IconCheck aria-hidden="true" />
 				{:else}
 					<IconCopy aria-hidden="true" />
 				{/if}
+			</button>
+		</div>
+		<div class="links-row">
+			<button
+				class="btn btn--sm"
+				type="button"
+				onclick={() => copyLink("dock", "/dock")}
+				disabled={!accessKey}
+				aria-label="Скопировать ссылку на док-панель"
+			>
+				{#if copied === "dock"}
+					<IconCheck aria-hidden="true" />
+				{:else}
+					<IconCopy aria-hidden="true" />
+				{/if}
+				Док-панель
+			</button>
+			<button
+				class="btn btn--sm"
+				type="button"
+				onclick={() => copyLink("widget", "/roulette")}
+				disabled={!accessKey}
+				aria-label="Скопировать ссылку на виджет"
+			>
+				{#if copied === "widget"}
+					<IconCheck aria-hidden="true" />
+				{:else}
+					<IconCopy aria-hidden="true" />
+				{/if}
+				Виджет
 			</button>
 		</div>
 		<button
@@ -545,6 +590,13 @@
 		font-family: "IBM Plex Mono", ui-monospace, monospace;
 		font-size: 12px;
 		color: var(--on-surface);
+	}
+
+	.links-row {
+		display: flex;
+		gap: 8px;
+		flex-wrap: wrap;
+		margin-bottom: 12px;
 	}
 
 	.inline-form {
