@@ -56,6 +56,7 @@ struct RewardConditions { reward_id: Option<String> }             // None = лю
 // actions — отдельный модуль
 struct Action { id: ActionId, name: String, kind: ActionKind, enabled: bool, created_at, updated_at }
 enum ActionKind {
+    NoAction,                                 // пустое действие (no-op), валидный вариант
     EnqueueRoulette,                          // без параметров
     ChatReply { message_template: String },   // интерполяция {username}, {reward_title}, {cost}, {user_input}
 }

@@ -35,8 +35,23 @@ pub struct Action {
 #[serde(tag = "type", rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum ActionKind {
+    NoAction,
     EnqueueRoulette,
     ChatReply { message_template: String },
+}
+
+impl Action {
+    pub fn noop(id: ActionId) -> Self {
+        let now = Utc::now();
+        Self {
+            id,
+            name: "no-op".to_string(),
+            kind: ActionKind::NoAction,
+            enabled: true,
+            created_at: now,
+            updated_at: now,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -122,6 +137,7 @@ mod tests {
     #[test]
     fn action_kind_serde_roundtrip() {
         for kind in [
+            ActionKind::NoAction,
             ActionKind::EnqueueRoulette,
             ActionKind::ChatReply {
                 message_template: "hi {username}".to_string(),
@@ -131,6 +147,21 @@ mod tests {
             let back: ActionKind = serde_json::from_value(json).unwrap();
             assert_eq!(back, kind);
         }
+    }
+
+    #[test]
+    fn no_action_serializes_as_no_action() {
+        let json = serde_json::to_value(ActionKind::NoAction).unwrap();
+        assert_eq!(json["type"], "no_action");
+        let back: ActionKind = serde_json::from_value(json).unwrap();
+        assert_eq!(back, ActionKind::NoAction);
+    }
+
+    #[test]
+    fn noop_action_builds_empty_kind() {
+        let action = Action::noop(ActionId::new(1));
+        assert_eq!(action.kind, ActionKind::NoAction);
+        assert!(action.enabled);
     }
 
     #[test]

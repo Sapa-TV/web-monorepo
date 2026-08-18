@@ -6,8 +6,8 @@ use chrono::Utc;
 use crate::actions::ActionId;
 use crate::error::RepositoryError;
 use crate::ingress::event::RuleTrigger;
-use crate::rules::rule::{Rule, RuleConditions, RuleId};
 use crate::rules::repository::RuleRepository;
+use crate::rules::rule::{Rule, RuleConditions, RuleId};
 
 #[non_exhaustive]
 pub struct InMemoryRuleRepository {
