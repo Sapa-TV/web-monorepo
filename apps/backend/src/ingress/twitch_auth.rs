@@ -13,6 +13,7 @@ pub(crate) const INGRESS_SCOPES: &[Scope] = &[
     Scope::ChannelBot,
     Scope::UserReadChat,
     Scope::ChannelReadRedemptions,
+    Scope::UserWriteChat,
 ];
 
 #[non_exhaustive]

@@ -178,7 +178,7 @@ struct ActionEvent {
 
 ### 11. Scope: `ingress/twitch_auth.rs`
 - В `INGRESS_SCOPES` добавить `Scope::UserWriteChat`.
-- Тесты на список скоупов; в плане релиза — памятка «стримеру пережать Авторизовать».
+- В плане релиза — памятка «стримеру пережать Авторизовать».
 
 ### 12. Wiring: `state.rs` + `main.rs`
 - `UniAppState`: тип-параметры `L: RuleRepository`, `M: ActionRepository`; поля
