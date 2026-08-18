@@ -1,4 +1,6 @@
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use strum::EnumDiscriminants;
 
 use crate::platform::PlatformId;
 
@@ -60,8 +62,10 @@ impl PlatformEvent {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, EnumDiscriminants)]
 #[non_exhaustive]
+#[strum_discriminants(derive(Serialize, Deserialize))]
+#[strum_discriminants(name(RuleTrigger))]
 pub enum PlatformEventPayload {
     ChatMessage(ChatMessage),
     RewardRedemption(RewardRedemption),
@@ -98,6 +102,8 @@ pub struct RewardRedemption {
 
 #[cfg(test)]
 mod tests {
+    use strum::IntoDiscriminant;
+
     use super::*;
 
     #[test]
@@ -140,5 +146,30 @@ mod tests {
                 assert_eq!(red.status, "unfulfilled");
             }
         }
+    }
+
+    #[test]
+    fn payload_discriminant_maps_to_trigger() {
+        let event = PlatformEvent::chat_message(
+            PlatformId::TWITCH,
+            "msg-1",
+            "1".to_string(),
+            "viewer".to_string(),
+            "hello".to_string(),
+        );
+        assert_eq!(event.payload.discriminant(), RuleTrigger::ChatMessage);
+
+        let event = PlatformEvent::reward_redemption(
+            PlatformId::TWITCH,
+            "red-1",
+            "1".to_string(),
+            "viewer".to_string(),
+            "reward-9".to_string(),
+            "Spin".to_string(),
+            500,
+            "".to_string(),
+            "unfulfilled".to_string(),
+        );
+        assert_eq!(event.payload.discriminant(), RuleTrigger::RewardRedemption);
     }
 }
