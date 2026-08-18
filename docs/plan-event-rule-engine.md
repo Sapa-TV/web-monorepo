@@ -4,6 +4,9 @@
 
 Дата: 2026-08-18 (ред. 3)
 
+Прогресс: ✅ шаги 1-7 (шаг 6 выполнен вместе с шагом 5 — типы ошибок нужны сервисам),
+канал шины B перенесён на шаг 12. Осталось: 8-15.
+
 ## Контекст (текущее состояние)
 
 - EventSub уже подписан на `channel.channel_points_custom_reward_redemption.add` и
@@ -133,10 +136,11 @@ struct ActionEvent {
 - `error/actions.rs`: `ActionServiceError` → StatusCode (аналогично).
 
 ### 7. Шина B: канал `ActionEvent` + сборка `ActionEvent`
-- `actions/event.rs`: тип `ActionEvent`, конструктор из `PlatformEvent` + `Action`
-  (формирует `ctx` из `payload`).
-- Канал `mpsc::channel::<ActionEvent>(256)` создаётся в `state.rs` (wiring): `tx` →
-  движок, `rx` → исполнитель.
+- `actions/event.rs`: тип `ActionEvent`, конструктор `ActionEvent::from_action(action, source)`
+  из `PlatformEvent` + `Action` (формирует `ctx` из `payload` через
+  `From<&PlatformEventPayload> for EventContext`).
+- Сам канал `mpsc::channel::<ActionEvent>(256)` создаётся на шаге 12 (wiring, `state.rs`):
+  `tx` → движок, `rx` → исполнитель.
 - Тесты: сборка `ActionEvent` из chat/reward события, раундтрип через канал.
 
 ### 8. Исполнитель: `actions/executor.rs`
@@ -144,6 +148,7 @@ struct ActionEvent {
   фоновая таска. На каждый `ActionEvent` — исчерпывающий `match` по `ActionKind`
   (новый вариант не скомпилируется без ветки). Держит `queue_service`, `user_service`,
   `twitch_api` (для `send_chat_message`):
+  - `NoAction` → ничего не делать.
   - `EnqueueRoulette` → `user_service.ensure_user_by_platform` → `queue_service.enqueue`.
   - `ChatReply` → рендер шаблона → `HelixClient::send_chat_message` (broadcaster_id, message).
 - Ничего наружу не публикует. Ошибки логировать, не ронять таску. Тесты на каждый
