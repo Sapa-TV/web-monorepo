@@ -4,8 +4,9 @@
 
 Дата: 2026-08-18 (ред. 3)
 
-Прогресс: ✅ шаги 1-7 (шаг 6 выполнен вместе с шагом 5 — типы ошибок нужны сервисам),
-канал шины B перенесён на шаг 12. Осталось: 8-15.
+Прогресс: ✅ шаги 1-8 (шаг 6 выполнен вместе с шагом 5 — типы ошибок нужны сервисам;
+шаг 10-метод `ensure_user_by_platform` пока инлайнится в исполнителе, вынесение на шаге 10).
+Осталось: 9-15.
 
 ## Контекст (текущее состояние)
 
@@ -146,11 +147,18 @@ struct ActionEvent {
 ### 8. Исполнитель: `actions/executor.rs`
 - `ActionExecutor` — терминальный консьюмер шины B: `run(rx: mpsc::Receiver<ActionEvent>)`
   фоновая таска. На каждый `ActionEvent` — исчерпывающий `match` по `ActionKind`
-  (новый вариант не скомпилируется без ветки). Держит `queue_service`, `user_service`,
-  `twitch_api` (для `send_chat_message`):
+  (новый вариант не скомпилируется без ветки). Пока статично (без сворачивания в сервис),
+  держит `queue_service`, `user_service`, `twitch_auth: Arc<TwitchAuthService>` +
+  `broadcaster_id` из `TwitchConfig` (для `send_chat_message`):
   - `NoAction` → ничего не делать.
-  - `EnqueueRoulette` → `user_service.ensure_user_by_platform` → `queue_service.enqueue`.
-  - `ChatReply` → рендер шаблона → `HelixClient::send_chat_message` (broadcaster_id, message).
+  - `EnqueueRoulette` → ensure-пользователь (инлайн: `find_by_platform` → иначе
+    `create` + `link_platform`; на шаге 10 вынести в `UserService` и переключить вызов) →
+    `queue_service.enqueue`.
+  - `ChatReply` → рендер шаблона → `HelixClient::send_chat_message` (broadcaster_id,
+    sender_id из токена, message).
+- Ничего наружу не публикует; `ExecutorError` (error/executor.rs) только логируется
+  (`tracing::warn`, таска не роняется). Тесты: NoAction/Equeue state, переиспользование
+  юзера, выживание таски при падении chat-отправки без кредов.
 - Ничего наружу не публикует. Ошибки логировать, не ронять таску. Тесты на каждый
   вариант (chat-отправка через мок).
 
@@ -165,6 +173,8 @@ struct ActionEvent {
 ### 10. `UserService::ensure_user_by_platform` (`user/service.rs`)
 - Helper: `find_by_platform("twitch", id)` → иначе `create(display_name)` + `link_platform`;
   возвращает `UserId`. Тесты: существующий/новый пользователь.
+- Переключить `ActionExecutor::ensure_user` на этот метод (сейчас логика инлайн в
+  `actions/executor.rs`).
 
 ### 11. Scope: `ingress/twitch_auth.rs`
 - В `INGRESS_SCOPES` добавить `Scope::UserWriteChat`.
