@@ -64,7 +64,7 @@ impl PlatformEvent {
 
 #[derive(Debug, Clone, EnumDiscriminants)]
 #[non_exhaustive]
-#[strum_discriminants(derive(Serialize, Deserialize))]
+#[strum_discriminants(derive(Serialize, Deserialize), serde(rename_all = "snake_case"))]
 #[strum_discriminants(name(RuleTrigger))]
 pub enum PlatformEventPayload {
     ChatMessage(ChatMessage),
