@@ -28,7 +28,7 @@ where
 {
     queue_service: Arc<QueueService<Q, R, S>>,
     user_service: Arc<UserService<U, P>>,
-    twitch_auth: Arc<TwitchAuthService<C>>,
+    twitch_auth: Option<Arc<TwitchAuthService<C>>>,
     broadcaster_id: String,
 }
 
@@ -44,14 +44,16 @@ where
     pub fn new(
         queue_service: Arc<QueueService<Q, R, S>>,
         user_service: Arc<UserService<U, P>>,
-        twitch_auth: Arc<TwitchAuthService<C>>,
-        twitch_config: Arc<TwitchConfig>,
+        twitch_auth: Option<Arc<TwitchAuthService<C>>>,
+        twitch_config: Option<Arc<TwitchConfig>>,
     ) -> Self {
         Self {
             queue_service,
             user_service,
             twitch_auth,
-            broadcaster_id: twitch_config.broadcaster_id.clone(),
+            broadcaster_id: twitch_config
+                .map(|c| c.broadcaster_id.clone())
+                .unwrap_or_default(),
         }
     }
 
@@ -92,15 +94,17 @@ where
     }
 
     async fn send_chat_message(&self, message: &str) -> Result<(), ExecutorError> {
-        let token = self
-            .twitch_auth
+        let Some(twitch_auth) = &self.twitch_auth else {
+            return Err(ExecutorError::Chat("twitch is not configured".to_string()));
+        };
+        let token = twitch_auth
             .user_token()
             .await
             .map_err(|e| ExecutorError::Chat(e.to_string()))?;
         let sender_id = token
             .user_id()
             .ok_or_else(|| ExecutorError::Chat("token has no user_id".to_string()))?;
-        let helix = self.twitch_auth.helix();
+        let helix = twitch_auth.helix();
         helix
             .send_chat_message(&self.broadcaster_id, sender_id, message, &token)
             .await
@@ -140,6 +144,10 @@ mod tests {
     >;
 
     async fn setup() -> TestExecutor {
+        setup_with_twitch().await
+    }
+
+    async fn setup_with_twitch() -> TestExecutor {
         let queue_repo = Arc::new(InMemoryQueueRepository::new());
         let config_repo = Arc::new(InMemoryConfigRepository::new());
         let state = test_state_with_data(Arc::clone(&queue_repo), config_repo).await;
@@ -158,8 +166,20 @@ mod tests {
         ActionExecutor::new(
             Arc::clone(&state.queue_service),
             Arc::clone(&state.user_service),
-            twitch_auth,
-            config,
+            Some(twitch_auth),
+            Some(config),
+        )
+    }
+
+    async fn setup_without_twitch() -> TestExecutor {
+        let queue_repo = Arc::new(InMemoryQueueRepository::new());
+        let config_repo = Arc::new(InMemoryConfigRepository::new());
+        let state = test_state_with_data(Arc::clone(&queue_repo), config_repo).await;
+        ActionExecutor::new(
+            Arc::clone(&state.queue_service),
+            Arc::clone(&state.user_service),
+            None,
+            None,
         )
     }
 
@@ -290,5 +310,53 @@ mod tests {
 
         let stats = executor.queue_service.count_by_status().await.unwrap();
         assert_eq!(stats.pending, 1, "task must survive a failing chat reply");
+    }
+
+    #[tokio::test]
+    async fn enqueue_works_without_twitch_config() {
+        let executor = setup_without_twitch().await;
+        let (tx, rx) = mpsc::channel(2);
+        tx.send(action_event(
+            ActionKind::EnqueueRoulette,
+            "msg-5",
+            "1",
+            "viewer",
+        ))
+        .await
+        .unwrap();
+        drop(tx);
+        executor.run(rx).await;
+
+        let stats = executor.queue_service.count_by_status().await.unwrap();
+        assert_eq!(stats.pending, 1);
+    }
+
+    #[tokio::test]
+    async fn chat_reply_without_twitch_config_keeps_task_alive() {
+        let executor = setup_without_twitch().await;
+        let (tx, rx) = mpsc::channel(2);
+        tx.send(action_event(
+            ActionKind::ChatReply {
+                message_template: "hi {username}".to_string(),
+            },
+            "msg-6",
+            "1",
+            "viewer",
+        ))
+        .await
+        .unwrap();
+        tx.send(action_event(
+            ActionKind::EnqueueRoulette,
+            "msg-7",
+            "1",
+            "viewer",
+        ))
+        .await
+        .unwrap();
+        drop(tx);
+        executor.run(rx).await;
+
+        let stats = executor.queue_service.count_by_status().await.unwrap();
+        assert_eq!(stats.pending, 1, "task must survive without twitch config");
     }
 }

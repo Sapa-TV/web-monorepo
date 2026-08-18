@@ -1,10 +1,13 @@
 use std::sync::Arc;
 
+use crate::actions::repository::ActionRepository;
+use crate::actions::service::ActionService;
 use crate::admin::auth::AdminAuthService;
 use crate::admin::repository::AdminRepository;
 use crate::admin::service::AdminService;
 use crate::config::repository::ConfigRepository;
 use crate::config::store::ConfigStore;
+use crate::db::inmemory_actions::InMemoryActionRepository;
 use crate::db::inmemory_admin::InMemoryAdminRepository;
 use crate::db::inmemory_config::InMemoryConfigRepository;
 use crate::db::inmemory_platform::InMemoryPlatformRepository;
@@ -12,10 +15,12 @@ use crate::db::inmemory_platform_credential::InMemoryPlatformCredentialRepositor
 use crate::db::inmemory_queue::InMemoryQueueRepository;
 use crate::db::inmemory_rarity::InMemoryRarityRepository;
 use crate::db::inmemory_roulette_slots::InMemoryRouletteSlotRepository;
+use crate::db::inmemory_rules::InMemoryRuleRepository;
 use crate::db::inmemory_session::InMemorySessionRepository;
 use crate::db::inmemory_user::InMemoryUserRepository;
 use crate::error::RepositoryError;
 use crate::event::BroadcastEventPublisher;
+use crate::ingress::twitch_auth::TwitchAuthService;
 use crate::ingress::{EventIngress, spawn_logging_handler};
 use crate::platform::{
     PlatformCredentialRepository, PlatformCredentialService, PlatformRepository,
@@ -28,6 +33,8 @@ use crate::roulette::rarity::RarityRepository;
 use crate::roulette::rarity_service::RarityService;
 use crate::roulette::repository::RouletteSlotRepository;
 use crate::roulette::slot_service::RouletteSlotService;
+use crate::rules::repository::RuleRepository;
+use crate::rules::service::RuleService;
 use crate::session::repository::SessionRepository;
 use crate::session::service::SessionService;
 use crate::stream::StreamStatus;
@@ -35,7 +42,7 @@ use crate::user::repository::UserRepository;
 use crate::user::service::UserService;
 
 #[non_exhaustive]
-pub struct UniAppState<Q, R, U, P, S, A, Se, C, K>
+pub struct UniAppState<Q, R, U, P, S, A, Se, C, K, L, M>
 where
     Q: QueueRepository,
     R: RarityRepository,
@@ -46,6 +53,8 @@ where
     Se: SessionRepository,
     C: PlatformCredentialRepository,
     K: ConfigRepository,
+    L: RuleRepository,
+    M: ActionRepository,
 {
     pub slot_service: Arc<RouletteSlotService<Arc<S>>>,
     pub rarity_service: Arc<RarityService<Arc<R>>>,
@@ -59,9 +68,12 @@ where
     pub ingress: Arc<EventIngress>,
     pub admin_auth: Arc<AdminAuthService<C>>,
     pub credentials: Arc<PlatformCredentialService<C>>,
+    pub rule_service: Arc<RuleService<L, M>>,
+    pub action_service: Arc<ActionService<M>>,
+    pub twitch_api: Option<Arc<TwitchAuthService<C>>>,
 }
 
-impl<Q, R, U, P, S, A, Se, C, K> Clone for UniAppState<Q, R, U, P, S, A, Se, C, K>
+impl<Q, R, U, P, S, A, Se, C, K, L, M> Clone for UniAppState<Q, R, U, P, S, A, Se, C, K, L, M>
 where
     Q: QueueRepository,
     R: RarityRepository,
@@ -72,6 +84,8 @@ where
     Se: SessionRepository,
     C: PlatformCredentialRepository,
     K: ConfigRepository,
+    L: RuleRepository,
+    M: ActionRepository,
 {
     fn clone(&self) -> Self {
         Self {
@@ -87,6 +101,9 @@ where
             ingress: Arc::clone(&self.ingress),
             admin_auth: Arc::clone(&self.admin_auth),
             credentials: Arc::clone(&self.credentials),
+            rule_service: Arc::clone(&self.rule_service),
+            action_service: Arc::clone(&self.action_service),
+            twitch_api: self.twitch_api.clone(),
         }
     }
 }
@@ -101,6 +118,8 @@ pub type AppState = UniAppState<
     InMemorySessionRepository,
     InMemoryPlatformCredentialRepository,
     InMemoryConfigRepository,
+    InMemoryRuleRepository,
+    InMemoryActionRepository,
 >;
 
 pub type AppQueueService =
@@ -161,6 +180,8 @@ impl AppStateBuilder {
             .unwrap_or_else(|| Arc::new(InMemoryQueueRepository::new()));
         let admin_repo = Arc::new(InMemoryAdminRepository::new());
         let session_repo = Arc::new(InMemorySessionRepository::new());
+        let rule_repo = Arc::new(InMemoryRuleRepository::new());
+        let action_repo = Arc::new(InMemoryActionRepository::new());
         let event_publisher = BroadcastEventPublisher::new();
         let ingress = Arc::new(EventIngress::new());
         spawn_logging_handler(ingress.subscribe());
@@ -191,6 +212,16 @@ impl AppStateBuilder {
             Arc::clone(&credentials),
         ));
 
+        let action_service = Arc::new(ActionService::new(action_repo));
+        let rule_service = Arc::new(RuleService::new(rule_repo, Arc::clone(&action_service)));
+
+        let twitch_api = self.config.twitch().map(|twitch| {
+            Arc::new(TwitchAuthService::new(
+                Arc::new(twitch.clone()),
+                Arc::clone(&credentials),
+            ))
+        });
+
         Ok(AppState {
             slot_service,
             rarity_service,
@@ -204,6 +235,9 @@ impl AppStateBuilder {
             ingress,
             admin_auth,
             credentials,
+            rule_service,
+            action_service,
+            twitch_api,
         })
     }
 }

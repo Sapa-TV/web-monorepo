@@ -17,6 +17,7 @@ use backend::ingress::supervisor::IngressSupervisor;
 use backend::ingress::twitch::TwitchPlatformService;
 use backend::platform::{PlatformCredentialService, PlatformId};
 use backend::random::StandartRandomProvider;
+use backend::runtime;
 use backend::state::{AppQueueService, AppSessionService, AppState, AppStateBuilder};
 use backend::widget_api;
 use tokio::net::TcpListener;
@@ -142,6 +143,8 @@ fn start_background_tasks(state: &AppState) {
         Arc::clone(&state.session_service),
         Arc::clone(&state.config),
     ));
+
+    runtime::start_rule_pipeline(state);
 }
 
 async fn shutdown_signal() {
