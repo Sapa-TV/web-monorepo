@@ -81,24 +81,14 @@ where
     }
 
     async fn ensure_user(&self, event: &ActionEvent) -> Result<UserId, ExecutorError> {
-        let platform_name = event.source.platform.name();
-        if let Some(user) = self
+        Ok(self
             .user_service
-            .find_by_platform(platform_name, &event.ctx.user_id)
-            .await?
-        {
-            return Ok(user.id);
-        }
-        let user = self.user_service.create(&event.ctx.user_name).await?;
-        self.user_service
-            .link_platform(
-                user.id,
-                platform_name,
+            .ensure_user_by_platform(
+                event.source.platform.name(),
                 &event.ctx.user_id,
                 &event.ctx.user_name,
             )
-            .await?;
-        Ok(user.id)
+            .await?)
     }
 
     async fn send_chat_message(&self, message: &str) -> Result<(), ExecutorError> {

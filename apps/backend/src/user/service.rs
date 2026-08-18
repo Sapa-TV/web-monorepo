@@ -52,6 +52,24 @@ where
             .await?)
     }
 
+    pub async fn ensure_user_by_platform(
+        &self,
+        platform_name: &str,
+        platform_user_id: &str,
+        display_name: &str,
+    ) -> Result<UserId, UserServiceError> {
+        if let Some(user) = self
+            .find_by_platform(platform_name, platform_user_id)
+            .await?
+        {
+            return Ok(user.id);
+        }
+        let user = self.create(display_name).await?;
+        self.link_platform(user.id, platform_name, platform_user_id, display_name)
+            .await?;
+        Ok(user.id)
+    }
+
     pub async fn get_user(&self, user_id: UserId) -> Result<Option<User>, UserServiceError> {
         Ok(self.user_repo.get_by_id(user_id).await?)
     }
@@ -200,6 +218,49 @@ mod tests {
 
     async fn create_user(svc: &TestService, name: &str) -> User {
         svc.create(name).await.unwrap()
+    }
+
+    #[tokio::test]
+    async fn ensure_user_by_platform_creates_new() {
+        let svc = test_service().await;
+        let user_id = svc
+            .ensure_user_by_platform("twitch", "999", "New Viewer")
+            .await
+            .unwrap();
+        let user = svc.get_user(user_id).await.unwrap().unwrap();
+        assert_eq!(user.display_name, "New Viewer");
+        let found = svc
+            .find_by_platform("twitch", "999")
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(found.id, user_id);
+    }
+
+    #[tokio::test]
+    async fn ensure_user_by_platform_reuses_existing() {
+        let svc = test_service().await;
+        let first = svc
+            .ensure_user_by_platform("twitch", "999", "First")
+            .await
+            .unwrap();
+        let second = svc
+            .ensure_user_by_platform("twitch", "999", "First")
+            .await
+            .unwrap();
+        assert_eq!(first, second);
+        let user = svc.get_user(first).await.unwrap().unwrap();
+        assert_eq!(user.display_name, "First");
+    }
+
+    #[tokio::test]
+    async fn ensure_user_by_platform_unknown_platform() {
+        let svc = test_service().await;
+        let err = svc
+            .ensure_user_by_platform("unknown", "999", "Viewer")
+            .await
+            .unwrap_err();
+        assert!(matches!(err, UserServiceError::UnknownPlatform(_)));
     }
 
     #[tokio::test]
