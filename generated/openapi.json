@@ -63,6 +63,128 @@
         }
       }
     },
+    "/api/admin/actions": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "list_actions",
+        "responses": {
+          "200": {
+            "description": "List all actions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ActionResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "create_action",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Action created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/actions/{id}": {
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "update_action",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Action updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Action not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "delete_action",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Action removed"
+          },
+          "404": {
+            "description": "Action not found"
+          }
+        }
+      }
+    },
     "/api/admin/ingress/credentials": {
       "get": {
         "tags": [
@@ -93,6 +215,166 @@
           },
           "500": {
             "description": "Failed to clear credentials"
+          }
+        }
+      }
+    },
+    "/api/admin/rewards": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "list_rewards",
+        "responses": {
+          "200": {
+            "description": "List custom rewards from Twitch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RewardResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Twitch is not configured"
+          },
+          "401": {
+            "description": "No valid user token"
+          },
+          "502": {
+            "description": "Twitch API request failed"
+          }
+        }
+      }
+    },
+    "/api/admin/rules": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "list_rules",
+        "responses": {
+          "200": {
+            "description": "List all rules",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RuleResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "create_rule",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertRuleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Rule created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid conditions or action does not exist"
+          }
+        }
+      }
+    },
+    "/api/admin/rules/{id}": {
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "update_rule",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertRuleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Rule updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid conditions or action does not exist"
+          },
+          "404": {
+            "description": "Rule not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "delete_rule",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Rule removed"
+          },
+          "404": {
+            "description": "Rule not found"
           }
         }
       }
@@ -1281,6 +1563,107 @@
   },
   "components": {
     "schemas": {
+      "ActionId": {
+        "type": "integer",
+        "format": "int32",
+        "minimum": 0
+      },
+      "ActionIdParam": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "ActionKind": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "no_action"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "enqueue_roulette"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "message_template",
+              "type"
+            ],
+            "properties": {
+              "message_template": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "chat_reply"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "ActionResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "enabled",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ActionKind"
+          },
+          "name": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        }
+      },
       "AddAdminRequest": {
         "type": "object",
         "required": [
@@ -1448,6 +1831,32 @@
             "type": "string"
           }
         }
+      },
+      "MessageConditions": {
+        "type": "object",
+        "required": [
+          "matcher"
+        ],
+        "properties": {
+          "matcher": {
+            "$ref": "#/components/schemas/MessageMatcher"
+          },
+          "pattern": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "MessageMatcher": {
+        "type": "string",
+        "enum": [
+          "contains",
+          "starts_with",
+          "equals",
+          "ends_with"
+        ]
       },
       "NextResponse": {
         "type": "object",
@@ -1639,6 +2048,50 @@
           }
         }
       },
+      "RewardConditions": {
+        "type": "object",
+        "properties": {
+          "reward_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "RewardResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "cost",
+          "is_enabled",
+          "is_paused",
+          "used_in_rules"
+        ],
+        "properties": {
+          "cost": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "id": {
+            "type": "string"
+          },
+          "is_enabled": {
+            "type": "boolean"
+          },
+          "is_paused": {
+            "type": "boolean"
+          },
+          "title": {
+            "type": "string"
+          },
+          "used_in_rules": {
+            "type": "boolean"
+          }
+        }
+      },
       "RouletteSlot": {
         "type": "object",
         "required": [
@@ -1701,6 +2154,116 @@
             "minimum": 0
           }
         }
+      },
+      "RuleConditions": {
+        "oneOf": [
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MessageConditions"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "trigger"
+                ],
+                "properties": {
+                  "trigger": {
+                    "type": "string",
+                    "enum": [
+                      "chat_message"
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RewardConditions"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "trigger"
+                ],
+                "properties": {
+                  "trigger": {
+                    "type": "string",
+                    "enum": [
+                      "reward_redemption"
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "RuleIdParam": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "RuleResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "enabled",
+          "trigger",
+          "conditions",
+          "action_id",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "action_id": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "conditions": {
+            "$ref": "#/components/schemas/RuleConditions"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "name": {
+            "type": "string"
+          },
+          "trigger": {
+            "$ref": "#/components/schemas/RuleTrigger"
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        }
+      },
+      "RuleTrigger": {
+        "type": "string",
+        "description": "Auto-generated discriminant enum variants",
+        "enum": [
+          "chat_message",
+          "reward_redemption"
+        ]
       },
       "SessionResponse": {
         "type": "object",
@@ -1876,6 +2439,52 @@
         "properties": {
           "display_name": {
             "type": "string"
+          }
+        }
+      },
+      "UpsertActionRequest": {
+        "type": "object",
+        "required": [
+          "name",
+          "kind",
+          "enabled"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ActionKind"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "UpsertRuleRequest": {
+        "type": "object",
+        "required": [
+          "name",
+          "enabled",
+          "trigger",
+          "conditions",
+          "action_id"
+        ],
+        "properties": {
+          "action_id": {
+            "$ref": "#/components/schemas/ActionId"
+          },
+          "conditions": {
+            "$ref": "#/components/schemas/RuleConditions"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "trigger": {
+            "$ref": "#/components/schemas/RuleTrigger"
           }
         }
       },

@@ -14,7 +14,7 @@ ChatReply без twitch → ошибка в warn, задача живёт).
 `rule_service`, `action_service`, `twitch_api` (нужны админ-API, шаг 13).
 Шаг 13: `api/admin/{rules,actions,rewards}.rs` + OpenAPI-доки (замечание: тест списка наград —
 только ветки ошибок 400/401, т.к. для успешного `get_custom_rewards` нужен мок HTTP-клиента).
-Осталось: 14-15.
+Осталось: 14-16.
 
 ## Контекст (текущее состояние)
 
@@ -222,8 +222,19 @@ struct ActionEvent {
   (`npm run codegen:rest`).
 - Тесты: CRUD, права (root/admin), валидация, список наград (мок).
 
-### 14. Frontend: `admin/panel/+page.svelte`
+### 14. Регенерация OpenAPI + api-client (после шага 13)
 
+- Порядок изменён по просьбе: сначала генерим клиент на **уже готовое** API, чтобы фронт
+  (шаг 15) писался под актуальный контракт и его можно было сразу проверить.
+- `just gen-client` (`cargo run -p gen-openapi` → `apps/backend/generated/openapi.json`,
+  затем `swagger-typescript-api` в `packages/api-client`) — новые секции admin rules/actions/
+  rewards попадают в `openapi.json` и в клиент.
+- Проверка: `apps/frontend` собирается (`npm run check`) с обновлённым клиентом.
+
+### 15. Frontend: `admin/panel/+page.svelte`
+
+- Писать против актуального сгенерированного клиента (шаг 14): новые
+  `AdminActionsController` / `AdminRulesController` / `AdminRewardsController`.
 - Секция «Действия» (root-only): список (имя, тип, параметры, enabled), форма создания/
   редактирования по типу (для ChatReply — шаблон сообщения; EnqueueRoulette — без параметров).
 - Секция «Правила» (root-only): список (имя, триггер, условия, действие, enabled), форма
@@ -231,12 +242,12 @@ struct ActionEvent {
   `GET /admin/rewards` для редимпшена; выбор действия из `/admin/actions`).
 - delete с `confirm`, тосты — по паттернам существующих карточек.
 
-### 15. Проверка (перед сдачей)
+### 16. Проверка (перед сдачей)
 
 - Backend: `cargo nextest run --package backend`, `cargo clippy --all-targets`,
   `cargo fmt --check`.
 - Frontend: `npm run check`, `npm run lint`, `npm run test:unit -- --run` (в `apps/frontend`).
-- OpenAPI/api-client регенерация не ломает сборку.
+- OpenAPI/api-client регенерация (шаг 14) не ломает сборку.
 
 ---
 

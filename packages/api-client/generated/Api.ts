@@ -11,16 +11,21 @@
  */
 
 import {
+  ActionResponse,
   AddAdminRequest,
   AdminResponse,
   CreateSessionRequest,
   IngressCredentialsResponse,
+  RewardResponse,
+  RuleResponse,
   SessionResponse,
   StreamStatusResponse,
   TwitchAuthCallbackResponse,
   TwitchAuthStartResponse,
   TwitchLoginCallbackResponse,
   TwitchLoginStartResponse,
+  UpsertActionRequest,
+  UpsertRuleRequest,
   WidgetAccessKeyResponse,
 } from "./data-contracts";
 import { ContentType, HttpClient, RequestParams } from "./http-client";
@@ -62,6 +67,69 @@ export class Api<
    * No description
    *
    * @tags admin
+   * @name ListActions
+   * @request GET:/api/admin/actions
+   */
+  listActions = (params: RequestParams = {}) =>
+    this.request<ActionResponse[], any>({
+      path: `/api/admin/actions`,
+      method: "GET",
+      format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags admin
+   * @name CreateAction
+   * @request POST:/api/admin/actions
+   */
+  createAction = (data: UpsertActionRequest, params: RequestParams = {}) =>
+    this.request<ActionResponse, any>({
+      path: `/api/admin/actions`,
+      method: "POST",
+      body: data,
+      type: ContentType.Json,
+      format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags admin
+   * @name UpdateAction
+   * @request PUT:/api/admin/actions/{id}
+   */
+  updateAction = (
+    id: number,
+    data: UpsertActionRequest,
+    params: RequestParams = {},
+  ) =>
+    this.request<ActionResponse, void>({
+      path: `/api/admin/actions/${id}`,
+      method: "PUT",
+      body: data,
+      type: ContentType.Json,
+      format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags admin
+   * @name DeleteAction
+   * @request DELETE:/api/admin/actions/{id}
+   */
+  deleteAction = (id: number, params: RequestParams = {}) =>
+    this.request<void, void>({
+      path: `/api/admin/actions/${id}`,
+      method: "DELETE",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags admin
    * @name GetIngressCredentials
    * @request GET:/api/admin/ingress/credentials
    */
@@ -82,6 +150,83 @@ export class Api<
   revokeIngressCredentials = (params: RequestParams = {}) =>
     this.request<void, void>({
       path: `/api/admin/ingress/credentials`,
+      method: "DELETE",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags admin
+   * @name ListRewards
+   * @request GET:/api/admin/rewards
+   */
+  listRewards = (params: RequestParams = {}) =>
+    this.request<RewardResponse[], void>({
+      path: `/api/admin/rewards`,
+      method: "GET",
+      format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags admin
+   * @name ListRules
+   * @request GET:/api/admin/rules
+   */
+  listRules = (params: RequestParams = {}) =>
+    this.request<RuleResponse[], any>({
+      path: `/api/admin/rules`,
+      method: "GET",
+      format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags admin
+   * @name CreateRule
+   * @request POST:/api/admin/rules
+   */
+  createRule = (data: UpsertRuleRequest, params: RequestParams = {}) =>
+    this.request<RuleResponse, void>({
+      path: `/api/admin/rules`,
+      method: "POST",
+      body: data,
+      type: ContentType.Json,
+      format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags admin
+   * @name UpdateRule
+   * @request PUT:/api/admin/rules/{id}
+   */
+  updateRule = (
+    id: number,
+    data: UpsertRuleRequest,
+    params: RequestParams = {},
+  ) =>
+    this.request<RuleResponse, void>({
+      path: `/api/admin/rules/${id}`,
+      method: "PUT",
+      body: data,
+      type: ContentType.Json,
+      format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags admin
+   * @name DeleteRule
+   * @request DELETE:/api/admin/rules/{id}
+   */
+  deleteRule = (id: number, params: RequestParams = {}) =>
+    this.request<void, void>({
+      path: `/api/admin/rules/${id}`,
       method: "DELETE",
       ...params,
     });
