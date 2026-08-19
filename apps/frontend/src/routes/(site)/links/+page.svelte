@@ -1,3 +1,7 @@
+<script lang="ts">
+	import { resolve } from "$app/paths";
+</script>
+
 <svelte:head>
 	<title>Sapa TV | Каталог</title>
 </svelte:head>
@@ -10,15 +14,11 @@
 			<span class="line"></span>
 		</div>
 		<h1 class="catalog-title">Ссылки на страницы</h1>
-		<p class="hint">
-			Просто список. Для виджета и док-панели нужен ключ: добавь
-			<code>?widget_access_key=КЛЮЧ</code>.
-		</p>
 	</header>
 
 	<ul class="list">
 		<li class="item">
-			<a class="card" href="/">
+			<a class="card" href={resolve("")}>
 				<span class="card__idx" aria-hidden="true">01</span>
 				<span class="card__body">
 					<span class="name">Главная</span>
@@ -27,7 +27,7 @@
 			</a>
 		</li>
 		<li class="item">
-			<a class="card" href="/stream">
+			<a class="card" href={resolve("stream")}>
 				<span class="card__idx" aria-hidden="true">02</span>
 				<span class="card__body">
 					<span class="name">Трансляция</span>
@@ -37,23 +37,13 @@
 			</a>
 		</li>
 		<li class="item">
-			<a class="card" href="/roulette?widget_access_key=КЛЮЧ">
+			<a class="card" href={resolve("admin/panel")}>
 				<span class="card__idx" aria-hidden="true">03</span>
 				<span class="card__body">
-					<span class="name">Виджет «Рулетка»</span>
-					<span class="url">/roulette?widget_access_key=КЛЮЧ</span>
+					<span class="name">Админ-панель</span>
+					<span class="url">/admin/panel</span>
 				</span>
-				<span class="card__chip" aria-hidden="true">для OBS</span>
-			</a>
-		</li>
-		<li class="item">
-			<a class="card" href="/dock?widget_access_key=КЛЮЧ">
-				<span class="card__idx" aria-hidden="true">04</span>
-				<span class="card__body">
-					<span class="name">Док-панель</span>
-					<span class="url">/dock?widget_access_key=КЛЮЧ</span>
-				</span>
-				<span class="card__chip" aria-hidden="true">для OBS</span>
+				<span class="card__chip" aria-hidden="true">ключи виджетов</span>
 			</a>
 		</li>
 	</ul>
@@ -100,22 +90,6 @@
 		font-weight: 900;
 		letter-spacing: -0.03em;
 		color: var(--on-background);
-	}
-
-	.hint {
-		margin: 0;
-		color: var(--on-surface-variant);
-		font-size: 0.95rem;
-		line-height: 1.6;
-		max-width: 34rem;
-	}
-
-	.hint code {
-		background: var(--surface-container-low);
-		border: 1px solid var(--outline-variant);
-		padding: 1px 6px;
-		border-radius: 6px;
-		font-size: 0.82em;
 	}
 
 	.list {

@@ -2,6 +2,7 @@
 	import { guardAdmin, GuardStatus, logout } from "#lib/admin/session";
 	import { api } from "#lib/api";
 	import { goto } from "$app/navigation";
+	import { resolve } from "$app/paths";
 	import { HttpError, type AdminResponse } from "@sapa-tv-ru/api-client";
 	import { onDestroy, onMount } from "svelte";
 	import IconCheck from "~icons/lucide/check";
@@ -78,7 +79,7 @@
 	}
 
 	function linkFor(path: string) {
-		return `${location.origin}${path}?widget_access_key=${encodeURIComponent(accessKey)}`;
+		return `${location.origin}${resolve("").replace(/\/$/, "")}${path}?widget_access_key=${encodeURIComponent(accessKey)}`;
 	}
 
 	async function copyLink(target: "dock" | "widget", path: string) {
@@ -226,18 +227,18 @@
 
 	async function handleLogout() {
 		await logout();
-		await goto("/admin/login", { replaceState: true });
+		await goto(resolve("admin/login"), { replaceState: true });
 	}
 
 	onMount(async () => {
 		try {
 			const guard = await guardAdmin();
 			if (guard.status === GuardStatus.NotLoggedIn) {
-				await goto("/admin/login", { replaceState: true });
+				await goto(resolve("admin/login"), { replaceState: true });
 				return;
 			}
 			if (guard.status === GuardStatus.NotAdmin) {
-				await goto("/", { replaceState: true });
+				await goto(resolve(""), { replaceState: true });
 				return;
 			}
 			isRoot = guard.isRoot;

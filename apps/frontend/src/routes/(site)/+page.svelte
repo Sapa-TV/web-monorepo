@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { asset, resolve } from "$app/paths";
 	import IconPlay from "~icons/lucide/play";
 	import IconTwitch from "~icons/lucide/twitch";
 	import IconYoutube from "~icons/lucide/youtube";
@@ -14,7 +15,7 @@
 		<div class="stack">
 			<div class="crt" aria-hidden="true">
 				<div class="crt__mask">
-					<img class="crt__cast" src="/avatar.png" alt="" />
+					<img class="crt__cast" src={asset("avatar.png")} alt="" />
 					<span class="crt__scan"></span>
 				</div>
 				<div class="crt__foot">
@@ -31,7 +32,7 @@
 		<p class="tagline">Скоро открытие.</p>
 
 		<div class="shelf" aria-label="Выбери площадку">
-			<a class="tape tape--stream" href="/stream">
+			<a class="tape tape--stream" href={resolve("stream")}>
 				<span class="tape__ink">
 					<IconPlay aria-hidden="true" />
 					Смотреть стрим

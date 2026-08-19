@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from "$app/state";
+	import { resolve } from "$app/paths";
 	import IconMoon from "~icons/lucide/moon";
 	import IconSun from "~icons/lucide/sun";
 	import DonateToggle from "./DonateToggle.svelte";
@@ -27,7 +28,7 @@
 
 <nav class="site-nav" aria-label="Навигация по сайту">
 	<div class="site-nav-inner">
-		<a class="brand" href="/">
+		<a class="brand" href={resolve("")}>
 			<span class="brand-badge" aria-hidden="true">ST</span>
 			<span>Sapa TV</span>
 			{#if isStream}

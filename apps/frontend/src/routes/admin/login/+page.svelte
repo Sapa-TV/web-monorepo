@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from "svelte";
 	import { goto } from "$app/navigation";
+	import { resolve } from "$app/paths";
 	import IconTwitch from "~icons/lucide/twitch";
 	import {
 		completeLogin,
@@ -21,8 +22,9 @@
 	}
 
 	async function go(where: "panel" | "home" | null) {
-		if (where === "panel") await goto("/admin/panel", { replaceState: true });
-		else if (where === "home") await goto("/", { replaceState: true });
+		if (where === "panel")
+			await goto(resolve("admin/panel"), { replaceState: true });
+		else if (where === "home") await goto(resolve(""), { replaceState: true });
 	}
 
 	async function handleTwitchLogin() {

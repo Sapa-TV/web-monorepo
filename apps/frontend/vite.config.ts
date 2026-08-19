@@ -6,6 +6,14 @@ import Icons from "unplugin-icons/vite";
 
 const backendTarget = process.env.VITE_BACKEND_URL ?? "http://localhost:3000";
 
+function normalizeBase(input: string): string {
+	if (!input) return "";
+	let base = input;
+	if (!base.startsWith("/")) base = `/${base}`;
+	base = base.replace(/\/+$/, "");
+	return base === "/" ? "" : base;
+}
+
 export default defineConfig({
 	server: {
 		proxy: {
@@ -22,6 +30,10 @@ export default defineConfig({
 				experimental: { async: true },
 			},
 			adapter: adapter(),
+			paths: {
+				base: normalizeBase(process.env.VITE_BASE_PATH ?? ""),
+				relative: false,
+			},
 			experimental: { remoteFunctions: true },
 		}),
 		Icons({

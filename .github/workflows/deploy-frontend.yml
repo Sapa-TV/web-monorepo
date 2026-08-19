@@ -10,6 +10,11 @@ on:
       - 'pnpm-workspace.yaml'
       - 'package.json'
   workflow_dispatch:
+    inputs:
+      base_path:
+        description: 'Base path, e.g. /myapp. Empty for domain root.'
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -31,6 +36,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Build
+        env:
+          VITE_BASE_PATH: ${{ inputs.base_path || vars.FRONTEND_BASE_PATH || '' }}
         run: pnpm --filter frontend build
       - uses: actions/upload-artifact@v4
         with:
