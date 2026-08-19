@@ -1,4 +1,7 @@
+pub mod actions;
 pub mod ingress;
+pub mod rewards;
+pub mod rules;
 pub mod twitch;
 
 use axum::Json;
@@ -155,6 +158,9 @@ pub fn session_router() -> axum::Router<AppState> {
     axum::Router::new()
         .route("/admin", get(list_admins))
         .route("/admin/widget-access-key", get(get_widget_access_key))
+        .merge(actions::session_router())
+        .merge(rules::session_router())
+        .merge(rewards::session_router())
 }
 
 pub fn root_router() -> axum::Router<AppState> {
@@ -165,10 +171,12 @@ pub fn root_router() -> axum::Router<AppState> {
         .route("/admin/widget-access-key", post(rotate_widget_access_key))
         .merge(twitch::root_router())
         .merge(ingress::root_router())
+        .merge(actions::root_router())
+        .merge(rules::root_router())
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use std::sync::Arc;
 
     use axum::body::Body;
@@ -178,48 +186,13 @@ mod tests {
     use serde_json::Value;
     use tower::ServiceExt;
 
-    use crate::api::auth::{LOGIN_COOKIE, SESSION_COOKIE};
+    use crate::api::auth::SESSION_COOKIE;
     use crate::config::repository::ConfigRepository;
     use crate::db::inmemory_config::InMemoryConfigRepository;
     use crate::db::inmemory_queue::InMemoryQueueRepository;
-    use crate::state::AppState;
-    use crate::test_fixtures::{api_path, test_router, test_state, test_state_with_data};
-
-    async fn session_cookie(state: &AppState, twitch_id: &str) -> String {
-        let app = test_router(state.clone());
-        let ticket = state
-            .session_service
-            .create_login_ticket(twitch_id, Some("viewer"))
-            .await
-            .unwrap()
-            .ticket
-            .as_str()
-            .to_string();
-
-        let response = app
-            .oneshot(
-                Request::builder()
-                    .method("POST")
-                    .uri(api_path("/sessions"))
-                    .header(header::CONTENT_TYPE, "application/json")
-                    .header(header::COOKIE, format!("{LOGIN_COOKIE}={ticket}"))
-                    .body(Body::from(format!(r#"{{"ticket":"{ticket}"}}"#)))
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(response.status(), StatusCode::CREATED);
-        response
-            .headers()
-            .get(header::SET_COOKIE)
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .split(';')
-            .next()
-            .unwrap()
-            .to_string()
-    }
+    use crate::test_fixtures::{
+        api_path, session_cookie, test_router, test_state, test_state_with_data,
+    };
 
     #[tokio::test]
     async fn admin_routes_require_session() {

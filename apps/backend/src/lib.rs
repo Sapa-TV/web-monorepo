@@ -46,6 +46,9 @@ impl Modify for MergeSubdocs {
         main.merge(api::stream::StreamApiDoc::openapi());
         main.merge(api::admin::twitch::AdminTwitchApiDoc::openapi());
         main.merge(api::admin::ingress::AdminIngressApiDoc::openapi());
+        main.merge(api::admin::actions::AdminActionsApiDoc::openapi());
+        main.merge(api::admin::rules::AdminRulesApiDoc::openapi());
+        main.merge(api::admin::rewards::AdminRewardsApiDoc::openapi());
         main.merge(api::admin::AdminApiDoc::openapi());
         main.merge(api::session::SessionApiDoc::openapi());
         *openapi = openapi.clone().nest("/api", main);

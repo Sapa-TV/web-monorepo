@@ -4,7 +4,7 @@
 
 Дата: 2026-08-18 (ред. 3)
 
-Прогресс: ✅ шаги 1-12 (шаг 6 выполнен вместе с шагом 5 — типы ошибок нужны сервисам;
+Прогресс: ✅ шаги 1-13 (шаг 6 выполнен вместе с шагом 5 — типы ошибок нужны сервисам;
 `ensure_user_by_platform` вынесен в `UserService` на шаге 10, исполнитель переключён на него;
 в шаге 12 «убрать привязку ворка к twitch» — движок и исполнитель запускаются всегда,
 twitch в исполнителе опционален: `Option<Arc<TwitchAuthService<C>>>` + `Option<Arc<TwitchConfig>>`,
@@ -12,7 +12,9 @@ ChatReply без twitch → ошибка в warn, задача живёт).
 Составление пайплайна вынесено в фабрику `runtime.rs::start_rule_pipeline(state)` —
 канал шины B и `ActionExecutor` создаются там (не в `UniAppState`); в стейте остаются только
 `rule_service`, `action_service`, `twitch_api` (нужны админ-API, шаг 13).
-Осталось: 13-15.
+Шаг 13: `api/admin/{rules,actions,rewards}.rs` + OpenAPI-доки (замечание: тест списка наград —
+только ветки ошибок 400/401, т.к. для успешного `get_custom_rewards` нужен мок HTTP-клиента).
+Осталось: 14-15.
 
 ## Контекст (текущее состояние)
 
@@ -105,17 +107,20 @@ struct ActionEvent {
 ## Шаги реализации
 
 ### 1. Автодискриминант триггера
+
 - `Cargo.toml`: добавить `strum` (derive-фича) в workspace/backend.
 - `ingress/event.rs`: `#[derive(EnumDiscriminants)]` на `PlatformEventPayload`;
   ре-экспорт `RuleTrigger = PlatformEventPayloadDiscriminants` (переместить в `rules/rule.rs`).
 - Тесты: `payload.discriminant()` возвращает ожидаемый триггер.
 
 ### 2. Домен `rules/rule.rs`
+
 - `RuleId(u32)` newtype, `Rule`, `RuleConditions`, `MessageConditions`, `MessageMatcher`,
   `RewardConditions`.
 - serde-таггированные enum'ы; unit-тесты на раундтрип и соответствие вариант/условия.
 
 ### 3. Домен `actions/action.rs`
+
 - `ActionId(u32)` newtype, `Action`, `ActionKind` (без `EmitEvent`).
 - `EventContext` — выжимка из payload (`user_name`, `text` / `reward_title`,
   `reward_cost`, `user_input`, `user_id`).
@@ -124,6 +129,7 @@ struct ActionEvent {
 - Тесты: рендер известных ключей, неизвестный ключ → остаётся как есть.
 
 ### 4. Репозитории + in-memory
+
 - `rules/repository.rs`: trait `RuleRepository` (`create/get/list/update/delete`, паттерн
   `AdminRepository`); `db/inmemory_rules.rs`: `Mutex<Vec<Rule>>`, авто-инкремент id, тесты.
 - `actions/repository.rs`: trait `ActionRepository` (аналогично); `db/inmemory_actions.rs`,
@@ -131,6 +137,7 @@ struct ActionEvent {
 - Ошибки дублей — существующий `RepositoryError::Conflict`.
 
 ### 5. Сервисы
+
 - `rules/service.rs`: `RuleService<R>` — CRUD + валидация (для `StartsWith|Equals|EndsWith`
   `pattern` обязателен; `action_id` должен существовать в ActionService) +
   `subscribe_lifecycle()` через `watch` (паттерн `PlatformCredentialService`,
@@ -139,10 +146,12 @@ struct ActionEvent {
 - Тесты: валидация, lifecycle-уведомления, кэш.
 
 ### 6. Ошибки
+
 - `error/rules.rs`: `RuleServiceError` → StatusCode (400/404/409).
 - `error/actions.rs`: `ActionServiceError` → StatusCode (аналогично).
 
 ### 7. Шина B: канал `ActionEvent` + сборка `ActionEvent`
+
 - `actions/event.rs`: тип `ActionEvent`, конструктор `ActionEvent::from_action(action, source)`
   из `PlatformEvent` + `Action` (формирует `ctx` из `payload` через
   `From<&PlatformEventPayload> for EventContext`).
@@ -151,6 +160,7 @@ struct ActionEvent {
 - Тесты: сборка `ActionEvent` из chat/reward события, раундтрип через канал.
 
 ### 8. Исполнитель: `actions/executor.rs`
+
 - `ActionExecutor` — терминальный консьюмер шины B: `run(rx: mpsc::Receiver<ActionEvent>)`
   фоновая таска. На каждый `ActionEvent` — исчерпывающий `match` по `ActionKind`
   (новый вариант не скомпилируется без ветки). Пока статично (без сворачивания в сервис),
@@ -169,6 +179,7 @@ struct ActionEvent {
   вариант (chat-отправка через мок).
 
 ### 9. Движок: `rules/engine.rs`
+
 - `RuleEngine::run(rx: broadcast::Receiver<Arc<PlatformEvent>>, tx: mpsc::Sender<ActionEvent>)`
   — фоновая таска: подписка на шину A + lifecycle правил/экшенов (кэш перезагружается при
   изменении); на событие: `trigger == payload.discriminant()` и `rule.enabled` и
@@ -177,16 +188,19 @@ struct ActionEvent {
   матчеры, reload после изменения, движок читает только шину A (не свой выход).
 
 ### 10. `UserService::ensure_user_by_platform` (`user/service.rs`)
+
 - Helper: `find_by_platform("twitch", id)` → иначе `create(display_name)` + `link_platform`;
   возвращает `UserId`. Тесты: существующий/новый пользователь.
 - Переключить `ActionExecutor::ensure_user` на этот метод (сейчас логика инлайн в
   `actions/executor.rs`).
 
 ### 11. Scope: `ingress/twitch_auth.rs`
+
 - В `INGRESS_SCOPES` добавить `Scope::UserWriteChat`.
 - В плане релиза — памятка «стримеру пережать Авторизовать».
 
 ### 12. Wiring: `state.rs` + `main.rs`
+
 - `UniAppState`: тип-параметры `L: RuleRepository`, `M: ActionRepository`; поля
   `rule_service`, `action_service`, `action_executor`, `twitch_api: Arc<TwitchAuthService<C>>`.
   `AppStateBuilder::build` создаёт репо/сервисы и канал шины B (`mpsc`, ёмкость 256);
@@ -194,7 +208,8 @@ struct ActionEvent {
 - `main.rs::start_background_tasks`: `tokio::spawn(rule_engine.run(subscribe(), tx))` и
   `tokio::spawn(action_executor.run(rx))`.
 
-### 13. Admin API
+### 13. Admin API ✅
+
 - `api/admin/rules.rs`: `GET /admin/rules` (сессия), `POST|PUT|DELETE /admin/rules[/{id}]`
   (root), DTO `RuleResponse`/`UpsertRuleRequest`.
 - `api/admin/actions.rs`: `GET|POST|PUT|DELETE /admin/actions[/{id}]` (аналогично), DTO
@@ -208,6 +223,7 @@ struct ActionEvent {
 - Тесты: CRUD, права (root/admin), валидация, список наград (мок).
 
 ### 14. Frontend: `admin/panel/+page.svelte`
+
 - Секция «Действия» (root-only): список (имя, тип, параметры, enabled), форма создания/
   редактирования по типу (для ChatReply — шаблон сообщения; EnqueueRoulette — без параметров).
 - Секция «Правила» (root-only): список (имя, триггер, условия, действие, enabled), форма
@@ -216,6 +232,7 @@ struct ActionEvent {
 - delete с `confirm`, тосты — по паттернам существующих карточек.
 
 ### 15. Проверка (перед сдачей)
+
 - Backend: `cargo nextest run --package backend`, `cargo clippy --all-targets`,
   `cargo fmt --check`.
 - Frontend: `npm run check`, `npm run lint`, `npm run test:unit -- --run` (в `apps/frontend`).

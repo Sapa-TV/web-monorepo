@@ -12,6 +12,10 @@ impl ActionId {
     pub(crate) const fn new(id: u32) -> Self {
         Self(id)
     }
+
+    pub const fn get(self) -> u32 {
+        self.0
+    }
 }
 
 impl Display for ActionId {
@@ -31,7 +35,7 @@ pub struct Action {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
 #[serde(tag = "type", rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum ActionKind {

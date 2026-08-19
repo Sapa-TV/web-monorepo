@@ -15,6 +15,10 @@ impl RuleId {
     pub(crate) const fn new(id: u32) -> Self {
         Self(id)
     }
+
+    pub const fn get(self) -> u32 {
+        self.0
+    }
 }
 
 impl Display for RuleId {
@@ -36,7 +40,7 @@ pub struct Rule {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
 #[serde(tag = "trigger", rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum RuleConditions {
@@ -44,7 +48,7 @@ pub enum RuleConditions {
     RewardRedemption(RewardConditions),
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
 #[non_exhaustive]
 pub struct MessageConditions {
     pub matcher: MessageMatcher,
@@ -61,10 +65,21 @@ pub enum MessageMatcher {
     EndsWith,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
 #[non_exhaustive]
 pub struct RewardConditions {
     pub reward_id: Option<String>,
+}
+
+impl Rule {
+    pub fn referenced_reward_id(&self) -> Option<&str> {
+        match &self.conditions {
+            RuleConditions::RewardRedemption(RewardConditions {
+                reward_id: Some(id),
+            }) => Some(id),
+            _ => None,
+        }
+    }
 }
 
 #[cfg(test)]

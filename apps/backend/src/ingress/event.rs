@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use strum::EnumDiscriminants;
+use utoipa::ToSchema;
 
 use crate::platform::PlatformId;
 
@@ -64,7 +65,10 @@ impl PlatformEvent {
 
 #[derive(Debug, Clone, EnumDiscriminants)]
 #[non_exhaustive]
-#[strum_discriminants(derive(Serialize, Deserialize), serde(rename_all = "snake_case"))]
+#[strum_discriminants(
+    derive(Serialize, Deserialize, ToSchema),
+    serde(rename_all = "snake_case")
+)]
 #[strum_discriminants(name(RuleTrigger))]
 pub enum PlatformEventPayload {
     ChatMessage(ChatMessage),
