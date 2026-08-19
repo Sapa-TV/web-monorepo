@@ -48,7 +48,7 @@ pub async fn list_rewards(
     let ids = Collection::from(&[][..] as &[RewardId]);
     let rewards = twitch
         .helix()
-        .get_custom_rewards(broadcaster_id, true, &ids, &token)
+        .get_custom_rewards(broadcaster_id, false, &ids, &token)
         .await
         .map_err(|_| StatusCode::BAD_GATEWAY)?;
     let used = state
