@@ -1,8 +1,38 @@
 # Fix: получение Twitch credentials на /admin/panel
 
-Статус: **запланировано / не начато**. Запись для реализации.
+Статус: **реализовано**. Ручной e2e (Шаг 8) выполнен пользователем.
 
-Дата: 2026-08-16
+Дата: 2026-08-16 (ред. 2: реализация завершена, перенесено в архив)
+
+Прогресс: ✅ все шаги 1-7, ✅ Шаг 8 (ручной e2e).
+
+## Отклонения от плана
+
+1. **Шаг 2: тест «`start()` → `NotConfigured` если `credentials_redirect_uri = None`» не применим.**
+   Поле сделано обязательным (fail-fast в `build`), поэтому `None` в конфиге невозможен по построению.
+   Покрытие этого сценария сохранено через `start_requires_twitch_config` (config = `None`).
+2. **Шаг 4: `completeCredsAuth` использует raw `apiFetch`, а не `api.twitchAuthCallback`.**
+   Генерённый метод (`packages/api-client/generated/Api.ts:254-264`) объявляет параметры
+   `code`/`state`, но не подставляет их в запрос (путь/query собраны статично) — реальных
+   query-параметров он не передаёт. Прямой `apiFetch` с закодированным query корректен.
+3. **Шаг 5: страница-колбэк не переиспользует `.btn--twitch`** — в ней кнопок нет, только статус
+   и ошибка; стили логин-страницы (токены, карточка) переиспользованы.
+4. **Шаг 6: попап не закрывается при ошибке** — `win?.close()` вызывается только если упал
+   `startTwitchAuth()`, а не на ошибках поллинга (по плану ошибки поллинга показываются на панели,
+   попап остаётся открытым — ок).
+
+Затронутые файлы (актуальные пути):
+
+- `apps/backend/src/admin/auth.rs`
+- `apps/backend/src/config/twitch.rs`
+- `apps/backend/src/config/store.rs`, `apps/backend/src/ingress/twitch_auth.rs`,
+  `apps/backend/src/config/static_config.rs`, `apps/backend/src/api/admin/rewards.rs`,
+  `apps/backend/src/actions/executor.rs` — литералы `TwitchConfig` в тестах
+- `apps/backend/src/main.rs` — лог «twitch config ready»
+- `apps/frontend/src/lib/admin/creds.ts`, `apps/frontend/src/lib/admin/creds.test.ts`
+- `apps/frontend/src/routes/admin/creds/callback/+page.svelte`
+- `apps/frontend/src/routes/admin/panel/+page.svelte`
+- `.env.example`, `.env.sops`
 
 ## Контекст (текущее состояние)
 

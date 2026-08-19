@@ -257,17 +257,3 @@ struct ActionEvent {
   `cargo fmt --check`.
 - Frontend: `npm run check`, `npm run lint`, `npm run test:unit -- --run` (в `apps/frontend`).
 - OpenAPI/api-client регенерация (шаг 14) не ломает сборку.
-
----
-
-## Беклог (после MVP)
-
-- Создание наград на Twitch через API (`POST /helix/channel_points/custom_rewards`),
-  требует `channel:manage:redemptions`.
-- Автофулфилл редимпшенов (`PATCH .../custom_rewards/redemptions`).
-- Событийный поток наружу (WS/оверлей) — спроектировать отдельно от шины B, когда
-  понадобится (напр., как новые экшены с собственной шиной; сейчас виджет уже читает
-  очередь через `/wapi/queue`).
-- Новые матчеры/условия, кулдауны и лимиты на юзера, порог стоимости.
-- Плагины экшенов без кода (скрипты/UI-редактор).
-- Персистенс правил, действий и остальных данных на диск (JSON-репозиторий).
