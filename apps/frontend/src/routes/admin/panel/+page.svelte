@@ -11,6 +11,8 @@
 	import IconTrash2 from "~icons/lucide/trash-2";
 	import IconTwitch from "~icons/lucide/twitch";
 	import IconUserPlus from "~icons/lucide/user-plus";
+	import ActionsSection from "./ActionsSection.svelte";
+	import RulesSection from "./RulesSection.svelte";
 
 	let isRoot = $state(false);
 	let loaded = $state(false);
@@ -423,6 +425,9 @@
 				{/if}
 			</div>
 		</section>
+
+		<ActionsSection />
+		<RulesSection />
 	{/if}
 {:else}
 	<p class="loading">Проверка доступа...</p>

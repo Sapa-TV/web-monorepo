@@ -1,10 +1,10 @@
 # План: движок правил «событие → действие» (награды/чат → очередь рулетки)
 
-Статус: **план, ожидает подтверждения**. Реализация начнётся только после команды.
+Статус: **реализовано** (шаги 1-16). Осталось по желанию: беклог, раздел «Беклог (после MVP)».
 
 Дата: 2026-08-18 (ред. 3)
 
-Прогресс: ✅ шаги 1-13 (шаг 6 выполнен вместе с шагом 5 — типы ошибок нужны сервисам;
+Прогресс: ✅ шаги 1-16 (шаг 6 выполнен вместе с шагом 5 — типы ошибок нужны сервисам;
 `ensure_user_by_platform` вынесен в `UserService` на шаге 10, исполнитель переключён на него;
 в шаге 12 «убрать привязку ворка к twitch» — движок и исполнитель запускаются всегда,
 twitch в исполнителе опционален: `Option<Arc<TwitchAuthService<C>>>` + `Option<Arc<TwitchConfig>>`,
@@ -14,7 +14,15 @@ ChatReply без twitch → ошибка в warn, задача живёт).
 `rule_service`, `action_service`, `twitch_api` (нужны админ-API, шаг 13).
 Шаг 13: `api/admin/{rules,actions,rewards}.rs` + OpenAPI-доки (замечание: тест списка наград —
 только ветки ошибок 400/401, т.к. для успешного `get_custom_rewards` нужен мок HTTP-клиента).
-Осталось: 14-16.
+Шаг 14: регенерация `generated/openapi.json` + `packages/api-client` через `just gen-client`;
+новые методы/типы в клиенте подтверждены, фронт собирается.
+Шаг 15: секции «Действия» и «Правила» вынесены в отдельные компоненты
+`admin/panel/{ActionsSection,RulesSection}.svelte` (страница не разрослась); формы/списки/
+delete/подсказки по паттернам панели; `npm run check`/`lint`/`test:unit` ✓.
+Шаг 16: финальные проверки — `cargo fmt --check`, `cargo clippy --all-targets`,
+`cargo nextest run --package backend` (257/257), `just lint` (ast-grep) ✓; фронт
+`check`/`lint`/`test:unit` ✓; сгенерированные `openapi.json`/api-client в репозитории
+трекингом и актуальны. Реализация плана завершена.
 
 ## Контекст (текущее состояние)
 
@@ -231,16 +239,17 @@ struct ActionEvent {
   rewards попадают в `openapi.json` и в клиент.
 - Проверка: `apps/frontend` собирается (`npm run check`) с обновлённым клиентом.
 
-### 15. Frontend: `admin/panel/+page.svelte`
+### 15. Frontend: `admin/panel/+page.svelte` ✅
 
-- Писать против актуального сгенерированного клиента (шаг 14): новые
-  `AdminActionsController` / `AdminRulesController` / `AdminRewardsController`.
-- Секция «Действия» (root-only): список (имя, тип, параметры, enabled), форма создания/
-  редактирования по типу (для ChatReply — шаблон сообщения; EnqueueRoulette — без параметров).
-- Секция «Правила» (root-only): список (имя, триггер, условия, действие, enabled), форма
-  (триггер → соответствующие условия: matcher+pattern для чата, reward из
-  `GET /admin/rewards` для редимпшена; выбор действия из `/admin/actions`).
-- delete с `confirm`, тосты — по паттернам существующих карточек.
+- Секции вынесены в отдельные компоненты `apps/frontend/src/routes/admin/panel/ActionsSection.svelte` и
+  `RulesSection.svelte` (страница панели одной секцией не разрослась); каждая секция
+  само-загружает свои данные, формы открываются inline, delete с `confirm`, подсказки-алерты.
+- Секция «Действия» (root-only): CRUD действий; тип в форме (NoAction/EnqueueRoulette/ChatReply),
+  для ChatReply — шаблон сообщения.
+- Секция «Правила» (root-only): CRUD правил; триггер → условия (matcher+pattern для чата,
+  награда из `GET /admin/rewards` для редимпшена — с пометкой «в правилах»); выбор действия
+  из `GET /admin/actions`; при открытии формы действия/награды перезагружаются свежими.
+- Проверки: `npm run check`, `npm run lint`, `npm run test:unit -- --run`.
 
 ### 16. Проверка (перед сдачей)
 
