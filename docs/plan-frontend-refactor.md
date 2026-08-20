@@ -98,6 +98,17 @@ src/routes/
      разрешены `transparent` и `currentcolor`;
    - применяется к любому `.svelte` (панель + ui-kit).
 
+3. **`props-inline-type`** — правило-конвенция (error) для `**/*.svelte` в UI-компонентах
+   (`packages/ui-kit/src/**`):
+   - типы props объявляются ТОЛЬКО как `interface Props { ... }` в `<script>`-блоке;
+   - деструктуризация строго в форме `let { ... }: Props = $props();`;
+   - запрещены inline-типы в `$props()` (сейчас: `let {...}: { ... } & Record<aria-...> = $props()`);
+   - запрещены `type`-алиасы в качестве типа props и выдуманные имена типа (`ButtonProps`,
+     `InputProps`, ...) — интерфейс всегда называется `Props`;
+   - интерфейс наружу не экспортируется (он внутри скоупа компонента);
+   - тип остатка (rest-пропсы типа `aria-*`, pass-through) выводится деструктуризацией,
+     а не явным пересечением `& Record<...>`.
+
 Размещение правил: единый источник — `packages/ui-kit/lint/rules/`.
 Подключается и в `apps/frontend/eslint.config.js`, и в `eslint.config.js` ui-kit
 (чтобы правило покрывало оба пакета). ui-kit получает свой `lint`-скрипт

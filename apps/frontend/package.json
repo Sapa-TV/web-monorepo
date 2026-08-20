@@ -51,6 +51,7 @@
 	},
 	"dependencies": {
 		"@sapa-tv-ru/api-client": "workspace:*",
+		"@sapa-tv-ru/ui-kit": "workspace:*",
 		"neverthrow": "^8.2.0"
 	}
 }

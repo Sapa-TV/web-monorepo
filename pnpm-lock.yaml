@@ -32,6 +32,9 @@ importers:
       '@sapa-tv-ru/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
+      '@sapa-tv-ru/ui-kit':
+        specifier: workspace:*
+        version: link:../../packages/ui-kit
       neverthrow:
         specifier: ^8.2.0
         version: 8.2.0
@@ -127,6 +130,42 @@ importers:
       swagger-typescript-api:
         specifier: ^13.12.6
         version: 13.12.6
+
+  packages/ui-kit:
+    devDependencies:
+      '@eslint/compat':
+        specifier: ^2.1.0
+        version: 2.1.0(eslint@10.8.0(jiti@2.7.0)(supports-color@10.2.2))
+      '@eslint/js':
+        specifier: ^10.0.1
+        version: 10.0.1(eslint@10.8.0(jiti@2.7.0)(supports-color@10.2.2))
+      eslint:
+        specifier: ^10.4.1
+        version: 10.8.0(jiti@2.7.0)(supports-color@10.2.2)
+      eslint-config-prettier:
+        specifier: ^10.1.8
+        version: 10.1.8(eslint@10.8.0(jiti@2.7.0)(supports-color@10.2.2))
+      eslint-plugin-svelte:
+        specifier: ^3.19.0
+        version: 3.22.0(eslint@10.8.0(jiti@2.7.0)(supports-color@10.2.2))(svelte@5.56.8(@typescript-eslint/types@8.66.0))
+      globals:
+        specifier: ^17.6.0
+        version: 17.9.0
+      prettier:
+        specifier: ^3.8.3
+        version: 3.9.6
+      svelte:
+        specifier: ^5.56.1
+        version: 5.56.8(@typescript-eslint/types@8.66.0)
+      svelte-check:
+        specifier: ^4.6.0
+        version: 4.7.5(picomatch@4.0.5)(svelte@5.56.8(@typescript-eslint/types@8.66.0))(typescript@6.0.3)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      typescript-eslint:
+        specifier: ^8.60.1
+        version: 8.66.0(eslint@10.8.0(jiti@2.7.0)(supports-color@10.2.2))(supports-color@10.2.2)(typescript@6.0.3)
 
   packages/ws-client: {}
 
