@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { asset, resolve } from "$app/paths";
+	import { Button } from "@sapa-tv-ru/ui-kit";
 	import IconPlay from "~icons/lucide/play";
 	import IconTwitch from "~icons/lucide/twitch";
 	import IconYoutube from "~icons/lucide/youtube";
@@ -32,45 +33,45 @@
 		<p class="tagline">Скоро открытие.</p>
 
 		<div class="shelf" aria-label="Выбери площадку">
-			<a class="tape tape--stream" href={resolve("stream")}>
-				<span class="tape__ink">
+			<div class="tape tape--stream">
+				<Button variant="brand" href={resolve("stream")}>
 					<IconPlay aria-hidden="true" />
 					Смотреть стрим
-				</span>
-			</a>
-			<a
-				class="tape tape--twitch"
-				href="https://www.twitch.tv/sapushka_"
-				target="_blank"
-				rel="noopener"
-			>
-				<span class="tape__ink">
+				</Button>
+			</div>
+			<div class="tape tape--twitch">
+				<Button
+					variant="brand"
+					href="https://www.twitch.tv/sapushka_"
+					target="_blank"
+					rel="noopener"
+				>
 					<IconTwitch aria-hidden="true" />
 					Смотреть на Twitch
-				</span>
-			</a>
-			<a
-				class="tape tape--vk"
-				href="https://live.vkvideo.ru/sapushka_"
-				target="_blank"
-				rel="noopener"
-			>
-				<span class="tape__index">
+				</Button>
+			</div>
+			<div class="tape tape--vk">
+				<Button
+					variant="brand"
+					href="https://live.vkvideo.ru/sapushka_"
+					target="_blank"
+					rel="noopener"
+				>
 					<IconVk aria-hidden="true" />
 					Смотреть на VK Видео Live
-				</span>
-			</a>
-			<a
-				class="tape tape--youtube"
-				href="https://www.youtube.com/@sapa_sapushka"
-				target="_blank"
-				rel="noopener"
-			>
-				<span class="tape__index">
+				</Button>
+			</div>
+			<div class="tape tape--youtube">
+				<Button
+					variant="brand"
+					href="https://www.youtube.com/@sapa_sapushka"
+					target="_blank"
+					rel="noopener"
+				>
 					<IconYoutube aria-hidden="true" />
 					Смотреть на YouTube
-				</span>
-			</a>
+				</Button>
+			</div>
 		</div>
 	</section>
 </main>
@@ -209,39 +210,11 @@
 
 	.tape {
 		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 1rem;
-		text-decoration: none;
-		background: var(--brand);
-		color: var(--brand-ink);
-		border-radius: 0.9rem;
-		padding: 0.85rem 2rem;
-		box-shadow:
-			0 8px 20px -8px color-mix(in oklch, var(--brand) 60%, transparent),
-			inset 0 0 0 1px color-mix(in oklch, var(--brand-ink) 18%, transparent);
-		transition:
-			transform 0.16s ease-out,
-			filter 0.16s ease-out;
+		flex-direction: column;
 	}
 
-	.tape:hover {
-		transform: translateY(-2px);
-		filter: brightness(1.06);
-	}
-
-	.tape:active {
-		transform: translateY(0) scale(0.985);
-	}
-
-	.tape__ink,
-	.tape__index {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.6rem;
-		font-weight: 700;
-		font-size: 0.95rem;
-		line-height: 1;
+	.tape :global(.btn) {
+		width: 100%;
 	}
 
 	.tape--stream {
@@ -262,11 +235,5 @@
 	.tape--youtube {
 		--brand: var(--youtube-brand);
 		--brand-ink: var(--youtube-ink);
-	}
-
-	@media (min-width: 640px) {
-		.tape {
-			padding: 1rem 2rem;
-		}
 	}
 </style>
