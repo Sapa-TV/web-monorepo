@@ -4,6 +4,16 @@
 	import { goto } from "$app/navigation";
 	import { resolve } from "$app/paths";
 	import { HttpError, type AdminResponse } from "@sapa-tv-ru/api-client";
+	import {
+		Alert,
+		Badge,
+		Button,
+		Card,
+		Code,
+		Input,
+		Section,
+		TableWrap,
+	} from "@sapa-tv-ru/ui-kit";
 	import { onDestroy, onMount } from "svelte";
 	import IconCheck from "~icons/lucide/check";
 	import IconCopy from "~icons/lucide/copy";
@@ -261,171 +271,177 @@
 		<h1>Админ-панель</h1>
 		<div class="panel-header__right">
 			{#if isRoot}
-				<span class="badge badge--root">root</span>
+				<Badge tone="root">root</Badge>
 			{/if}
-			<button class="btn btn--sm" type="button" onclick={handleLogout}>
+			<Button size="sm" onclick={handleLogout}>
 				<IconLogOut aria-hidden="true" />
 				Выйти
-			</button>
+			</Button>
 		</div>
 	</header>
 
 	{#if error}
-		<p class="alert alert--error" role="alert">{error}</p>
+		<Alert tone="error">{error}</Alert>
 	{/if}
 	{#if actionMsg}
-		<p class="alert alert--ok">{actionMsg}</p>
+		<Alert tone="success">{actionMsg}</Alert>
 	{/if}
 
-	<section class="card">
-		<div class="section-title">Access key</div>
-		<p class="section-hint">Ключ для доступа к панелям/виджетам с стримера.</p>
-		<div class="key-row">
-			<code class="key-value" title={accessKey}>{accessKey}</code>
-			<button
-				class="btn btn--sm"
+	<Card>
+		<Section title="Access key">
+			<p class="section-hint">
+				Ключ для доступа к панелям/виджетам с стримера.
+			</p>
+			<div class="key-row">
+				<Code block title={accessKey}>{accessKey}</Code>
+				<Button
+					size="sm"
+					type="button"
+					onclick={copyPak}
+					disabled={!accessKey}
+					aria-label="Скопировать ключ"
+				>
+					{#if copied === "key"}
+						<IconCheck aria-hidden="true" />
+					{:else}
+						<IconCopy aria-hidden="true" />
+					{/if}
+				</Button>
+			</div>
+			<div class="links-row">
+				<Button
+					size="sm"
+					type="button"
+					onclick={() => copyLink("dock", "/dock")}
+					disabled={!accessKey}
+					aria-label="Скопировать ссылку на док-панель"
+				>
+					{#if copied === "dock"}
+						<IconCheck aria-hidden="true" />
+					{:else}
+						<IconCopy aria-hidden="true" />
+					{/if}
+					Док-панель
+				</Button>
+				<Button
+					size="sm"
+					type="button"
+					onclick={() => copyLink("widget", "/roulette")}
+					disabled={!accessKey}
+					aria-label="Скопировать ссылку на виджет"
+				>
+					{#if copied === "widget"}
+						<IconCheck aria-hidden="true" />
+					{:else}
+						<IconCopy aria-hidden="true" />
+					{/if}
+					Виджет
+				</Button>
+			</div>
+			<Button
+				variant="primary"
 				type="button"
-				onclick={copyPak}
-				disabled={!accessKey}
-				aria-label="Скопировать ключ"
+				onclick={rotatePak}
+				disabled={wakBusy}
 			>
-				{#if copied === "key"}
-					<IconCheck aria-hidden="true" />
-				{:else}
-					<IconCopy aria-hidden="true" />
-				{/if}
-			</button>
-		</div>
-		<div class="links-row">
-			<button
-				class="btn btn--sm"
-				type="button"
-				onclick={() => copyLink("dock", "/dock")}
-				disabled={!accessKey}
-				aria-label="Скопировать ссылку на док-панель"
-			>
-				{#if copied === "dock"}
-					<IconCheck aria-hidden="true" />
-				{:else}
-					<IconCopy aria-hidden="true" />
-				{/if}
-				Док-панель
-			</button>
-			<button
-				class="btn btn--sm"
-				type="button"
-				onclick={() => copyLink("widget", "/roulette")}
-				disabled={!accessKey}
-				aria-label="Скопировать ссылку на виджет"
-			>
-				{#if copied === "widget"}
-					<IconCheck aria-hidden="true" />
-				{:else}
-					<IconCopy aria-hidden="true" />
-				{/if}
-				Виджет
-			</button>
-		</div>
-		<button
-			class="btn btn--primary"
-			type="button"
-			onclick={rotatePak}
-			disabled={wakBusy}
-		>
-			<IconRefreshCw aria-hidden="true" />
-			{wakBusy ? "Генерация..." : "Сгенерировать новый"}
-		</button>
-	</section>
+				<IconRefreshCw aria-hidden="true" />
+				{wakBusy ? "Генерация..." : "Сгенерировать новый"}
+			</Button>
+		</Section>
+	</Card>
 
 	{#if isRoot}
-		<section class="card">
-			<div class="section-title">Администраторы</div>
-			<form
-				class="inline-form"
-				onsubmit={(e) => {
-					e.preventDefault();
-					void addAdmin();
-				}}
-			>
-				<input
-					type="text"
-					placeholder="Twitch ID"
-					bind:value={newTwitchId}
-					required
-				/>
-				<input
-					type="text"
-					placeholder="Отображаемое имя (опц.)"
-					bind:value={newDisplayName}
-				/>
-				<button class="btn btn--primary" type="submit" disabled={addBusy}>
-					<IconUserPlus aria-hidden="true" />
-					{addBusy ? "Добавление..." : "Добавить"}
-				</button>
-			</form>
-
-			<div class="table-wrap">
-				<table>
-					<thead>
-						<tr>
-							<th>Имя</th>
-							<th>Twitch ID</th>
-							<th></th>
-						</tr>
-					</thead>
-					<tbody>
-						{#each admins as a (a.twitch_id)}
-							<tr>
-								<td>
-									{a.display_name ?? "—"}
-									{#if a.is_root}
-										<span class="badge badge--root">root</span>
-									{/if}
-								</td>
-								<td class="mono">{a.twitch_id}</td>
-								<td class="actions-cell">
-									<button
-										class="btn btn--sm btn--danger"
-										type="button"
-										onclick={() => removeAdmin(a.twitch_id)}
-										disabled={removeBusyId === a.twitch_id}
-										aria-label="Удалить админа"
-									>
-										<IconTrash2 aria-hidden="true" />
-									</button>
-								</td>
-							</tr>
-						{/each}
-					</tbody>
-				</table>
-			</div>
-		</section>
-
-		<section class="card">
-			<div class="section-title">Twitch credentials</div>
-			<p class="section-hint">
-				Учётка, от имени которой бекенд ходит в Twitch (ингейш, стрим-статус).
-			</p>
-			<div class="creds-row">
-				<span class={`status-pill ${credsConfigured ? "ok" : "missing"}`}>
-					{credsConfigured ? "авторизовано" : "не авторизовано"}
-				</span>
-				<button
-					class="btn btn--primary"
-					type="button"
-					onclick={authorizeTwitch}
-					disabled={authorizeBusy}
+		<Card>
+			<Section title="Администраторы">
+				<form
+					class="inline-form"
+					onsubmit={(e) => {
+						e.preventDefault();
+						void addAdmin();
+					}}
 				>
-					<IconTwitch aria-hidden="true" />
-					{authorizeBusy ? "Открытие..." : "Авторизовать"}
-				</button>
-				{#if credsConfigured}
-					<button class="btn btn--sm" type="button" onclick={revokeCreds}>
-						Отозвать
-					</button>
-				{/if}
-			</div>
-		</section>
+					<Input
+						type="text"
+						placeholder="Twitch ID"
+						bind:value={newTwitchId}
+						required
+					/>
+					<Input
+						type="text"
+						placeholder="Отображаемое имя (опц.)"
+						bind:value={newDisplayName}
+					/>
+					<Button variant="primary" type="submit" disabled={addBusy}>
+						<IconUserPlus aria-hidden="true" />
+						{addBusy ? "Добавление..." : "Добавить"}
+					</Button>
+				</form>
+
+				<TableWrap>
+					<table>
+						<thead>
+							<tr>
+								<th>Имя</th>
+								<th>Twitch ID</th>
+								<th></th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each admins as a (a.twitch_id)}
+								<tr>
+									<td>
+										{a.display_name ?? "—"}
+										{#if a.is_root}
+											<Badge tone="root">root</Badge>
+										{/if}
+									</td>
+									<td class="mono">{a.twitch_id}</td>
+									<td class="actions-cell">
+										<Button
+											size="sm"
+											variant="danger"
+											type="button"
+											onclick={() => removeAdmin(a.twitch_id)}
+											disabled={removeBusyId === a.twitch_id}
+											aria-label="Удалить админа"
+										>
+											<IconTrash2 aria-hidden="true" />
+										</Button>
+									</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</TableWrap>
+			</Section>
+		</Card>
+
+		<Card>
+			<Section title="Twitch credentials">
+				<p class="section-hint">
+					Учётка, от имени которой бекенд ходит в Twitch (ингейш, стрим-статус).
+				</p>
+				<div class="creds-row">
+					<Badge tone={credsConfigured ? "ok" : "missing"}>
+						{credsConfigured ? "авторизовано" : "не авторизовано"}
+					</Badge>
+					<Button
+						variant="primary"
+						type="button"
+						onclick={authorizeTwitch}
+						disabled={authorizeBusy}
+					>
+						<IconTwitch aria-hidden="true" />
+						{authorizeBusy ? "Открытие..." : "Авторизовать"}
+					</Button>
+					{#if credsConfigured}
+						<Button size="sm" type="button" onclick={revokeCreds}>
+							Отозвать
+						</Button>
+					{/if}
+				</div>
+			</Section>
+		</Card>
 
 		<ActionsSection />
 		<RulesSection />
@@ -454,135 +470,11 @@
 		gap: 8px;
 	}
 
-	.card {
-		background: var(--surface-container);
-		border: 1px solid var(--outline-variant);
-		border-radius: 12px;
-		padding: 18px;
-		margin-bottom: 20px;
-		max-width: 720px;
-	}
-
-	.section-title {
-		font-size: 12px;
-		font-weight: 600;
-		color: var(--on-surface-variant);
-		margin-bottom: 10px;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-	}
-
-	.section-hint {
-		margin: 0 0 12px;
-		color: var(--on-surface-variant);
-		font-size: 12px;
-		line-height: 1.5;
-	}
-
-	.btn {
-		display: inline-flex;
-		align-items: center;
-		gap: 8px;
-		padding: 8px 14px;
-		border-radius: 10px;
-		border: 1px solid var(--outline-variant);
-		background: var(--surface-container);
-		font-size: 13px;
-		font-weight: 600;
-		font-family: inherit;
-		color: var(--on-surface);
-		cursor: pointer;
-		transition:
-			background 0.15s,
-			border-color 0.15s,
-			filter 0.15s;
-	}
-
-	.btn:disabled {
-		opacity: 0.45;
-		cursor: not-allowed;
-	}
-
-	.btn--primary {
-		background: var(--primary);
-		border-color: transparent;
-		color: var(--on-primary);
-	}
-
-	.btn--primary:hover:not(:disabled) {
-		background: var(--primary-dim);
-	}
-
-	.btn--sm {
-		padding: 6px 12px;
-		border-color: var(--outline-variant);
-		color: var(--on-surface);
-	}
-
-	.btn--sm:hover:not(:disabled) {
-		border-color: var(--outline);
-		background: var(--surface-container-high);
-	}
-
-	.btn--danger:hover:not(:disabled) {
-		border-color: var(--error);
-		color: var(--error);
-	}
-
-	.alert {
-		max-width: 720px;
-		margin: 0 0 16px;
-		padding: 10px 14px;
-		border-radius: 10px;
-		font-size: 12px;
-		line-height: 1.4;
-	}
-
-	.alert--error {
-		background: color-mix(in oklch, var(--error) 12%, transparent);
-		color: var(--error);
-	}
-
-	.alert--ok {
-		background: color-mix(in oklch, var(--secondary) 14%, transparent);
-		color: var(--secondary);
-	}
-
-	.badge {
-		display: inline-block;
-		padding: 2px 8px;
-		border-radius: 6px;
-		font-size: 10px;
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		margin-left: 6px;
-		vertical-align: middle;
-	}
-
-	.badge--root {
-		background: color-mix(in oklch, var(--primary) 16%, transparent);
-		color: var(--primary);
-	}
-
 	.key-row {
 		display: flex;
 		gap: 8px;
 		align-items: center;
 		margin-bottom: 12px;
-	}
-
-	.key-value {
-		flex: 1;
-		overflow-x: auto;
-		white-space: nowrap;
-		padding: 10px 12px;
-		border-radius: 10px;
-		border: 1px solid var(--outline-variant);
-		background: var(--surface);
-		font-family: "IBM Plex Mono", ui-monospace, monospace;
-		font-size: 12px;
-		color: var(--on-surface);
 	}
 
 	.links-row {
@@ -600,20 +492,8 @@
 		margin-bottom: 14px;
 	}
 
-	.inline-form input {
-		padding: 8px 12px;
-		border-radius: 10px;
-		border: 1px solid var(--outline-variant);
-		background: var(--surface);
-		color: var(--on-surface);
-		font-size: 13px;
-		font-family: inherit;
-		outline: none;
+	.inline-form :global(.field-input) {
 		min-width: 160px;
-	}
-
-	.inline-form input:focus {
-		border-color: var(--primary);
 	}
 
 	.creds-row {
@@ -621,22 +501,5 @@
 		align-items: center;
 		gap: 10px;
 		flex-wrap: wrap;
-	}
-
-	.status-pill {
-		padding: 3px 10px;
-		border-radius: 6px;
-		font-size: 11px;
-		font-weight: 600;
-	}
-
-	.status-pill.ok {
-		background: color-mix(in oklch, var(--secondary) 16%, transparent);
-		color: var(--secondary);
-	}
-
-	.status-pill.missing {
-		background: color-mix(in oklch, var(--tertiary) 16%, transparent);
-		color: var(--tertiary);
 	}
 </style>

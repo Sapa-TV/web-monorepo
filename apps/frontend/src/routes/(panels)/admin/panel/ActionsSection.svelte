@@ -9,6 +9,17 @@
 	import IconPencil from "~icons/lucide/pencil";
 	import IconPlus from "~icons/lucide/plus";
 	import IconTrash2 from "~icons/lucide/trash-2";
+	import {
+		Alert,
+		Button,
+		Card,
+		Checkbox,
+		Field,
+		Input,
+		Section,
+		Select,
+		TableWrap,
+	} from "@sapa-tv-ru/ui-kit";
 
 	type KindType = ActionKind["type"];
 
@@ -130,285 +141,117 @@
 	});
 </script>
 
-<section class="card">
-	<div class="section-title">Действия</div>
-	<p class="section-hint">
-		Экшены, которые движок выполняет при срабатывании правила.
-	</p>
+<Card>
+	<Section title="Действия">
+		<p class="section-hint">
+			Экшены, которые движок выполняет при срабатывании правила.
+		</p>
 
-	{#if error}
-		<p class="alert alert--error" role="alert">{error}</p>
-	{/if}
-	{#if hint}
-		<p class="alert alert--ok">{hint}</p>
-	{/if}
+		{#if error}
+			<Alert tone="error">{error}</Alert>
+		{/if}
+		{#if hint}
+			<Alert tone="success">{hint}</Alert>
+		{/if}
 
-	<button class="btn btn--primary" type="button" onclick={openNew}>
-		<IconPlus aria-hidden="true" />
-		Создать действие
-	</button>
+		<Button variant="primary" onclick={openNew}>
+			<IconPlus aria-hidden="true" />
+			Создать действие
+		</Button>
 
-	{#if formOpen}
-		<form
-			class="inline-form stacked"
-			onsubmit={(e) => {
-				e.preventDefault();
-				void save();
-			}}
-		>
-			<label class="field">
-				<span>Название</span>
-				<input
-					type="text"
-					placeholder="напр. Spin"
-					bind:value={name}
-					required
-				/>
-			</label>
-
-			<label class="field">
-				<span>Тип</span>
-				<select bind:value={kind}>
-					<option value="no_action">Ничего</option>
-					<option value="enqueue_roulette">Рулетка</option>
-					<option value="chat_reply">Ответ в чат</option>
-				</select>
-			</label>
-
-			{#if kind === "chat_reply"}
-				<label class="field">
-					<span>Шаблон сообщения</span>
-					<input
+		{#if formOpen}
+			<form
+				class="inline-form stacked"
+				onsubmit={(e) => {
+					e.preventDefault();
+					void save();
+				}}
+			>
+				<Field label="Название">
+					<Input
 						type="text"
-						placeholder="напр. &#123;username&#125;, держи рулетку &#123;cost&#125;!"
-						bind:value={template}
+						placeholder="напр. Spin"
+						bind:value={name}
 						required
 					/>
-				</label>
-			{/if}
+				</Field>
 
-			<label class="check">
-				<input type="checkbox" bind:checked={enabled} />
-				Включено
-			</label>
+				<Field label="Тип">
+					<Select bind:value={kind}>
+						<option value="no_action">Ничего</option>
+						<option value="enqueue_roulette">Рулетка</option>
+						<option value="chat_reply">Ответ в чат</option>
+					</Select>
+				</Field>
 
-			<div class="form-actions">
-				<button class="btn btn--primary" type="submit" disabled={busy}>
-					{busy ? "Сохранение..." : editId === null ? "Создать" : "Сохранить"}
-				</button>
-				<button class="btn btn--sm" type="button" onclick={cancelForm}>
-					Отмена
-				</button>
-			</div>
-		</form>
-	{/if}
+				{#if kind === "chat_reply"}
+					<Field label="Шаблон сообщения">
+						<Input
+							type="text"
+							placeholder="напр. &#123;username&#125;, держи рулетку &#123;cost&#125;!"
+							bind:value={template}
+							required
+						/>
+					</Field>
+				{/if}
 
-	{#if loaded}
-		<div class="table-wrap">
-			<table>
-				<thead>
-					<tr>
-						<th>Имя</th>
-						<th>Тип</th>
-						<th>Параметры</th>
-						<th>Вкл</th>
-						<th class="actions-cell">Действия</th>
-					</tr>
-				</thead>
-				<tbody>
-					{#each actions as action (action.id)}
+				<Checkbox bind:checked={enabled}>Включено</Checkbox>
+
+				<div class="form-actions">
+					<Button variant="primary" type="submit" disabled={busy}>
+						{busy ? "Сохранение..." : editId === null ? "Создать" : "Сохранить"}
+					</Button>
+					<Button size="sm" onclick={cancelForm}>Отмена</Button>
+				</div>
+			</form>
+		{/if}
+
+		{#if loaded}
+			<TableWrap>
+				<table>
+					<thead>
 						<tr>
-							<td>{action.name}</td>
-							<td>{kindLabel(action)}</td>
-							<td class="mono">{templateValue(action)}</td>
-							<td>{action.enabled ? "да" : "нет"}</td>
-							<td class="actions-cell">
-								<button
-									class="btn btn--sm btn--icon"
-									type="button"
-									onclick={() => openEdit(action)}
-									aria-label="Редактировать действие"
-								>
-									<IconPencil aria-hidden="true" />
-								</button>
-								<button
-									class="btn btn--sm btn--danger btn--icon"
-									type="button"
-									onclick={() => remove(action.id)}
-									disabled={removeId === action.id}
-									aria-label="Удалить действие"
-								>
-									<IconTrash2 aria-hidden="true" />
-								</button>
-							</td>
+							<th>Имя</th>
+							<th>Тип</th>
+							<th>Параметры</th>
+							<th>Вкл</th>
+							<th class="actions-cell">Действия</th>
 						</tr>
-					{/each}
-				</tbody>
-			</table>
-		</div>
-	{:else}
-		<p class="loading">Загрузка...</p>
-	{/if}
-</section>
-
-<style>
-	.card {
-		background: var(--surface-container);
-		border: 1px solid var(--outline-variant);
-		border-radius: 12px;
-		padding: 18px;
-		margin-bottom: 20px;
-		max-width: 720px;
-	}
-
-	.section-title {
-		font-size: 12px;
-		font-weight: 600;
-		color: var(--on-surface-variant);
-		margin-bottom: 10px;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-	}
-
-	.section-hint {
-		margin: 0 0 12px;
-		color: var(--on-surface-variant);
-		font-size: 12px;
-		line-height: 1.5;
-	}
-
-	.btn {
-		display: inline-flex;
-		align-items: center;
-		gap: 8px;
-		padding: 8px 14px;
-		border-radius: 10px;
-		border: 1px solid var(--outline-variant);
-		background: var(--surface-container);
-		font-size: 13px;
-		font-weight: 600;
-		font-family: inherit;
-		color: var(--on-surface);
-		cursor: pointer;
-		transition:
-			background 0.15s,
-			border-color 0.15s,
-			filter 0.15s;
-	}
-
-	.btn:disabled {
-		opacity: 0.45;
-		cursor: not-allowed;
-	}
-
-	.btn--primary {
-		background: var(--primary);
-		border-color: transparent;
-		color: var(--on-primary);
-	}
-
-	.btn--primary:hover:not(:disabled) {
-		background: var(--primary-dim);
-	}
-
-	.btn--sm {
-		padding: 6px 12px;
-		border-color: var(--outline-variant);
-		color: var(--on-surface);
-	}
-
-	.btn--sm:hover:not(:disabled) {
-		border-color: var(--outline);
-		background: var(--surface-container-high);
-	}
-
-	.btn--danger:hover:not(:disabled) {
-		border-color: var(--error);
-		color: var(--error);
-	}
-
-	.btn--icon {
-		padding: 6px 8px;
-	}
-
-	.alert {
-		max-width: 720px;
-		margin: 0 0 12px;
-		padding: 10px 14px;
-		border-radius: 10px;
-		font-size: 12px;
-		line-height: 1.4;
-	}
-
-	.alert--error {
-		background: color-mix(in oklch, var(--error) 12%, transparent);
-		color: var(--error);
-	}
-
-	.alert--ok {
-		background: color-mix(in oklch, var(--secondary) 14%, transparent);
-		color: var(--secondary);
-	}
-
-	.inline-form {
-		display: flex;
-		flex-direction: column;
-		gap: 12px;
-		align-items: stretch;
-		margin: 14px 0;
-		padding: 14px;
-		border: 1px solid var(--outline-variant);
-		border-radius: 12px;
-		background: var(--surface);
-	}
-
-	.field {
-		display: flex;
-		flex-direction: column;
-		gap: 6px;
-		font-size: 12px;
-		color: var(--on-surface-variant);
-	}
-
-	.field input,
-	.field select {
-		padding: 8px 12px;
-		border-radius: 10px;
-		border: 1px solid var(--outline-variant);
-		background: var(--surface-container);
-		color: var(--on-surface);
-		font-size: 13px;
-		font-family: inherit;
-		outline: none;
-	}
-
-	.field input:focus,
-	.field select:focus {
-		border-color: var(--primary);
-	}
-
-	.check {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		font-size: 13px;
-		color: var(--on-surface);
-	}
-
-	.form-actions {
-		display: flex;
-		gap: 8px;
-	}
-
-	.table-wrap {
-		margin-top: 14px;
-	}
-
-	.actions-cell .btn {
-		margin-left: 4px;
-	}
-
-	.loading {
-		margin-top: 12px;
-	}
-</style>
+					</thead>
+					<tbody>
+						{#each actions as action (action.id)}
+							<tr>
+								<td>{action.name}</td>
+								<td>{kindLabel(action)}</td>
+								<td class="mono">{templateValue(action)}</td>
+								<td>{action.enabled ? "да" : "нет"}</td>
+								<td class="actions-cell">
+									<Button
+										size="sm"
+										icon
+										onclick={() => openEdit(action)}
+										aria-label="Редактировать действие"
+									>
+										<IconPencil aria-hidden="true" />
+									</Button>
+									<Button
+										size="sm"
+										variant="danger"
+										icon
+										onclick={() => remove(action.id)}
+										disabled={removeId === action.id}
+										aria-label="Удалить действие"
+									>
+										<IconTrash2 aria-hidden="true" />
+									</Button>
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</TableWrap>
+		{:else}
+			<p class="loading">Загрузка...</p>
+		{/if}
+	</Section>
+</Card>

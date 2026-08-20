@@ -10,6 +10,7 @@
 	},
 	"exports": {
 		".": {
+			"types": "./src/index.d.ts",
 			"svelte": "./src/index.js",
 			"default": "./src/index.js"
 		}

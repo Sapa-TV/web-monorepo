@@ -13,6 +13,17 @@
 	import IconPencil from "~icons/lucide/pencil";
 	import IconPlus from "~icons/lucide/plus";
 	import IconTrash2 from "~icons/lucide/trash-2";
+	import {
+		Alert,
+		Button,
+		Card,
+		Checkbox,
+		Field,
+		Input,
+		Section,
+		Select,
+		TableWrap,
+	} from "@sapa-tv-ru/ui-kit";
 
 	let rules = $state<RuleResponse[]>([]);
 	let actions = $state<ActionResponse[]>([]);
@@ -196,349 +207,181 @@
 	});
 </script>
 
-<section class="card">
-	<div class="section-title">Правила</div>
-	<p class="section-hint">
-		Событие → действие: при совпадении триггера и условий выполняется выбранное
-		действие.
-	</p>
+<Card>
+	<Section title="Правила">
+		<p class="section-hint">
+			Событие → действие: при совпадении триггера и условий выполняется
+			выбранное действие.
+		</p>
 
-	{#if error}
-		<p class="alert alert--error" role="alert">{error}</p>
-	{/if}
-	{#if hint}
-		<p class="alert alert--ok">{hint}</p>
-	{/if}
+		{#if error}
+			<Alert tone="error">{error}</Alert>
+		{/if}
+		{#if hint}
+			<Alert tone="success">{hint}</Alert>
+		{/if}
 
-	<button class="btn btn--primary" type="button" onclick={openNew}>
-		<IconPlus aria-hidden="true" />
-		Создать правило
-	</button>
+		<Button variant="primary" onclick={openNew}>
+			<IconPlus aria-hidden="true" />
+			Создать правило
+		</Button>
 
-	{#if formOpen}
-		<form
-			class="inline-form stacked"
-			onsubmit={(e) => {
-				e.preventDefault();
-				void save();
-			}}
-		>
-			<label class="field">
-				<span>Название</span>
-				<input
-					type="text"
-					placeholder="напр. Spin"
-					bind:value={name}
-					required
-				/>
-			</label>
+		{#if formOpen}
+			<form
+				class="inline-form stacked"
+				onsubmit={(e) => {
+					e.preventDefault();
+					void save();
+				}}
+			>
+				<Field label="Название">
+					<Input
+						type="text"
+						placeholder="напр. Spin"
+						bind:value={name}
+						required
+					/>
+				</Field>
 
-			<label class="field">
-				<span>Триггер</span>
-				<select bind:value={trigger}>
-					<option value={RuleTrigger.ChatMessage}>Сообщение в чате</option>
-					<option value={RuleTrigger.RewardRedemption}
-						>Исполнение награды</option
-					>
-				</select>
-			</label>
+				<Field label="Триггер">
+					<Select bind:value={trigger}>
+						<option value={RuleTrigger.ChatMessage}>Сообщение в чате</option>
+						<option value={RuleTrigger.RewardRedemption}
+							>Исполнение награды</option
+						>
+					</Select>
+				</Field>
 
-			{#if trigger === RuleTrigger.ChatMessage}
-				<div class="field-row">
-					<label class="field">
-						<span>Условие</span>
-						<select bind:value={matcher}>
-							<option value={MessageMatcher.Contains}>содержит</option>
-							<option value={MessageMatcher.StartsWith}>начинается с</option>
-							<option value={MessageMatcher.Equals}>равно</option>
-							<option value={MessageMatcher.EndsWith}>заканчивается на</option>
-						</select>
-					</label>
-					<label class="field">
-						<span>Шаблон</span>
-						<input
-							type="text"
-							placeholder="напр. !spin"
-							bind:value={pattern}
-							required={!pattern.trim()}
-						/>
-					</label>
-				</div>
-			{:else}
-				<label class="field">
-					<span>Награда</span>
-					<select bind:value={rewardId}>
-						{#if rewardsError}
-							<option value="">Награды недоступны: {rewardsError}</option>
-						{:else if rewards.length === 0}
-							<option value="">Наград не найдено</option>
+				{#if trigger === RuleTrigger.ChatMessage}
+					<div class="field-row">
+						<Field label="Условие">
+							<Select bind:value={matcher}>
+								<option value={MessageMatcher.Contains}>содержит</option>
+								<option value={MessageMatcher.StartsWith}>начинается с</option>
+								<option value={MessageMatcher.Equals}>равно</option>
+								<option value={MessageMatcher.EndsWith}>заканчивается на</option
+								>
+							</Select>
+						</Field>
+						<Field label="Шаблон">
+							<Input
+								type="text"
+								placeholder="напр. !spin"
+								bind:value={pattern}
+								required={!pattern.trim()}
+							/>
+						</Field>
+					</div>
+				{:else}
+					<Field label="Награда">
+						<Select bind:value={rewardId}>
+							{#if rewardsError}
+								<option value="">Награды недоступны: {rewardsError}</option>
+							{:else if rewards.length === 0}
+								<option value="">Наград не найдено</option>
+							{:else}
+								<option value="">Любая награда</option>
+								{#each rewards as reward (reward.id)}
+									<option value={reward.id}>
+										{reward.title} ({reward.cost}){reward.used_in_rules
+											? " • в правилах"
+											: ""}
+									</option>
+								{/each}
+							{/if}
+						</Select>
+					</Field>
+				{/if}
+
+				<Field label="Действие">
+					<Select bind:value={actionId}>
+						{#if actions.length === 0}
+							<option value={null} disabled>Действий нет</option>
 						{:else}
-							<option value="">Любая награда</option>
-							{#each rewards as reward (reward.id)}
-								<option value={reward.id}>
-									{reward.title} ({reward.cost}){reward.used_in_rules
-										? " • в правилах"
-										: ""}
-								</option>
+							<option value={null} disabled>Выбери действие...</option>
+							{#each actions as action (action.id)}
+								<option value={action.id}>{action.name}</option>
 							{/each}
 						{/if}
-					</select>
-				</label>
-			{/if}
+					</Select>
+				</Field>
 
-			<label class="field">
-				<span>Действие</span>
-				<select bind:value={actionId}>
-					{#if actions.length === 0}
-						<option value={null} disabled>Действий нет</option>
-					{:else}
-						<option value={null} disabled>Выбери действие...</option>
-						{#each actions as action (action.id)}
-							<option value={action.id}>{action.name}</option>
-						{/each}
-					{/if}
-				</select>
-			</label>
+				<Checkbox bind:checked={enabled}>Включено</Checkbox>
 
-			<label class="check">
-				<input type="checkbox" bind:checked={enabled} />
-				Включено
-			</label>
+				<div class="form-actions">
+					<Button variant="primary" type="submit" disabled={busy}>
+						{busy ? "Сохранение..." : editId === null ? "Создать" : "Сохранить"}
+					</Button>
+					<Button size="sm" onclick={cancelForm}>Отмена</Button>
+				</div>
+			</form>
+		{/if}
 
-			<div class="form-actions">
-				<button class="btn btn--primary" type="submit" disabled={busy}>
-					{busy ? "Сохранение..." : editId === null ? "Создать" : "Сохранить"}
-				</button>
-				<button class="btn btn--sm" type="button" onclick={cancelForm}>
-					Отмена
-				</button>
-			</div>
-		</form>
-	{/if}
-
-	{#if loaded}
-		<div class="table-wrap">
-			<table>
-				<thead>
-					<tr>
-						<th>Имя</th>
-						<th>Триггер</th>
-						<th>Условия</th>
-						<th>Действие</th>
-						<th>Вкл</th>
-						<th class="actions-cell">Действия</th>
-					</tr>
-				</thead>
-				<tbody>
-					{#each rules as rule (rule.id)}
+		{#if loaded}
+			<TableWrap>
+				<table>
+					<thead>
 						<tr>
-							<td>{rule.name}</td>
-							<td
-								>{rule.trigger === RuleTrigger.ChatMessage
-									? "Чат"
-									: "Награда"}</td
-							>
-							<td class="mono">{conditionsLabel(rule.conditions)}</td>
-							<td>{actionName(rule.action_id)}</td>
-							<td>{rule.enabled ? "да" : "нет"}</td>
-							<td class="actions-cell">
-								<button
-									class="btn btn--sm btn--icon"
-									type="button"
-									onclick={() => openEdit(rule)}
-									aria-label="Редактировать правило"
-								>
-									<IconPencil aria-hidden="true" />
-								</button>
-								<button
-									class="btn btn--sm btn--danger btn--icon"
-									type="button"
-									onclick={() => remove(rule.id)}
-									disabled={removeId === rule.id}
-									aria-label="Удалить правило"
-								>
-									<IconTrash2 aria-hidden="true" />
-								</button>
-							</td>
+							<th>Имя</th>
+							<th>Триггер</th>
+							<th>Условия</th>
+							<th>Действие</th>
+							<th>Вкл</th>
+							<th class="actions-cell">Действия</th>
 						</tr>
-					{/each}
-				</tbody>
-			</table>
-		</div>
-	{:else}
-		<p class="loading">Загрузка...</p>
-	{/if}
-</section>
+					</thead>
+					<tbody>
+						{#each rules as rule (rule.id)}
+							<tr>
+								<td>{rule.name}</td>
+								<td
+									>{rule.trigger === RuleTrigger.ChatMessage
+										? "Чат"
+										: "Награда"}</td
+								>
+								<td class="mono">{conditionsLabel(rule.conditions)}</td>
+								<td>{actionName(rule.action_id)}</td>
+								<td>{rule.enabled ? "да" : "нет"}</td>
+								<td class="actions-cell">
+									<Button
+										size="sm"
+										icon
+										onclick={() => openEdit(rule)}
+										aria-label="Редактировать правило"
+									>
+										<IconPencil aria-hidden="true" />
+									</Button>
+									<Button
+										size="sm"
+										variant="danger"
+										icon
+										onclick={() => remove(rule.id)}
+										disabled={removeId === rule.id}
+										aria-label="Удалить правило"
+									>
+										<IconTrash2 aria-hidden="true" />
+									</Button>
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</TableWrap>
+		{:else}
+			<p class="loading">Загрузка...</p>
+		{/if}
+	</Section>
+</Card>
 
 <style>
-	.card {
-		background: var(--surface-container);
-		border: 1px solid var(--outline-variant);
-		border-radius: 12px;
-		padding: 18px;
-		margin-bottom: 20px;
-		max-width: 720px;
-	}
-
-	.section-title {
-		font-size: 12px;
-		font-weight: 600;
-		color: var(--on-surface-variant);
-		margin-bottom: 10px;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-	}
-
-	.section-hint {
-		margin: 0 0 12px;
-		color: var(--on-surface-variant);
-		font-size: 12px;
-		line-height: 1.5;
-	}
-
-	.btn {
-		display: inline-flex;
-		align-items: center;
-		gap: 8px;
-		padding: 8px 14px;
-		border-radius: 10px;
-		border: 1px solid var(--outline-variant);
-		background: var(--surface-container);
-		font-size: 13px;
-		font-weight: 600;
-		font-family: inherit;
-		color: var(--on-surface);
-		cursor: pointer;
-		transition:
-			background 0.15s,
-			border-color 0.15s,
-			filter 0.15s;
-	}
-
-	.btn:disabled {
-		opacity: 0.45;
-		cursor: not-allowed;
-	}
-
-	.btn--primary {
-		background: var(--primary);
-		border-color: transparent;
-		color: var(--on-primary);
-	}
-
-	.btn--primary:hover:not(:disabled) {
-		background: var(--primary-dim);
-	}
-
-	.btn--sm {
-		padding: 6px 12px;
-		border-color: var(--outline-variant);
-		color: var(--on-surface);
-	}
-
-	.btn--sm:hover:not(:disabled) {
-		border-color: var(--outline);
-		background: var(--surface-container-high);
-	}
-
-	.btn--danger:hover:not(:disabled) {
-		border-color: var(--error);
-		color: var(--error);
-	}
-
-	.btn--icon {
-		padding: 6px 8px;
-	}
-
-	.alert {
-		max-width: 720px;
-		margin: 0 0 12px;
-		padding: 10px 14px;
-		border-radius: 10px;
-		font-size: 12px;
-		line-height: 1.4;
-	}
-
-	.alert--error {
-		background: color-mix(in oklch, var(--error) 12%, transparent);
-		color: var(--error);
-	}
-
-	.alert--ok {
-		background: color-mix(in oklch, var(--secondary) 14%, transparent);
-		color: var(--secondary);
-	}
-
-	.inline-form {
-		display: flex;
-		flex-direction: column;
-		gap: 12px;
-		align-items: stretch;
-		margin: 14px 0;
-		padding: 14px;
-		border: 1px solid var(--outline-variant);
-		border-radius: 12px;
-		background: var(--surface);
-	}
-
-	.field {
-		display: flex;
-		flex-direction: column;
-		gap: 6px;
-		font-size: 12px;
-		color: var(--on-surface-variant);
-	}
-
-	.field input,
-	.field select {
-		padding: 8px 12px;
-		border-radius: 10px;
-		border: 1px solid var(--outline-variant);
-		background: var(--surface-container);
-		color: var(--on-surface);
-		font-size: 13px;
-		font-family: inherit;
-		outline: none;
-	}
-
-	.field input:focus,
-	.field select:focus {
-		border-color: var(--primary);
-	}
-
 	.field-row {
 		display: flex;
 		gap: 8px;
 		flex-wrap: wrap;
 	}
 
-	.field-row .field {
+	.field-row :global(.field) {
 		flex: 1;
 		min-width: 160px;
-	}
-
-	.check {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		font-size: 13px;
-		color: var(--on-surface);
-	}
-
-	.form-actions {
-		display: flex;
-		gap: 8px;
-	}
-
-	.table-wrap {
-		margin-top: 14px;
-	}
-
-	.actions-cell .btn {
-		margin-left: 4px;
-	}
-
-	.loading {
-		margin-top: 12px;
 	}
 </style>

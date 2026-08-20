@@ -20,6 +20,7 @@
 		type?: "button" | "submit" | "reset";
 		disabled?: boolean;
 		title?: string;
+		"aria-label"?: string;
 		onclick?: (event: MouseEvent) => void;
 		children?: Snippet;
 	}
