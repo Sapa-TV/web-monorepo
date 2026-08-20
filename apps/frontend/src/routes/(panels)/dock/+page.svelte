@@ -7,6 +7,7 @@
 		type QueueEntry,
 		type QueueStats,
 	} from "#lib/api";
+	import { Badge, Button, Input, Section, TableWrap } from "@sapa-tv-ru/ui-kit";
 	import IconKeyRound from "~icons/lucide/key-round";
 	import IconRefreshCw from "~icons/lucide/refresh-cw";
 	import IconPlay from "~icons/lucide/play";
@@ -26,6 +27,19 @@
 	const WS_RETRY_BASE_MS = 1_000;
 	const WS_RETRY_MAX_MS = 15_000;
 	const REFRESH_INTERVAL_MS = 10_000;
+
+	type BadgeTone =
+		| "ok"
+		| "missing"
+		| "bad"
+		| "pending"
+		| "spinning"
+		| "completed"
+		| "error"
+		| "cancelled"
+		| "root"
+		| "connected"
+		| "disconnected";
 
 	let entries = $state<QueueEntry[]>([]);
 	let nextUser = $state("");
@@ -273,84 +287,79 @@
 	<h1>Док-панель</h1>
 	<div class="panel-header__right">
 		{#if keyState}
-			<span class={`key-badge ${keyState}`}>
-				<IconKeyRound class="key-badge__icon" aria-hidden="true" />
+			<Badge tone={keyState}>
+				<IconKeyRound class="icon-sm" aria-hidden="true" />
 				{keyState === "ok"
 					? "ключ ок"
 					: keyState === "missing"
 						? "нет ключа"
 						: "ключ неверный"}
-			</span>
+			</Badge>
 		{/if}
-		<span class={`conn-dot ${connState}`} aria-hidden="true"></span>
-		<button
-			class="btn btn--sm"
-			type="button"
-			onclick={loadAll}
+		<Badge tone={connState} dot></Badge>
+		<Button
+			size="sm"
+			icon
 			title="Обновить"
 			aria-label="Обновить"
+			onclick={loadAll}
 		>
 			<IconRefreshCw aria-hidden="true" />
-		</button>
+		</Button>
 	</div>
 </header>
 
 <div class="toolbar">
-	<button
-		class="btn btn--primary"
+	<Button
+		variant="primary"
 		type="button"
 		onclick={dequeueNext}
 		disabled={nextBusy}
 	>
 		<IconPlay aria-hidden="true" />
 		{dequeueLabel}
-	</button>
+	</Button>
 	<span class="next-user">{nextUser}</span>
-	<button
-		class="btn btn--sm"
+	<Button
+		size="sm"
 		type="button"
 		onclick={() => void (showEnqueue = !showEnqueue)}
 	>
 		<IconPlus aria-hidden="true" />
 		{showEnqueue ? "Закрыть" : "Добавить"}
-	</button>
+	</Button>
 	<span class="spacer"></span>
-	<button
-		class="btn btn--sm"
-		type="button"
-		onclick={() => void (showLog = !showLog)}
-	>
+	<Button size="sm" type="button" onclick={() => void (showLog = !showLog)}>
 		<IconList aria-hidden="true" />
 		{showLog ? "Скрыть лог" : "Лог"}
-	</button>
+	</Button>
 </div>
 
 {#if showEnqueue}
-	<div class="section">
+	<Section title="Добавить в очередь">
 		<div class="inline-form">
 			<label class="visually-hidden" for="enq-name">Имя зрителя</label>
-			<input
+			<Input
 				id="enq-name"
 				type="text"
 				placeholder="Имя зрителя"
 				bind:value={enqName}
 			/>
-			<button
-				class="btn btn--primary"
+			<Button
+				variant="primary"
 				type="button"
 				onclick={enqueueEntry}
 				disabled={enqBusy}
 			>
 				<IconPlus aria-hidden="true" />
 				Добавить
-			</button>
+			</Button>
 		</div>
-	</div>
+	</Section>
 {/if}
 
-<div class="section">
-	<div class="section-title">Активные</div>
-	<div class="table-wrap">
+<Section title="Активные">
+	<TableWrap>
 		<table>
 			<thead>
 				<tr>
@@ -370,8 +379,8 @@
 						<tr>
 							<td>{e.user_name || e.user_id}</td>
 							<td
-								><span class={`status-badge ${e.status.toLowerCase()}`}
-									>{e.status}</span
+								><Badge tone={e.status.toLowerCase() as BadgeTone}
+									>{e.status}</Badge
 								></td
 							>
 							<td
@@ -381,23 +390,27 @@
 							>
 							<td class="actions-cell">
 								{#if e.status === "Pending" || e.status === "Error"}
-									<button
-										class="btn btn--cancel"
+									<Button
+										variant="cancel"
+										size="sm"
+										icon
 										type="button"
 										onclick={() => cancelEntry(e.id)}
 										aria-label="Отменить"
 									>
 										<IconX aria-hidden="true" />
-									</button>
+									</Button>
 								{:else if e.status === "Spinning"}
-									<button
-										class="btn btn--complete"
+									<Button
+										variant="complete"
+										size="sm"
+										icon
 										type="button"
 										onclick={() => completeEntry(e.id)}
 										aria-label="Завершить"
 									>
 										<IconCheck aria-hidden="true" />
-									</button>
+									</Button>
 								{/if}
 							</td>
 						</tr>
@@ -405,12 +418,11 @@
 				{/if}
 			</tbody>
 		</table>
-	</div>
-</div>
+	</TableWrap>
+</Section>
 
-<div class="section">
-	<div class="section-title">Завершённые / Отменённые</div>
-	<div class="table-wrap">
+<Section title="Завершённые / Отменённые">
+	<TableWrap>
 		<table>
 			<thead>
 				<tr>
@@ -432,8 +444,8 @@
 								>{e.status === "Completed" ? e.slot_name || "✔" : "отменён"}</td
 							>
 							<td>
-								<span class={`status-badge ${e.status.toLowerCase()}`}
-									>{e.status}</span
+								<Badge tone={e.status.toLowerCase() as BadgeTone}
+									>{e.status}</Badge
 								></td
 							>
 						</tr>
@@ -441,12 +453,11 @@
 				{/if}
 			</tbody>
 		</table>
-	</div>
-</div>
+	</TableWrap>
+</Section>
 
 {#if showLog}
-	<div class="section">
-		<div class="section-title">События</div>
+	<Section title="События">
 		<div class="event-log" role="log">
 			{#if events.length === 0}
 				<div class="empty-row">Ожидание событий...</div>
@@ -459,7 +470,7 @@
 				{/each}
 			{/if}
 		</div>
-	</div>
+	</Section>
 {/if}
 
 <style>
@@ -488,49 +499,9 @@
 		gap: 8px;
 	}
 
-	.conn-dot {
-		width: 8px;
-		height: 8px;
-		border-radius: 50%;
-		flex-shrink: 0;
-	}
-
-	.conn-dot.connected {
-		background: var(--secondary);
-	}
-
-	.conn-dot.disconnected {
-		background: var(--error);
-	}
-
-	.key-badge {
-		display: inline-flex;
-		align-items: center;
-		gap: 6px;
-		padding: 3px 10px;
-		border-radius: 6px;
-		font-size: 11px;
-		font-weight: 600;
-	}
-
-	.key-badge__icon {
+	.icon-sm {
 		width: 0.95rem;
 		height: 0.95rem;
-	}
-
-	.key-badge.ok {
-		background: color-mix(in oklch, var(--secondary) 16%, transparent);
-		color: var(--secondary);
-	}
-
-	.key-badge.missing {
-		background: color-mix(in oklch, var(--tertiary) 16%, transparent);
-		color: var(--tertiary);
-	}
-
-	.key-badge.bad {
-		background: color-mix(in oklch, var(--error) 16%, transparent);
-		color: var(--error);
 	}
 
 	.toolbar {
@@ -539,77 +510,6 @@
 		margin-bottom: 20px;
 		flex-wrap: wrap;
 		align-items: center;
-	}
-
-	.btn {
-		display: inline-flex;
-		align-items: center;
-		gap: 8px;
-		padding: 8px 16px;
-		border-radius: 10px;
-		border: 1px solid var(--outline-variant);
-		font-size: 13px;
-		font-weight: 600;
-		cursor: pointer;
-		transition:
-			background 0.15s,
-			border-color 0.15s,
-			filter 0.15s;
-		font-family: inherit;
-		color: var(--on-surface);
-	}
-
-	.btn:disabled {
-		opacity: 0.4;
-		cursor: not-allowed;
-	}
-
-	.btn--primary {
-		background: var(--primary);
-		border-color: transparent;
-		color: var(--on-primary);
-	}
-
-	.btn--primary:hover:not(:disabled) {
-		background: var(--primary-dim);
-	}
-
-	.btn--sm {
-		padding: 6px 12px;
-		background: var(--surface-container);
-		border-color: var(--outline-variant);
-		color: var(--on-surface);
-	}
-
-	.btn--sm:hover:not(:disabled) {
-		border-color: var(--outline);
-		background: var(--surface-container-high);
-	}
-
-	.btn--complete {
-		background: var(--secondary);
-		border-color: transparent;
-		color: var(--on-secondary);
-	}
-
-	.btn--complete:hover {
-		filter: brightness(1.1);
-	}
-
-	.btn--cancel {
-		background: var(--surface-container);
-		border-color: var(--outline-variant);
-		color: var(--on-surface-variant);
-	}
-
-	.btn--cancel:hover {
-		border-color: var(--error);
-		color: var(--error);
-	}
-
-	.actions-cell .btn {
-		padding: 5px 10px;
-		border-radius: 8px;
 	}
 
 	.next-user {
@@ -629,68 +529,8 @@
 		align-items: center;
 	}
 
-	.inline-form input {
-		padding: 8px 12px;
-		border-radius: 10px;
-		border: 1px solid var(--outline-variant);
-		background: var(--surface);
-		color: var(--on-surface);
-		font-size: 13px;
-		outline: none;
+	.inline-form :global(.field-input) {
 		min-width: 140px;
-		font-family: inherit;
-	}
-
-	.inline-form input:focus {
-		border-color: var(--primary);
-	}
-
-	.section {
-		margin-bottom: 24px;
-	}
-
-	.section-title {
-		font-size: 12px;
-		font-weight: 600;
-		color: var(--on-surface-variant);
-		margin-bottom: 10px;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-	}
-
-	.status-badge {
-		display: inline-block;
-		padding: 2px 8px;
-		border-radius: 6px;
-		font-size: 11px;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.03em;
-	}
-
-	.status-badge.pending {
-		background: color-mix(in oklch, var(--tertiary) 16%, transparent);
-		color: var(--tertiary);
-	}
-
-	.status-badge.spinning {
-		background: color-mix(in oklch, var(--primary) 16%, transparent);
-		color: var(--primary);
-	}
-
-	.status-badge.completed {
-		background: color-mix(in oklch, var(--secondary) 16%, transparent);
-		color: var(--secondary);
-	}
-
-	.status-badge.error {
-		background: color-mix(in oklch, var(--error) 16%, transparent);
-		color: var(--error);
-	}
-
-	.status-badge.cancelled {
-		background: color-mix(in oklch, var(--on-surface-variant) 14%, transparent);
-		color: var(--on-surface-variant);
 	}
 
 	.empty-row {
@@ -698,10 +538,6 @@
 		font-style: italic;
 		padding: 14px;
 		text-align: center;
-	}
-
-	.actions-cell {
-		gap: 6px;
 	}
 
 	.th-actions {
@@ -743,11 +579,5 @@
 
 	.ev-error {
 		color: var(--error);
-	}
-
-	.section .empty-row {
-		background: var(--surface-container);
-		border: 1px solid var(--outline-variant);
-		border-radius: 12px;
 	}
 </style>
