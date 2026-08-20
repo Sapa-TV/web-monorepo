@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from "svelte";
+	import { AuthCard } from "@sapa-tv-ru/ui-kit";
 	import { completeCredsAuth } from "#lib/admin/creds";
 
 	let busy = $state(true);
@@ -48,20 +49,17 @@
 </svelte:head>
 
 <main class="creds">
-	<div class="card">
-		<h1 class="card__title">Sapa TV</h1>
-		<p class="card__subtitle">Twitch credentials</p>
-
+	<AuthCard title="Sapa TV" subtitle="Twitch credentials" {error}>
 		{#if error}
-			<p class="card__status card__status--error" role="alert">{error}</p>
+			<p class="creds__status creds__status--error" role="alert">{error}</p>
 		{:else if status}
-			<p class="card__status">{status}</p>
+			<p class="creds__status">{status}</p>
 		{/if}
 
 		{#if busy}
-			<p class="card__loading">Ожидание...</p>
+			<p class="creds__loading">Ожидание...</p>
 		{/if}
-	</div>
+	</AuthCard>
 </main>
 
 <style>
@@ -72,42 +70,14 @@
 		justify-content: center;
 	}
 
-	.card {
-		width: 100%;
-		max-width: 360px;
-		background: var(--surface-container);
-		border: 1px solid var(--outline-variant);
-		border-radius: 16px;
-		padding: 32px 28px;
-		text-align: center;
-		box-shadow:
-			0 1px 0 var(--surface-bright) inset,
-			0 18px 40px -18px color-mix(in oklch, var(--on-surface) 45%, transparent);
-	}
-
-	.card__title {
-		margin: 0;
-		font-family: "Archivo", sans-serif;
-		font-size: 1.6rem;
-		font-weight: 900;
-		letter-spacing: -0.03em;
-		color: var(--on-background);
-	}
-
-	.card__subtitle {
-		margin: 6px 0 24px;
-		color: var(--on-surface-variant);
-		font-size: 13px;
-	}
-
-	.card__status {
+	.creds__status {
 		margin: 0;
 		font-size: 13px;
 		line-height: 1.5;
 		color: var(--on-surface);
 	}
 
-	.card__status--error {
+	.creds__status--error {
 		padding: 10px 12px;
 		border-radius: 10px;
 		background: color-mix(in oklch, var(--error) 12%, transparent);
@@ -115,7 +85,7 @@
 		text-align: left;
 	}
 
-	.card__loading {
+	.creds__loading {
 		margin: 16px 0 0;
 		color: var(--on-surface-variant);
 		font-size: 12px;

@@ -108,3 +108,11 @@ tr:last-child td {
 .actions-cell .btn {
 	margin-left: 4px;
 }
+
+.auth-card .btn--twitch {
+	width: 100%;
+	padding: 12px 16px;
+	border-radius: 12px;
+	font-size: 14px;
+	font-weight: 700;
+}
