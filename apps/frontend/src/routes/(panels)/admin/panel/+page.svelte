@@ -435,19 +435,6 @@
 {/if}
 
 <style>
-	:global(html) {
-		background: var(--background);
-	}
-
-	:global(body) {
-		margin: 0;
-		padding: 24px;
-		font-family: "Inter", system-ui, sans-serif;
-		background: var(--background);
-		color: var(--on-surface);
-		font-size: 14px;
-	}
-
 	.panel-header {
 		display: flex;
 		align-items: center;
@@ -629,47 +616,6 @@
 		border-color: var(--primary);
 	}
 
-	.table-wrap {
-		overflow: hidden;
-		border-radius: 12px;
-		border: 1px solid var(--outline-variant);
-	}
-
-	table {
-		width: 100%;
-		border-collapse: collapse;
-	}
-
-	th {
-		text-align: left;
-		padding: 10px 14px;
-		font-size: 11px;
-		color: var(--on-surface-variant);
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		border-bottom: 1px solid var(--outline-variant);
-		background: var(--surface-container-high);
-	}
-
-	td {
-		padding: 10px 14px;
-		border-bottom: 1px solid var(--outline-variant);
-	}
-
-	tr:last-child td {
-		border-bottom: none;
-	}
-
-	.mono {
-		font-family: "IBM Plex Mono", ui-monospace, monospace;
-		font-size: 12px;
-	}
-
-	.actions-cell {
-		width: 1%;
-		text-align: right;
-	}
-
 	.creds-row {
 		display: flex;
 		align-items: center;
@@ -692,10 +638,5 @@
 	.status-pill.missing {
 		background: color-mix(in oklch, var(--tertiary) 16%, transparent);
 		color: var(--tertiary);
-	}
-
-	.loading {
-		color: var(--on-surface-variant);
-		font-size: 13px;
 	}
 </style>

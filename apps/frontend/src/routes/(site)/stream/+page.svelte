@@ -89,26 +89,11 @@
 </div>
 
 <style>
-	:global(html) {
-		background: var(--background, #0d1117);
-	}
-
-	:global(body) {
-		margin: 0;
-		background-color: var(--surface, #0d1117);
-		font-family: "Inter", system-ui, sans-serif;
-		color: var(--on-surface, #ffffff);
-		display: flex;
-		flex-direction: column;
-		height: 100vh;
-		overflow: hidden;
-	}
-
 	.page {
-		flex: 1;
 		min-height: 0;
 		display: flex;
-		height: calc(100vh - var(--site-nav-h, 4rem));
+		height: calc(100vh - var(--site-nav-h));
+		overflow: hidden;
 	}
 
 	.tuner {
@@ -202,13 +187,9 @@
 	}
 
 	@media (max-width: 768px) {
-		:global(body) {
-			height: auto;
-			overflow: visible;
-		}
-
 		.page {
 			height: auto;
+			overflow: visible;
 			flex-direction: column;
 		}
 

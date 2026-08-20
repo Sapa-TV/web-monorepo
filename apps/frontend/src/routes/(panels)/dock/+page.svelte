@@ -463,31 +463,6 @@
 {/if}
 
 <style>
-	:global(html) {
-		background: var(--background);
-	}
-
-	:global(body) {
-		margin: 0;
-		padding: 24px;
-		font-family: "Inter", system-ui, sans-serif;
-		background: var(--background);
-		color: var(--on-surface);
-		font-size: 14px;
-	}
-
-	.visually-hidden {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		margin: -1px;
-		padding: 0;
-		overflow: hidden;
-		clip: rect(0 0 0 0);
-		white-space: nowrap;
-		border: 0;
-	}
-
 	h1 {
 		font-size: 22px;
 		margin-bottom: 20px;
@@ -683,38 +658,6 @@
 		letter-spacing: 0.08em;
 	}
 
-	.table-wrap {
-		overflow: hidden;
-		border-radius: 12px;
-		border: 1px solid var(--outline-variant);
-	}
-
-	table {
-		width: 100%;
-		border-collapse: collapse;
-		background: var(--surface-container);
-	}
-
-	th {
-		text-align: left;
-		padding: 10px 14px;
-		font-size: 11px;
-		color: var(--on-surface-variant);
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		border-bottom: 1px solid var(--outline-variant);
-		background: var(--surface-container-high);
-	}
-
-	td {
-		padding: 10px 14px;
-		border-bottom: 1px solid var(--outline-variant);
-	}
-
-	tr:last-child td {
-		border-bottom: none;
-	}
-
 	.status-badge {
 		display: inline-block;
 		padding: 2px 8px;
@@ -758,9 +701,7 @@
 	}
 
 	.actions-cell {
-		display: flex;
 		gap: 6px;
-		justify-content: flex-end;
 	}
 
 	.th-actions {

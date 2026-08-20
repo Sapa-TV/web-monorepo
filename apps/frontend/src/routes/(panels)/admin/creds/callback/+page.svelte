@@ -65,24 +65,11 @@
 </main>
 
 <style>
-	:global(html) {
-		background: var(--background);
-	}
-
-	:global(body) {
-		margin: 0;
-		font-family: "Inter", system-ui, sans-serif;
-		background: var(--background);
-		color: var(--on-surface);
-		font-size: 14px;
-	}
-
 	.creds {
-		min-height: 100vh;
+		min-height: calc(100vh - 48px);
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		padding: 24px;
 	}
 
 	.card {

@@ -402,45 +402,6 @@
 
 	.table-wrap {
 		margin-top: 14px;
-		overflow: hidden;
-		border-radius: 12px;
-		border: 1px solid var(--outline-variant);
-	}
-
-	table {
-		width: 100%;
-		border-collapse: collapse;
-	}
-
-	th {
-		text-align: left;
-		padding: 10px 14px;
-		font-size: 11px;
-		color: var(--on-surface-variant);
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		border-bottom: 1px solid var(--outline-variant);
-		background: var(--surface-container-high);
-	}
-
-	td {
-		padding: 10px 14px;
-		border-bottom: 1px solid var(--outline-variant);
-	}
-
-	tr:last-child td {
-		border-bottom: none;
-	}
-
-	.mono {
-		font-family: "IBM Plex Mono", ui-monospace, monospace;
-		font-size: 12px;
-	}
-
-	.actions-cell {
-		width: 1%;
-		text-align: right;
-		white-space: nowrap;
 	}
 
 	.actions-cell .btn {
@@ -449,7 +410,5 @@
 
 	.loading {
 		margin-top: 12px;
-		color: var(--on-surface-variant);
-		font-size: 13px;
 	}
 </style>

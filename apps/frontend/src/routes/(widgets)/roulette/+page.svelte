@@ -257,22 +257,6 @@
 </div>
 
 <style>
-	:global(html) {
-		background: transparent;
-	}
-
-	:global(body) {
-		margin: 0;
-		background: transparent;
-		font-family: "Inter", system-ui, sans-serif;
-		min-height: 100vh;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		overflow: hidden;
-		color: #f2e9dc;
-	}
-
 	.widget {
 		position: relative;
 		background: color-mix(in oklch, oklch(0.12 0.01 47) 86%, transparent);

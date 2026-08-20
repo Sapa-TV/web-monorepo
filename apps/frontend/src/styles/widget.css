@@ -1,0 +1,15 @@
+html {
+	background: transparent;
+}
+
+body {
+	margin: 0;
+	background: transparent;
+	font-family: "Inter", system-ui, sans-serif;
+	min-height: 100vh;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+	color: #f2e9dc;
+}
