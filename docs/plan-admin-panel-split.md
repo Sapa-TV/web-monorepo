@@ -88,7 +88,7 @@ Runes-модуль с полями `loaded`, `isRoot`. Заполняется gu
 ### 5. `admins/+page.svelte`
 
 - Если не root — `Alert` «Раздел доступен только root-админам.» (пункт меню при этом виден всем).
-- Иначе форма добавления + таблица (переезжают `loadAdmins`, `addAdmin`, `removeAdmin`).
+- Иначе `components/admin/admins/AdminsCard.svelte`: форма добавления + таблица (переезжают `loadAdmins`, `addAdmin`, `removeAdmin`).
 
 ### 6. `actions/+page.svelte`
 
