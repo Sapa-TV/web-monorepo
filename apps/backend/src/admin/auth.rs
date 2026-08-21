@@ -4,6 +4,7 @@ use std::sync::nonpoison::Mutex;
 use std::time::{Duration, Instant};
 
 use axum::http::StatusCode;
+use thiserror::Error;
 use tracing::debug;
 use twitch_oauth2::{CsrfToken, Scope, TwitchToken, UserTokenBuilder};
 
@@ -17,13 +18,18 @@ pub struct ExchangedToken {
     pub user_name: Option<String>,
 }
 
+#[derive(Debug, Error)]
 #[non_exhaustive]
-#[derive(Debug)]
 pub enum AdminAuthError {
+    #[error("twitch auth is not configured")]
     NotConfigured,
+    #[error("csrf state mismatch")]
     CsrfMismatch,
+    #[error("invalid redirect uri")]
     InvalidRedirectUri,
+    #[error("token exchange failed")]
     Exchange,
+    #[error("failed to persist credentials")]
     Persist,
 }
 

@@ -60,7 +60,7 @@ where
     pub rarity_service: Arc<RarityService<Arc<R>>>,
     pub user_service: Arc<UserService<U, P>>,
     pub admin_service: Arc<AdminService<A>>,
-    pub session_service: Arc<SessionService<Se>>,
+    pub session_service: Arc<SessionService<Se, A>>,
     pub queue_service: Arc<QueueService<Q, R, S>>,
     pub config: Arc<ConfigStore<K>>,
     pub event_publisher: BroadcastEventPublisher,
@@ -125,7 +125,7 @@ pub type AppState = UniAppState<
 pub type AppQueueService =
     QueueService<InMemoryQueueRepository, InMemoryRarityRepository, InMemoryRouletteSlotRepository>;
 
-pub type AppSessionService = SessionService<InMemorySessionRepository>;
+pub type AppSessionService = SessionService<InMemorySessionRepository, InMemoryAdminRepository>;
 
 pub struct AppStateBuilder {
     random: StandartRandomProvider,
@@ -203,7 +203,11 @@ impl AppStateBuilder {
             tracing::info!("seeding root admin: twitch_user_id={admin_id}");
             admin_service.seed(admin_id).await?;
         }
-        let session_service = Arc::new(SessionService::new(session_repo, settings));
+        let session_service = Arc::new(SessionService::new(
+            session_repo,
+            Arc::clone(&admin_service),
+            settings,
+        ));
         let credentials = Arc::new(PlatformCredentialService::new(Arc::clone(
             &self.credentials_repo,
         )));

@@ -114,3 +114,15 @@ pub fn cookie_header(name: &str, value: &str, max_age_secs: i64, secure: bool) -
     }
     HeaderValue::from_str(&builder.build().encoded().to_string()).expect("cookie header is valid")
 }
+
+pub fn auth_cookie(name: &str, value: &str, max_age_secs: i64, secure: bool) -> Cookie<'static> {
+    let mut builder = Cookie::build((name.to_owned(), value.to_owned()))
+        .path("/")
+        .http_only(true)
+        .same_site(SameSite::Lax)
+        .secure(secure);
+    if max_age_secs >= 0 {
+        builder = builder.max_age(Duration::seconds(max_age_secs));
+    }
+    builder.build()
+}

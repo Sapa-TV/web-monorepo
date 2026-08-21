@@ -85,6 +85,15 @@ fn user_not_found() -> ApiError {
     ApiError::new(StatusCode::NOT_FOUND, "user not found")
 }
 
+async fn user_json(state: &AppState, id: UserId) -> Result<Json<UserResponse>, ApiError> {
+    let view = state
+        .user_service
+        .build_user(id)
+        .await?
+        .ok_or_else(user_not_found)?;
+    Ok(Json(view.into()))
+}
+
 impl From<UserView> for UserResponse {
     fn from(view: UserView) -> Self {
         let UserView { user, platforms } = view;
@@ -251,12 +260,7 @@ pub async fn link_platform(
             &body.platform_username,
         )
         .await?;
-    let view = state
-        .user_service
-        .build_user(params.id)
-        .await?
-        .ok_or_else(user_not_found)?;
-    Ok(Json(view.into()))
+    user_json(&state, params.id).await
 }
 
 #[utoipa::path(
@@ -280,12 +284,7 @@ pub async fn update_platform_username(
         .user_service
         .update_platform_username(params.id, &params.platform, &body.platform_username)
         .await?;
-    let view = state
-        .user_service
-        .build_user(params.id)
-        .await?
-        .ok_or_else(user_not_found)?;
-    Ok(Json(view.into()))
+    user_json(&state, params.id).await
 }
 
 #[utoipa::path(
@@ -307,12 +306,7 @@ pub async fn delete_platform(
         .user_service
         .delete_platform(params.id, &params.platform)
         .await?;
-    let view = state
-        .user_service
-        .build_user(params.id)
-        .await?
-        .ok_or_else(user_not_found)?;
-    Ok(Json(view.into()))
+    user_json(&state, params.id).await
 }
 
 #[utoipa::path(

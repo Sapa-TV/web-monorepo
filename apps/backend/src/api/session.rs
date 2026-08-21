@@ -2,15 +2,17 @@ use axum::Json;
 use axum::extract::Extension;
 use axum::extract::rejection::ExtensionRejection;
 use axum::extract::{Query, State};
-use axum::http::header;
-use axum::http::{HeaderMap, StatusCode};
+use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
+use axum_extra::extract::CookieJar;
 use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, OpenApi, ToSchema};
 
-use crate::api::auth::{LOGIN_COOKIE, SESSION_COOKIE, cookie_header, read_cookie};
-use crate::error::SessionServiceError;
-use crate::session::Session;
+use crate::admin::auth::ExchangedToken;
+use crate::api::auth::{LOGIN_COOKIE, SESSION_COOKIE, auth_cookie};
+use crate::consts::session;
+use crate::error::api::ApiError;
+use crate::session::{LoginTicket, Session};
 use crate::state::AppState;
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -34,6 +36,16 @@ pub struct TwitchLoginCallbackResponse {
     pub twitch_user_name: Option<String>,
 }
 
+impl From<(&ExchangedToken, &LoginTicket)> for TwitchLoginCallbackResponse {
+    fn from((exchanged, ticket): (&ExchangedToken, &LoginTicket)) -> Self {
+        Self {
+            ticket: ticket.ticket.as_str().to_string(),
+            twitch_user_id: exchanged.user_id.clone(),
+            twitch_user_name: exchanged.user_name.clone(),
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, ToSchema)]
 #[non_exhaustive]
 pub struct CreateSessionRequest {
@@ -47,6 +59,17 @@ pub struct SessionResponse {
     pub twitch_user_name: Option<String>,
     pub is_root: bool,
     pub expires_at: String,
+}
+
+impl From<(&Session, bool)> for SessionResponse {
+    fn from((session, is_root): (&Session, bool)) -> Self {
+        Self {
+            twitch_user_id: session.twitch_user_id.clone(),
+            twitch_user_name: session.twitch_user_name.clone(),
+            is_root,
+            expires_at: session.expires_at.to_rfc3339(),
+        }
+    }
 }
 
 #[utoipa::path(
@@ -78,37 +101,23 @@ pub async fn start_twitch_login(
 )]
 pub async fn twitch_login_callback(
     State(state): State<AppState>,
+    jar: CookieJar,
     Query(query): Query<TwitchLoginCallbackQuery>,
-) -> Result<(StatusCode, HeaderMap, Json<TwitchLoginCallbackResponse>), StatusCode> {
-    let exchanged = state
-        .admin_auth
-        .complete_login(&query.code, &query.state)
-        .await?;
-    let ticket = state
+) -> Result<(StatusCode, CookieJar, Json<TwitchLoginCallbackResponse>), ApiError> {
+    let (exchanged, ticket) = state
         .session_service
-        .create_login_ticket(&exchanged.user_id, exchanged.user_name.as_deref())
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-    let mut headers = HeaderMap::new();
-    headers.append(
-        header::SET_COOKIE,
-        cookie_header(
-            LOGIN_COOKIE,
-            ticket.ticket.as_str(),
-            10 * 60,
-            state.config.cookie_secure(),
-        ),
-    );
-
+        .exchange_login(&state.admin_auth, &query.code, &query.state)
+        .await?;
+    let response = TwitchLoginCallbackResponse::from((&exchanged, &ticket));
     Ok((
         StatusCode::OK,
-        headers,
-        Json(TwitchLoginCallbackResponse {
-            ticket: ticket.ticket.as_str().to_string(),
-            twitch_user_id: exchanged.user_id,
-            twitch_user_name: exchanged.user_name,
-        }),
+        jar.add(auth_cookie(
+            LOGIN_COOKIE,
+            &response.ticket,
+            session::LOGIN_TICKET_TTL.as_secs() as i64,
+            state.config.cookie_secure(),
+        )),
+        Json(response),
     ))
 }
 
@@ -124,39 +133,24 @@ pub async fn twitch_login_callback(
 )]
 pub async fn create_session(
     State(state): State<AppState>,
-    headers: HeaderMap,
+    jar: CookieJar,
     Json(body): Json<CreateSessionRequest>,
-) -> Result<(StatusCode, HeaderMap, Json<SessionResponse>), SessionServiceError> {
-    let login_cookie = read_cookie(&headers, LOGIN_COOKIE);
+) -> Result<(StatusCode, CookieJar, Json<SessionResponse>), ApiError> {
+    let login_ticket = jar.get(LOGIN_COOKIE).map(|c| c.value().to_string());
     let (session, is_root) = state
         .session_service
-        .login(
-            state.admin_service.as_ref(),
-            login_cookie.as_deref(),
-            &body.ticket,
-        )
+        .login(login_ticket.as_deref(), &body.ticket)
         .await?;
-
-    let mut headers = HeaderMap::new();
-    headers.append(
-        header::SET_COOKIE,
-        cookie_header(
+    let response = SessionResponse::from((&session, is_root));
+    Ok((
+        StatusCode::CREATED,
+        jar.add(auth_cookie(
             SESSION_COOKIE,
             session.token.as_str(),
             state.config.session_ttl_secs() as i64,
             state.config.cookie_secure(),
-        ),
-    );
-
-    Ok((
-        StatusCode::CREATED,
-        headers,
-        Json(SessionResponse {
-            twitch_user_id: session.twitch_user_id,
-            twitch_user_name: session.twitch_user_name,
-            is_root,
-            expires_at: session.expires_at.to_rfc3339(),
-        }),
+        )),
+        Json(response),
     ))
 }
 
@@ -178,17 +172,7 @@ pub async fn get_me(
         .is_root(&session.twitch_user_id)
         .await
         .map_err(|_| Unauthorized)?;
-    tracing::debug!(
-        "get_me: twitch_user_id={}, is_root={}",
-        session.twitch_user_id,
-        is_root
-    );
-    Ok(Json(SessionResponse {
-        twitch_user_id: session.twitch_user_id.clone(),
-        twitch_user_name: session.twitch_user_name.clone(),
-        is_root,
-        expires_at: session.expires_at.to_rfc3339(),
-    }))
+    Ok(Json(SessionResponse::from((&session, is_root))))
 }
 
 #[utoipa::path(
@@ -202,19 +186,16 @@ pub async fn get_me(
 )]
 pub async fn logout(
     State(state): State<AppState>,
+    jar: CookieJar,
     Extension(session): Extension<Session>,
-) -> Result<(StatusCode, HeaderMap), Unauthorized> {
+) -> Result<(StatusCode, CookieJar), Unauthorized> {
     state
         .session_service
         .logout(session.token.as_str())
         .await
         .ok();
-    let mut headers = HeaderMap::new();
-    headers.append(
-        header::SET_COOKIE,
-        cookie_header(SESSION_COOKIE, "", 0, state.config.cookie_secure()),
-    );
-    Ok((StatusCode::NO_CONTENT, headers))
+    let cookie = auth_cookie(SESSION_COOKIE, "", 0, state.config.cookie_secure());
+    Ok((StatusCode::NO_CONTENT, jar.add(cookie)))
 }
 
 #[derive(Debug)]

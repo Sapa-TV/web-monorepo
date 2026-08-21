@@ -14,6 +14,8 @@ pub enum SessionServiceError {
     SessionNotFound,
     #[error("session expired")]
     SessionExpired,
+    #[error("oauth code exchange failed: {0}")]
+    Exchange(String),
     #[error("{0}")]
     Repo(RepositoryError),
 }
@@ -34,7 +36,16 @@ impl From<SessionServiceError> for ApiError {
             SessionServiceError::SessionNotFound | SessionServiceError::SessionExpired => {
                 ApiError::new(StatusCode::UNAUTHORIZED, e.to_string())
             }
+            SessionServiceError::Exchange(_) => {
+                ApiError::new(StatusCode::BAD_GATEWAY, e.to_string())
+            }
         }
+    }
+}
+
+impl From<SessionServiceError> for StatusCode {
+    fn from(e: SessionServiceError) -> Self {
+        ApiError::from(e).status()
     }
 }
 

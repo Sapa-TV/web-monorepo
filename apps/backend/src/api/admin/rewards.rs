@@ -4,7 +4,7 @@ use axum::Json;
 use axum::extract::State;
 use axum::http::StatusCode;
 use serde::Serialize;
-use twitch_api::types::{Collection, RewardId};
+use twitch_api::helix::points::CustomReward;
 use utoipa::OpenApi;
 use utoipa::ToSchema;
 
@@ -19,6 +19,19 @@ pub struct RewardResponse {
     pub is_enabled: bool,
     pub is_paused: bool,
     pub used_in_rules: bool,
+}
+
+impl RewardResponse {
+    fn build(reward: CustomReward, used_in_rules: &HashSet<String>) -> Self {
+        Self {
+            id: reward.id.to_string(),
+            title: reward.title,
+            cost: reward.cost as u64,
+            is_enabled: reward.is_enabled,
+            is_paused: reward.is_paused,
+            used_in_rules: used_in_rules.contains(&reward.id.to_string()),
+        }
+    }
 }
 
 #[utoipa::path(
@@ -36,40 +49,16 @@ pub async fn list_rewards(
     State(state): State<AppState>,
 ) -> Result<Json<Vec<RewardResponse>>, StatusCode> {
     let twitch = state.twitch_api.as_ref().ok_or(StatusCode::BAD_REQUEST)?;
-    let broadcaster_id = state
-        .config
-        .twitch()
-        .map(|c| c.broadcaster_id.clone())
-        .ok_or(StatusCode::BAD_REQUEST)?;
-    let token = twitch
-        .user_token()
-        .await
-        .map_err(|_| StatusCode::UNAUTHORIZED)?;
-    let ids = Collection::from(&[][..] as &[RewardId]);
-    let rewards = twitch
-        .helix()
-        .get_custom_rewards(broadcaster_id, false, &ids, &token)
-        .await
-        .map_err(|_| StatusCode::BAD_GATEWAY)?;
+    let rewards = twitch.custom_rewards().await.map_err(StatusCode::from)?;
     let used = state
         .rule_service
-        .list()
+        .referenced_reward_ids()
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-        .into_iter()
-        .filter_map(|rule| rule.referenced_reward_id().map(str::to_string))
-        .collect::<HashSet<String>>();
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     Ok(Json(
         rewards
             .into_iter()
-            .map(|reward| RewardResponse {
-                id: reward.id.to_string(),
-                title: reward.title,
-                cost: reward.cost as u64,
-                is_enabled: reward.is_enabled,
-                is_paused: reward.is_paused,
-                used_in_rules: used.contains(&reward.id.to_string()),
-            })
+            .map(|reward| RewardResponse::build(reward, &used))
             .collect(),
     ))
 }

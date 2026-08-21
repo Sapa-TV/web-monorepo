@@ -3,30 +3,62 @@ use std::time::Duration;
 
 use chrono::Utc;
 
+use crate::admin::auth::{AdminAuthService, ExchangedToken};
 use crate::admin::repository::AdminRepository;
 use crate::admin::service::AdminService;
 use crate::config::store::SharedSettings;
 use crate::consts::session::LOGIN_TICKET_TTL;
 use crate::error::RepositoryError;
 use crate::error::SessionServiceError;
+use crate::platform::PlatformCredentialRepository;
 use crate::session::repository::SessionRepository;
 use crate::session::{LoginTicket, LoginTicketToken, Session, SessionToken};
 
 #[non_exhaustive]
-pub struct SessionService<R>
+pub struct SessionService<R, A>
 where
     R: SessionRepository,
+    A: AdminRepository,
 {
     repo: Arc<R>,
+    admin: Arc<AdminService<A>>,
     settings: SharedSettings,
 }
 
-impl<R> SessionService<R>
+impl<R, A> SessionService<R, A>
 where
     R: SessionRepository,
+    A: AdminRepository,
 {
-    pub fn new(repo: Arc<R>, settings: SharedSettings) -> Self {
-        Self { repo, settings }
+    pub fn new(repo: Arc<R>, admin: Arc<AdminService<A>>, settings: SharedSettings) -> Self {
+        Self {
+            repo,
+            admin,
+            settings,
+        }
+    }
+
+    pub fn admin(&self) -> &AdminService<A> {
+        &self.admin
+    }
+
+    pub async fn exchange_login<C>(
+        &self,
+        admin_auth: &AdminAuthService<C>,
+        code: &str,
+        auth_state: &str,
+    ) -> Result<(ExchangedToken, LoginTicket), SessionServiceError>
+    where
+        C: PlatformCredentialRepository,
+    {
+        let exchanged = admin_auth
+            .complete_login(code, auth_state)
+            .await
+            .map_err(|e| SessionServiceError::Exchange(e.to_string()))?;
+        let ticket = self
+            .create_login_ticket(&exchanged.user_id, exchanged.user_name.as_deref())
+            .await?;
+        Ok((exchanged, ticket))
     }
 
     pub async fn create_login_ticket(
@@ -102,31 +134,31 @@ where
         Ok(())
     }
 
-    pub async fn login<A>(
+    pub async fn login(
         &self,
-        admin: &AdminService<A>,
         login_cookie: Option<&str>,
         ticket: &str,
-    ) -> Result<(Session, bool), SessionServiceError>
-    where
-        A: AdminRepository,
-    {
+    ) -> Result<(Session, bool), SessionServiceError> {
         if login_cookie != Some(ticket) {
             return Err(SessionServiceError::InvalidTicket);
         }
 
         let ticket = self.consume_login_ticket(ticket).await?;
 
-        let is_admin = admin.is_admin(&ticket.twitch_user_id).await.map_err(|_| {
-            SessionServiceError::Repo(RepositoryError::Database("admin service".to_string()))
-        })?;
+        let is_admin = self
+            .admin
+            .is_admin(&ticket.twitch_user_id)
+            .await
+            .map_err(|_| {
+                SessionServiceError::Repo(RepositoryError::Database("admin service".to_string()))
+            })?;
         tracing::debug!(
             "login: twitch_user_id={}, is_admin={}",
             ticket.twitch_user_id,
             is_admin
         );
         if is_admin {
-            admin
+            self.admin
                 .update_display_name(
                     &ticket.twitch_user_id,
                     ticket.twitch_user_name.as_deref().unwrap_or(""),
@@ -139,9 +171,13 @@ where
             .issue_session(&ticket.twitch_user_id, ticket.twitch_user_name.as_deref())
             .await?;
 
-        let is_root = admin.is_root(&session.twitch_user_id).await.map_err(|_| {
-            SessionServiceError::Repo(RepositoryError::Database("admin service".to_string()))
-        })?;
+        let is_root = self
+            .admin
+            .is_root(&session.twitch_user_id)
+            .await
+            .map_err(|_| {
+                SessionServiceError::Repo(RepositoryError::Database("admin service".to_string()))
+            })?;
 
         tracing::debug!(
             "session issued: twitch_user_id={}, is_root={}",
@@ -178,11 +214,7 @@ mod tests {
 
     use super::*;
 
-    type TestService = SessionService<InMemorySessionRepository>;
-
-    async fn admin_service() -> AdminService<InMemoryAdminRepository> {
-        AdminService::new(Arc::new(InMemoryAdminRepository::new()))
-    }
+    type TestService = SessionService<InMemorySessionRepository, InMemoryAdminRepository>;
 
     fn test_settings(ttl_secs: u64) -> SharedSettings {
         let mut config = RuntimeConfig::test_runtime("test-key");
@@ -193,6 +225,7 @@ mod tests {
     fn test_service() -> TestService {
         SessionService::new(
             Arc::new(InMemorySessionRepository::new()),
+            Arc::new(AdminService::new(Arc::new(InMemoryAdminRepository::new()))),
             test_settings(60 * 60),
         )
     }
@@ -280,12 +313,11 @@ mod tests {
     #[tokio::test]
     async fn login_updates_display_name_for_admin() {
         let svc = test_service();
-        let admins = admin_service().await;
-        admins.add("123", Some("old_name")).await.unwrap();
+        svc.admin().add("123", Some("old_name")).await.unwrap();
 
         let ticket = login_ticket(&svc, "123", Some("new_name")).await;
         let (session, is_root) = svc
-            .login(&admins, Some(ticket.as_str()), ticket.as_str())
+            .login(Some(ticket.as_str()), ticket.as_str())
             .await
             .unwrap();
 
@@ -293,7 +325,7 @@ mod tests {
         assert_eq!(session.twitch_user_name.as_deref(), Some("new_name"));
         assert!(!is_root);
         assert_eq!(
-            admins
+            svc.admin()
                 .get("123")
                 .await
                 .unwrap()
@@ -307,30 +339,28 @@ mod tests {
     #[tokio::test]
     async fn login_allows_regular_user() {
         let svc = test_service();
-        let admins = admin_service().await;
 
         let ticket = login_ticket(&svc, "999", Some("viewer")).await;
         let (session, is_root) = svc
-            .login(&admins, Some(ticket.as_str()), ticket.as_str())
+            .login(Some(ticket.as_str()), ticket.as_str())
             .await
             .unwrap();
 
         assert_eq!(session.twitch_user_id, "999");
         assert_eq!(session.twitch_user_name.as_deref(), Some("viewer"));
         assert!(!is_root);
-        assert!(admins.get("999").await.unwrap().is_none());
+        assert!(svc.admin().get("999").await.unwrap().is_none());
     }
 
     #[tokio::test]
     async fn login_reports_is_root_for_root_admin() {
         let svc = test_service();
-        let admins = admin_service().await;
-        admins.add("123", None).await.unwrap();
-        admins.set_root("123", true).await.unwrap();
+        svc.admin().add("123", None).await.unwrap();
+        svc.admin().set_root("123", true).await.unwrap();
 
         let ticket = login_ticket(&svc, "123", None).await;
         let (session, is_root) = svc
-            .login(&admins, Some(ticket.as_str()), ticket.as_str())
+            .login(Some(ticket.as_str()), ticket.as_str())
             .await
             .unwrap();
 
@@ -341,14 +371,13 @@ mod tests {
     #[tokio::test]
     async fn login_rejects_ticket_without_matching_cookie() {
         let svc = test_service();
-        let admins = admin_service().await;
         let ticket = login_ticket(&svc, "123", None).await;
 
-        let err = svc.login(&admins, None, ticket.as_str()).await.unwrap_err();
+        let err = svc.login(None, ticket.as_str()).await.unwrap_err();
         assert!(matches!(err, SessionServiceError::InvalidTicket));
 
         let err = svc
-            .login(&admins, Some("stolen"), ticket.as_str())
+            .login(Some("stolen"), ticket.as_str())
             .await
             .unwrap_err();
         assert!(matches!(err, SessionServiceError::InvalidTicket));
@@ -357,7 +386,11 @@ mod tests {
     #[tokio::test]
     async fn expired_sessions_are_pruned() {
         let repo = Arc::new(InMemorySessionRepository::new());
-        let svc = SessionService::new(Arc::clone(&repo), test_settings(60));
+        let svc = SessionService::new(
+            Arc::clone(&repo),
+            Arc::new(AdminService::new(Arc::new(InMemoryAdminRepository::new()))),
+            test_settings(60),
+        );
 
         let fresh = svc.issue_session("123", None).await.unwrap();
         let stale = Session {
@@ -387,7 +420,11 @@ mod tests {
             RuntimeConfig::test_runtime("test-key"),
             Arc::clone(&repo),
         );
-        let svc = SessionService::new(Arc::new(InMemorySessionRepository::new()), store.source());
+        let svc = SessionService::new(
+            Arc::new(InMemorySessionRepository::new()),
+            Arc::new(AdminService::new(Arc::new(InMemoryAdminRepository::new()))),
+            store.source(),
+        );
 
         let first = svc.issue_session("123", None).await.unwrap();
         let first_ttl = first

@@ -1,0 +1,13 @@
+language: Rust
+id: max-handler-lines
+message: "api handler exceeds 20 lines: extract logic into services/helpers"
+severity: error
+rule:
+  kind: function_item
+  follows:
+    kind: attribute_item
+    regex: utoipa::path
+    stopBy: neighbor
+files:
+  - "apps/backend/src/api/**/*.rs"
+  - "apps/backend/src/widget_api/**/*.rs"

@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
 use twitch_api::helix::HelixClient;
+use twitch_api::helix::points::CustomReward;
+use twitch_api::types::{Collection, RewardId};
 use twitch_oauth2::{ClientId, ClientSecret, RefreshToken, Scope, UserToken};
 
 use crate::config::TwitchConfig;
@@ -54,6 +56,15 @@ where
         .map_err(|e| PlatformError::Auth(e.to_string()))?;
         self.persist_rotated(&token).await;
         Ok(token)
+    }
+
+    pub async fn custom_rewards(&self) -> Result<Vec<CustomReward>, PlatformError> {
+        let token = self.user_token().await?;
+        let ids = Collection::from(&[][..] as &[RewardId]);
+        self.helix()
+            .get_custom_rewards(self.config.broadcaster_id.clone(), false, &ids, &token)
+            .await
+            .map_err(|e| PlatformError::TwitchApi(e.to_string()))
     }
 
     async fn current_refresh_token(&self) -> Result<String, PlatformError> {

@@ -1,3 +1,4 @@
+use axum::http::StatusCode;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -17,4 +18,21 @@ pub enum PlatformError {
     SinkClosed,
     #[error("publish failed: {0}")]
     Publish(String),
+    #[error("twitch api request failed: {0}")]
+    TwitchApi(String),
+}
+
+impl From<PlatformError> for StatusCode {
+    fn from(e: PlatformError) -> Self {
+        match e {
+            PlatformError::Auth(_) => StatusCode::UNAUTHORIZED,
+            PlatformError::WebSocket(_)
+            | PlatformError::Parse(_)
+            | PlatformError::Subscription(_)
+            | PlatformError::Disconnected
+            | PlatformError::SinkClosed
+            | PlatformError::Publish(_)
+            | PlatformError::TwitchApi(_) => StatusCode::BAD_GATEWAY,
+        }
+    }
 }

@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::nonpoison::RwLock;
@@ -71,6 +72,15 @@ where
 
     pub async fn list(&self) -> Result<Vec<Rule>, RuleServiceError> {
         Ok(self.repo.list().await?)
+    }
+
+    pub async fn referenced_reward_ids(&self) -> Result<HashSet<String>, RuleServiceError> {
+        Ok(self
+            .list()
+            .await?
+            .into_iter()
+            .filter_map(|rule| rule.referenced_reward_id().map(str::to_string))
+            .collect())
     }
 
     pub async fn update(&self, rule: Rule) -> Result<(), RuleServiceError> {

@@ -22,19 +22,11 @@
 
 ### M3. Линтер: максимальная длина api-хендлеров
 
-Инструмент: **ast-grep** (`@ast-grep/cli` уже в devDeps корня).
-
-Правило: функция с атрибутом `#[utoipa::path]`, тело длиннее **20 строк** → ошибка.
-
-Замер (2026-08-21): 32 хендлера, при пороге 20 укладываются 28/32 (88%). Нарушители:
-- `rewards.rs`: `list_rewards` (41)
-- `session.rs`: `create_session` (37), `twitch_login_callback` (35)
-- `session.rs`: `get_me` (21)
-
-Шаги:
-1. Добавить правило в `sgconfig.yml` (создать при отсутствии); ограничение длины — через служебный скрипт-обёртку, если чистый YAML этого не умеет.
-2. Прогнать по `apps/backend/src/api/**`.
-3. Отдельным проходом вынести инлайн-логику четырёх нарушителей в сервисы (куки, twitch-config, листинг наград).
+✅ Готово (2026-08-21). Правило `max-handler-lines` в `.sg/rules/` (ast-grep, `function_item` после атрибута `utoipa::path`) + скрипт-обёртка `tools/check-handler-lines.mjs`: порог **20 строк тела функции** (сигнатура с экстракторами не считается). Попутно ужаты хендлеры-нарушители:
+- `rewards.rs::list_rewards` — поход в Twitch API вынесен в `TwitchAuthService::custom_rewards`, ссылки правил — в `RuleService::referenced_reward_ids`;
+- `session.rs::twitch_login_callback/create_session/get_me/logout` — переход на `CookieJar` (axum-extra) + `auth_cookie`, маппинг DTO через `From`, обмен кода и выпуск тикета объединены в `SessionService::exchange_login`; `SessionService` теперь сам держит `AdminService` (`login()` без внешнего аргумента);
+- `widget_api/users.rs::link_platform/update_platform_username/delete_platform` — общий хвост `user_json`.
+Проверки: скрипт OK, ast-grep test 3/3, clippy/fmt чисто, nextest 269/269.
 
 ### M4. Поиск администратора по username
 
