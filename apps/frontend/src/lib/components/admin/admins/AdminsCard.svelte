@@ -1,6 +1,10 @@
 <script lang="ts">
 	import { api } from "#lib/api";
-	import type { AdminResponse } from "@sapa-tv-ru/api-client";
+	import type {
+		AdminResponse,
+		TwitchUserResponse,
+	} from "@sapa-tv-ru/api-client";
+	import { HttpError } from "@sapa-tv-ru/api-client";
 	import {
 		Alert,
 		Badge,
@@ -14,6 +18,9 @@
 	import IconTrash2 from "~icons/lucide/trash-2";
 	import IconUserPlus from "~icons/lucide/user-plus";
 
+	const NOT_FOUND = 404;
+	const SEARCH_DEBOUNCE_MS = 400;
+
 	let admins = $state<AdminResponse[]>([]);
 	let loaded = $state(false);
 	let error = $state("");
@@ -24,8 +31,42 @@
 	let addBusy = $state(false);
 	let removeBusyId = $state<string | null>(null);
 
+	let searchLogin = $state("");
+	let searchBusy = $state(false);
+	let foundUser = $state<TwitchUserResponse | null>(null);
+
 	function setError(err: unknown) {
 		error = err instanceof Error ? err.message : String(err);
+	}
+
+	$effect(() => {
+		const login = searchLogin.trim();
+		foundUser = null;
+		if (!login) return;
+		const timer = setTimeout(() => void lookupUser(login), SEARCH_DEBOUNCE_MS);
+		return () => clearTimeout(timer);
+	});
+
+	async function lookupUser(login: string) {
+		searchBusy = true;
+		try {
+			const res = await api.findTwitchUser(login);
+			foundUser = res.isErr() ? null : res.value;
+			if (
+				res.isErr() &&
+				!(res.error instanceof HttpError && res.error.status === NOT_FOUND)
+			) {
+				setError(res.error);
+			}
+		} finally {
+			searchBusy = false;
+		}
+	}
+
+	function applyFoundUser() {
+		if (!foundUser) return;
+		newTwitchId = foundUser.id;
+		newDisplayName = foundUser.display_name;
 	}
 
 	async function loadAdmins() {
@@ -85,6 +126,33 @@
 		{/if}
 		{#if hint}
 			<Alert tone="success">{hint}</Alert>
+		{/if}
+
+		<form class="search-form" onsubmit={(e) => e.preventDefault()}>
+			<Input
+				type="text"
+				placeholder="Поиск по Twitch username"
+				bind:value={searchLogin}
+			/>
+			{#if searchBusy}
+				<span class="search-hint">Поиск...</span>
+			{/if}
+		</form>
+
+		{#if foundUser}
+			<div class="found-row">
+				<span class="found-info">
+					{foundUser.display_name} · {foundUser.login} · #{foundUser.id}
+				</span>
+				<Button
+					size="sm"
+					variant="primary"
+					type="button"
+					onclick={applyFoundUser}
+				>
+					Подставить
+				</Button>
+			</div>
 		{/if}
 
 		<form
@@ -155,3 +223,38 @@
 		{/if}
 	</Section>
 </Card>
+
+<style>
+	.search-form {
+		display: flex;
+		gap: 8px;
+		align-items: center;
+		margin-bottom: 8px;
+	}
+
+	.search-form :global(.field-input) {
+		max-width: 280px;
+	}
+
+	.search-hint {
+		font-size: 12px;
+		color: var(--on-surface-variant);
+	}
+
+	.found-row {
+		display: flex;
+		gap: 8px;
+		align-items: center;
+		justify-content: space-between;
+		padding: 8px 10px;
+		border: 1px solid var(--outline-variant);
+		border-radius: 10px;
+		background: var(--surface-container-low);
+		margin-bottom: 8px;
+	}
+
+	.found-info {
+		font-size: 13px;
+		color: var(--on-surface);
+	}
+</style>

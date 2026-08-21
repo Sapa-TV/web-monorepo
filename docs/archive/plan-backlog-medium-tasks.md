@@ -1,8 +1,6 @@
 # План: средние задачи из backlog.md
 
-Статус: **утверждён**, не начат.
-
-Дата: 2026-08-21
+Статус: **выполнен** (все 5 задач, 2026-08-22). Архив.
 
 Решения:
 - M2 — делаем доменное разделение `RuntimeConfig`.
@@ -30,15 +28,13 @@
 
 ### M4. Поиск администратора по username
 
-Цель: при добавлении админа вводишь username — twitch_id и display_name подставляются сами.
+✅ Готово (2026-08-22). Цель: при добавлении админа вводишь username — twitch_id и display_name подставляются сами.
 
-Бекенд:
-1. Новый эндпоинт `GET /api/admin/twitch/users?query=<login>` (root-guard): через `TwitchAuthService::helix()` → `get_users` (по login), вернуть `[{id, login, display_name}]`.
-2. utoipa-схема + `gen-client`.
-
-Фронт (`AdminsCard.svelte`):
-3. Поле поиска с дебаунсом вместо ручного ввода Twitch ID; результат — список кандидатов, клик заполняет форму.
-4. Fallback: ручной ввод ID остаётся (если twitch не настроен).
+Реализовано:
+- Бекенд: `TwitchAuthService::find_user_by_login()` (helix `get_users` по логину) + эндпоинт `GET /api/admin/twitch/users?login=` (root-guard), DTO `TwitchUserResponse {id, login, display_name}`; тесты: root-guard, 400 без twitch-config, 401 без credentials.
+- Клиент перегенерирован (`findTwitchUser`, `TwitchUserResponse`).
+- Фронт `AdminsCard.svelte`: поле «Поиск по Twitch username» с дебаунсом 400 мс ($effect), найденный пользователь показывается строкой с кнопкой «Подставить» (заполняет twitch_id + display_name); ручной ввод ID остался fallback'ом. 404 = кандидат просто не показывается.
+Проверки: nextest 272/272, clippy/fmt чисто, frontend check/lint OK, vitest 21/21.
 
 ### M5. Админка: страницы и навигация — уже сделано
 
