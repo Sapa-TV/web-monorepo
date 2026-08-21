@@ -682,6 +682,42 @@
         }
       }
     },
+    "/api/admin/twitch/users": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "find_twitch_user",
+        "parameters": [
+          {
+            "name": "login",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Twitch user by login",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TwitchUserResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Twitch is not configured"
+          },
+          "404": {
+            "description": "Twitch user not found"
+          }
+        }
+      }
+    },
     "/api/admin/widget-access-key": {
       "get": {
         "tags": [
@@ -2388,6 +2424,25 @@
         ],
         "properties": {
           "auth_url": {
+            "type": "string"
+          }
+        }
+      },
+      "TwitchUserResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "login",
+          "display_name"
+        ],
+        "properties": {
+          "display_name": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "login": {
             "type": "string"
           }
         }

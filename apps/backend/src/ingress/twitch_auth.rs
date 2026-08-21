@@ -1,8 +1,10 @@
 use std::sync::Arc;
 
+use futures_util::StreamExt;
 use twitch_api::helix::HelixClient;
 use twitch_api::helix::points::CustomReward;
-use twitch_api::types::{Collection, RewardId};
+use twitch_api::helix::users::User;
+use twitch_api::types::{self, Collection, RewardId};
 use twitch_oauth2::{ClientId, ClientSecret, RefreshToken, Scope, UserToken};
 
 use crate::config::TwitchConfig;
@@ -64,6 +66,18 @@ where
         self.helix()
             .get_custom_rewards(self.config.broadcaster_id.clone(), false, &ids, &token)
             .await
+            .map_err(|e| PlatformError::TwitchApi(e.to_string()))
+    }
+
+    pub async fn find_user_by_login(&self, login: &str) -> Result<Option<User>, PlatformError> {
+        let token = self.user_token().await?;
+        let helix = self.helix();
+        let logins = vec![types::UserName::from(login)].into();
+        let mut stream = helix.get_users_from_logins(&logins, &token);
+        stream
+            .next()
+            .await
+            .transpose()
             .map_err(|e| PlatformError::TwitchApi(e.to_string()))
     }
 

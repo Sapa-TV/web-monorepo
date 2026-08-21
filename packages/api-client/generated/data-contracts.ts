@@ -319,6 +319,12 @@ export interface TwitchLoginStartResponse {
   auth_url: string;
 }
 
+export interface TwitchUserResponse {
+  display_name: string;
+  id: string;
+  login: string;
+}
+
 export interface UpdatePlatformRequest {
   platform_username: string;
 }

@@ -28,6 +28,7 @@ import {
   TwitchAuthStartResponse,
   TwitchLoginCallbackResponse,
   TwitchLoginStartResponse,
+  TwitchUserResponse,
   UpsertActionRequest,
   UpsertRarityRequest,
   UpsertRouletteSlotRequest,
@@ -390,6 +391,20 @@ export class Api<
   ) =>
     this.request<TwitchAuthCallbackResponse, void>({
       path: `/api/admin/twitch/auth/callback`,
+      method: "GET",
+      format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags admin
+   * @name FindTwitchUser
+   * @request GET:/api/admin/twitch/users
+   */
+  findTwitchUser = (login: string, params: RequestParams = {}) =>
+    this.request<TwitchUserResponse, void>({
+      path: `/api/admin/twitch/users`,
       method: "GET",
       format: "json",
       ...params,
