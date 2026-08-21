@@ -24,7 +24,7 @@ export interface FullRequestParams extends Omit<RequestInit, "body"> {
 
 export type RequestParams = Omit<
   FullRequestParams,
-  "body" | "method" | "query" | "path"
+  "body" | "method" | "path"
 >;
 
 export interface ApiConfig<SecurityDataType = unknown> {

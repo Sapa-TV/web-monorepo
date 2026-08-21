@@ -9,11 +9,11 @@ vi.mock("#lib/api", () => ({
 		createSession: vi.fn(),
 		logout: vi.fn(),
 		listAdmins: vi.fn(),
+		twitchLoginCallback: vi.fn(),
 	},
-	apiFetch: vi.fn(),
 }));
 
-import { api, apiFetch } from "#lib/api";
+import { api } from "#lib/api";
 import {
 	completeLogin,
 	getSession,
@@ -24,7 +24,6 @@ import {
 } from "./session";
 
 const apiMock = api as unknown as Record<string, Mock>;
-const apiFetchMock = apiFetch as unknown as Mock;
 
 const session = {
 	expires_at: "2026-08-15T12:00:00Z",
@@ -65,30 +64,40 @@ describe("admin session helpers", () => {
 
 	describe("completeLogin", () => {
 		it("exchanges code/state for a ticket and creates the session", async () => {
-			apiFetchMock.mockResolvedValue(
-				new Response(JSON.stringify({ ticket: "ticket-1" }), { status: 200 }),
+			apiMock.twitchLoginCallback.mockResolvedValue(
+				okAsync({
+					ticket: "ticket-1",
+					twitch_user_id: "1000",
+					twitch_user_name: "viewer",
+				}),
 			);
 			apiMock.createSession.mockResolvedValue(okAsync(session));
 
 			const result = await completeLogin("abc", "cafe");
 
-			expect(apiFetch).toHaveBeenCalledWith(
-				"/api/auth/twitch/callback?code=abc&state=cafe",
-			);
+			expect(api.twitchLoginCallback).toHaveBeenCalledWith("", "", {
+				query: { code: "abc", state: "cafe" },
+			});
 			expect(api.createSession).toHaveBeenCalledWith({ ticket: "ticket-1" });
 			expect(result).toEqual(session);
 		});
 
 		it("throws when the twitch callback returns an error", async () => {
-			apiFetchMock.mockResolvedValue(new Response("denied", { status: 400 }));
+			apiMock.twitchLoginCallback.mockResolvedValue(
+				errAsync(new HttpError(400, "Bad Request", null)),
+			);
 
 			await expect(completeLogin("abc", "cafe")).rejects.toThrow(/HTTP 400/);
 			expect(api.createSession).not.toHaveBeenCalled();
 		});
 
 		it("throws when the ticket exchange fails", async () => {
-			apiFetchMock.mockResolvedValue(
-				new Response(JSON.stringify({ ticket: "ticket-1" }), { status: 200 }),
+			apiMock.twitchLoginCallback.mockResolvedValue(
+				okAsync({
+					ticket: "ticket-1",
+					twitch_user_id: "1000",
+					twitch_user_name: "viewer",
+				}),
 			);
 			apiMock.createSession.mockResolvedValue(
 				errAsync(new HttpError(400, "Bad Request", null)),

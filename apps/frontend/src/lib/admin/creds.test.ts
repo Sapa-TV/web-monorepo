@@ -1,14 +1,17 @@
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
+import { errAsync, okAsync } from "neverthrow";
+import { HttpError } from "@sapa-tv-ru/api-client";
 
 vi.mock("#lib/api", () => ({
-	api: {},
-	apiFetch: vi.fn(),
+	api: {
+		twitchAuthCallback: vi.fn(),
+	},
 }));
 
-import { apiFetch } from "#lib/api";
+import { api } from "#lib/api";
 import { completeCredsAuth } from "./creds";
 
-const apiFetchMock = apiFetch as unknown as Mock;
+const apiMock = api as unknown as Record<string, Mock>;
 
 const credsResult = {
 	user_id: "1000",
@@ -21,49 +24,53 @@ describe("completeCredsAuth", () => {
 	});
 
 	it("exchanges code/state via the credential callback", async () => {
-		apiFetchMock.mockResolvedValue(
-			new Response(JSON.stringify(credsResult), { status: 200 }),
-		);
+		apiMock.twitchAuthCallback.mockResolvedValue(okAsync(credsResult));
 
 		const result = await completeCredsAuth("abc", "cafe");
 
-		expect(apiFetch).toHaveBeenCalledWith(
-			"/api/admin/twitch/auth/callback?code=abc&state=cafe",
-		);
+		expect(api.twitchAuthCallback).toHaveBeenCalledWith("", "", {
+			query: { code: "abc", state: "cafe" },
+		});
 		expect(result).toEqual(credsResult);
 	});
 
-	it("encodes code/state into the query", async () => {
-		apiFetchMock.mockResolvedValue(
-			new Response(JSON.stringify(credsResult), { status: 200 }),
-		);
+	it("passes code/state into the query as-is", async () => {
+		apiMock.twitchAuthCallback.mockResolvedValue(okAsync(credsResult));
 
 		await completeCredsAuth("a b", "c/d");
 
-		expect(apiFetch).toHaveBeenCalledWith(
-			"/api/admin/twitch/auth/callback?code=a%20b&state=c%2Fd",
-		);
+		expect(api.twitchAuthCallback).toHaveBeenCalledWith("", "", {
+			query: { code: "a b", state: "c/d" },
+		});
 	});
 
 	it("throws a user-facing message on 401 without a root session", async () => {
-		apiFetchMock.mockResolvedValue(new Response("denied", { status: 401 }));
+		apiMock.twitchAuthCallback.mockResolvedValue(
+			errAsync(new HttpError(401, "Unauthorized", null)),
+		);
 		await expect(completeCredsAuth("abc", "cafe")).rejects.toThrow(
 			/сессия истекла/,
 		);
 	});
 
 	it("throws a user-facing message on 403 without root rights", async () => {
-		apiFetchMock.mockResolvedValue(new Response("denied", { status: 403 }));
+		apiMock.twitchAuthCallback.mockResolvedValue(
+			errAsync(new HttpError(403, "Forbidden", null)),
+		);
 		await expect(completeCredsAuth("abc", "cafe")).rejects.toThrow(/root/);
 	});
 
 	it("throws a user-facing message on 400 (flow never started / retry)", async () => {
-		apiFetchMock.mockResolvedValue(new Response("denied", { status: 400 }));
+		apiMock.twitchAuthCallback.mockResolvedValue(
+			errAsync(new HttpError(400, "Bad Request", null)),
+		);
 		await expect(completeCredsAuth("abc", "cafe")).rejects.toThrow(/ещё раз/);
 	});
 
 	it("throws a generic message on unexpected status", async () => {
-		apiFetchMock.mockResolvedValue(new Response("boom", { status: 500 }));
+		apiMock.twitchAuthCallback.mockResolvedValue(
+			errAsync(new HttpError(500, "Internal Server Error", null)),
+		);
 		await expect(completeCredsAuth("abc", "cafe")).rejects.toThrow(/HTTP 500/);
 	});
 });

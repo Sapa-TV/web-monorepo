@@ -58,7 +58,7 @@ utoipa `in: query` баг генерации спеки · e2e-тесты · bui
 
 7. ✅ Готово. `apps/frontend/src/routes/(panels)/dock/+page.svelte`: методы `list`, `stats`, `dequeueNext`, `complete`, `cancel`, `enqueueAnonymous` через `api.api.*`; query передавать вручную (`{ query: {...} }`) до починки utoipa-спеки; 401-логика `setKeyState` → проверка `HttpError.status === 401` через `Result.match`.
 8. ✅ Готово. `apps/frontend/src/routes/(widgets)/roulette/+page.svelte`: то же для используемых методов (`complete`, чтение очереди).
-9. `lib/admin/session.ts` + `lib/admin/creds.ts`: перевести на `api.api.*`, обновить моки в `session.test.ts`/`creds.test.ts`.
+9. ✅ Готово. `lib/admin/session.ts` + `lib/admin/creds.ts`: перевести на `api.api.*`, обновить моки в `session.test.ts`/`creds.test.ts`. Попутно: из шаблона кодогенерации убран `"query"` из Omit в `RequestParams`, клиент перегенерирован — ручная передача `{ query: {...} }` теперь типизируется.
 10. Удалить `apiFetch`/`API_BASE` из `lib/api.ts` (остаются `api`, `WS_URL`, `WAPI_BASE`).
 
 Примечание: `apiFetch` используется не только в dock/roulette, но и в `lib/admin/session.ts`/`creds.ts` — поэтому шаг 9 обязателен для шага 10.

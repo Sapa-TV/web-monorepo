@@ -1,5 +1,8 @@
-import { apiFetch } from "#lib/api";
-import type { TwitchAuthCallbackResponse } from "@sapa-tv-ru/api-client";
+import { api } from "#lib/api";
+import {
+	HttpError,
+	type TwitchAuthCallbackResponse,
+} from "@sapa-tv-ru/api-client";
 
 const UNAUTHORIZED = 401;
 const FORBIDDEN = 403;
@@ -9,21 +12,25 @@ export async function completeCredsAuth(
 	code: string,
 	state: string,
 ): Promise<TwitchAuthCallbackResponse> {
-	const res = await apiFetch(
-		`/api/admin/twitch/auth/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`,
-	);
-	if (!res.ok) {
-		if (res.status === UNAUTHORIZED || res.status === FORBIDDEN) {
-			throw new Error(
-				"Нет доступа: сессия истекла или у аккаунта нет прав root. Вернись на панель, перелогинься и попробуй снова.",
-			);
+	const res = await api.twitchAuthCallback("", "", {
+		query: { code, state },
+	});
+	if (res.isErr()) {
+		const err = res.error;
+		if (err instanceof HttpError) {
+			if (err.status === UNAUTHORIZED || err.status === FORBIDDEN) {
+				throw new Error(
+					"Нет доступа: сессия истекла или у аккаунта нет прав root. Вернись на панель, перелогинься и попробуй снова.",
+				);
+			}
+			if (err.status === BAD_REQUEST) {
+				throw new Error(
+					"Не удалось завершить авторизацию: попробуй на панели «Авторизовать» ещё раз.",
+				);
+			}
+			throw new Error(`Twitch callback failed: HTTP ${err.status}`);
 		}
-		if (res.status === BAD_REQUEST) {
-			throw new Error(
-				"Не удалось завершить авторизацию: попробуй на панели «Авторизовать» ещё раз.",
-			);
-		}
-		throw new Error(`Twitch callback failed: HTTP ${res.status}`);
+		throw err;
 	}
-	return (await res.json()) as TwitchAuthCallbackResponse;
+	return res.value;
 }

@@ -1,4 +1,4 @@
-import { api, apiFetch } from "#lib/api";
+import { api } from "#lib/api";
 import {
 	HttpError,
 	type AdminResponse,
@@ -38,14 +38,17 @@ export async function completeLogin(
 	code: string,
 	state: string,
 ): Promise<SessionResponse> {
-	const cbRes = await apiFetch(
-		`/api/auth/twitch/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`,
-	);
-	if (!cbRes.ok) {
-		throw new Error(`Twitch callback failed: HTTP ${cbRes.status}`);
+	const cbRes = await api.twitchLoginCallback("", "", {
+		query: { code, state },
+	});
+	if (cbRes.isErr()) {
+		const err = cbRes.error;
+		if (err instanceof HttpError) {
+			throw new Error(`Twitch callback failed: HTTP ${err.status}`);
+		}
+		throw err;
 	}
-	const cb = (await cbRes.json()) as { ticket: string };
-	const sessionRes = await api.createSession({ ticket: cb.ticket });
+	const sessionRes = await api.createSession({ ticket: cbRes.value.ticket });
 	if (sessionRes.isErr()) throw sessionRes.error;
 	return sessionRes.value;
 }
