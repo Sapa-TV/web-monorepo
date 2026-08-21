@@ -1,6 +1,5 @@
 # Задачи
 
-- [ ] Разделить config - сейчас куча всего лежит в common
 - [ ] Бекенд выдаёт query-параметры в openapi.json как `in: path` (у `GET /api/queue` status/limit/cursor, у `GET /api/users` platform/platform_user_id и т.п.).
       Из-за этого в сгенерированном клиенте они объявлены аргументами, но в запрос не попадают.
       Починить генерацию спеки на бекенде (стоит пометить: поправить utoipa/introspection, чтобы параметры были `in: query`), затем выполнить `just gen-client`.

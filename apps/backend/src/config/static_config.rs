@@ -3,8 +3,11 @@ use std::sync::Arc;
 use ::config::{Environment, File};
 use serde::Deserialize;
 
-use crate::config::runtime::RuntimeConfig;
+use crate::config::runtime::{
+    QueueRuntimeConfig, RouletteRuntimeConfig, RuntimeConfig, SessionRuntimeConfig,
+};
 use crate::config::twitch::TwitchConfig;
+use crate::consts::server;
 
 #[derive(Clone, Deserialize)]
 #[non_exhaustive]
@@ -20,7 +23,7 @@ pub struct StaticConfig {
 impl Default for StaticConfig {
     fn default() -> Self {
         Self {
-            port: 3000,
+            port: server::PORT,
             cors_origins: None,
             cookie_secure: false,
             twitch: None,
@@ -54,12 +57,18 @@ impl StaticConfig {
         };
         let seed = RuntimeConfig {
             widget_access_key: String::new(),
-            roulette_timeout_secs: raw.roulette_timeout_secs,
-            retention_secs: raw.retention_secs,
-            queue_cleanup_interval_secs: raw.queue_cleanup_interval_secs,
-            sessions_cleanup_interval_secs: raw.sessions_cleanup_interval_secs,
-            queue_default_limit: raw.queue_default_limit,
-            session_ttl_secs: raw.session_ttl_secs,
+            queue: QueueRuntimeConfig {
+                default_limit: raw.queue_default_limit,
+                retention_secs: raw.retention_secs,
+                cleanup_interval_secs: raw.queue_cleanup_interval_secs,
+            },
+            session: SessionRuntimeConfig {
+                ttl_secs: raw.session_ttl_secs,
+                cleanup_interval_secs: raw.sessions_cleanup_interval_secs,
+            },
+            roulette: RouletteRuntimeConfig {
+                timeout_secs: raw.roulette_timeout_secs,
+            },
         };
         (static_cfg, Some(seed))
     }
@@ -86,12 +95,12 @@ impl Default for RawConfig {
         let runtime = RuntimeConfig::default();
         let static_cfg = StaticConfig::default();
         Self {
-            roulette_timeout_secs: runtime.roulette_timeout_secs,
-            retention_secs: runtime.retention_secs,
-            queue_cleanup_interval_secs: runtime.queue_cleanup_interval_secs,
-            sessions_cleanup_interval_secs: runtime.sessions_cleanup_interval_secs,
-            queue_default_limit: runtime.queue_default_limit,
-            session_ttl_secs: runtime.session_ttl_secs,
+            roulette_timeout_secs: runtime.roulette.timeout_secs,
+            retention_secs: runtime.queue.retention_secs,
+            queue_cleanup_interval_secs: runtime.queue.cleanup_interval_secs,
+            sessions_cleanup_interval_secs: runtime.session.cleanup_interval_secs,
+            queue_default_limit: runtime.queue.default_limit,
+            session_ttl_secs: runtime.session.ttl_secs,
             port: static_cfg.port,
             cors_origins: static_cfg.cors_origins,
             twitch: static_cfg.twitch,
@@ -175,9 +184,12 @@ mod tests {
         assert_eq!(static_cfg.twitch.as_deref().unwrap().broadcaster_id, "bc");
 
         let seed = seed.expect("seed present");
-        assert_eq!(seed.roulette_timeout_secs, 30);
-        assert_eq!(seed.session_ttl_secs, 3600);
-        assert_eq!(seed.retention_secs, RuntimeConfig::default().retention_secs);
+        assert_eq!(seed.roulette.timeout_secs, 30);
+        assert_eq!(seed.session.ttl_secs, 3600);
+        assert_eq!(
+            seed.queue.retention_secs,
+            QueueRuntimeConfig::default().retention_secs
+        );
         assert!(seed.widget_access_key.is_empty());
     }
 

@@ -49,27 +49,27 @@ impl<R: ConfigRepository> ConfigStore<R> {
     }
 
     pub fn queue_default_limit(&self) -> usize {
-        self.runtime_cfg.read().queue_default_limit
+        self.runtime_cfg.read().queue.default_limit
     }
 
     pub fn session_ttl_secs(&self) -> u64 {
-        self.runtime_cfg.read().session_ttl_secs
+        self.runtime_cfg.read().session.ttl_secs
     }
 
     pub fn roulette_timeout_secs(&self) -> u64 {
-        self.runtime_cfg.read().roulette_timeout_secs
+        self.runtime_cfg.read().roulette.timeout_secs
     }
 
     pub fn retention_secs(&self) -> u64 {
-        self.runtime_cfg.read().retention_secs
+        self.runtime_cfg.read().queue.retention_secs
     }
 
     pub fn queue_cleanup_interval_secs(&self) -> u64 {
-        self.runtime_cfg.read().queue_cleanup_interval_secs
+        self.runtime_cfg.read().queue.cleanup_interval_secs
     }
 
     pub fn sessions_cleanup_interval_secs(&self) -> u64 {
-        self.runtime_cfg.read().sessions_cleanup_interval_secs
+        self.runtime_cfg.read().session.cleanup_interval_secs
     }
 
     pub fn port(&self) -> u16 {
@@ -195,11 +195,11 @@ mod tests {
     async fn update_runtime_persists_and_is_visible() {
         let (store, repo) = test_store();
         let mut next = RuntimeConfig::test_runtime("other");
-        next.session_ttl_secs = 42;
+        next.session.ttl_secs = 42;
 
         store.update_runtime(next.clone()).await.unwrap();
 
-        assert_eq!(store.source().read().session_ttl_secs, 42);
+        assert_eq!(store.source().read().session.ttl_secs, 42);
         assert_eq!(store.widget_access_key(), "other");
         assert_eq!(repo.load().await.unwrap().unwrap(), next);
     }
@@ -225,8 +225,8 @@ mod tests {
         store.rotate_widget_access_key("rotated").await.unwrap();
 
         assert_eq!(store.source().read().widget_access_key, "rotated");
-        assert_eq!(store.source().read().session_ttl_secs, 24 * 60 * 60);
-        assert_eq!(store.source().read().queue_default_limit, 20);
+        assert_eq!(store.source().read().session.ttl_secs, 24 * 60 * 60);
+        assert_eq!(store.source().read().queue.default_limit, 20);
         assert_eq!(
             repo.load().await.unwrap().unwrap().widget_access_key,
             "rotated"

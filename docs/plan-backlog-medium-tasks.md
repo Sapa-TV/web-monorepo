@@ -18,12 +18,7 @@
 
 ### M2. Доменное разделение RuntimeConfig
 
-Файлы config уже разделены (static/runtime/twitch/repository/store), «common» не существует — пункт частично устарел. Оставшаяся работа: разбить плоский `RuntimeConfig` (roulette_timeout + retention + queue_* + session_ttl в одной структуре) на доменные секции: `QueueConfig`, `SessionConfig`, `RouletteConfig`.
-
-Шаги:
-1. Создать секционные структуры с `Default` из текущих значений.
-2. `RuntimeConfig` становится композицией секций; сериализация сохраняет совместимость ключей (`queue_default_limit` и т.д.) либо мигрирует на вложенные ключи — проверить `store.rs`/persisted settings.
-3. Обновить `StaticConfig::split`, `validate`, тесты, места чтения (`state.rs`, сервисы).
+✅ Готово (2026-08-21). Плоский `RuntimeConfig` разбит на доменные секции `QueueRuntimeConfig` (`default_limit`, `retention_secs`, `cleanup_interval_secs`), `SessionRuntimeConfig` (`ttl_secs`, `cleanup_interval_secs`), `RouletteRuntimeConfig` (`timeout_secs`) + `widget_access_key`. Внешний формат config-файла/.env сохранён плоским: `RawConfig` маппит ключи в секции в `split()`. Дефолты значений вынесены в `consts.rs` (`queue::*`, `session::*`, `roulette::TIMEOUT_SECS`, `server::PORT`). Проверки: clippy/fmt чисто, nextest 269/269.
 
 ### M3. Линтер: максимальная длина api-хендлеров
 

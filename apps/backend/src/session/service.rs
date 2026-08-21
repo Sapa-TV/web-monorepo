@@ -69,7 +69,7 @@ where
         twitch_user_name: Option<&str>,
     ) -> Result<Session, SessionServiceError> {
         let now = Utc::now();
-        let ttl = Duration::from_secs(self.settings.read().session_ttl_secs);
+        let ttl = Duration::from_secs(self.settings.read().session.ttl_secs);
         let session = Session {
             token: SessionToken::new(nonce()),
             twitch_user_id: twitch_user_id.to_string(),
@@ -186,7 +186,7 @@ mod tests {
 
     fn test_settings(ttl_secs: u64) -> SharedSettings {
         let mut config = RuntimeConfig::test_runtime("test-key");
-        config.session_ttl_secs = ttl_secs;
+        config.session.ttl_secs = ttl_secs;
         SharedSettings::test_new(config)
     }
 
@@ -396,7 +396,7 @@ mod tests {
             .num_seconds();
 
         let mut next = RuntimeConfig::test_runtime("test-key");
-        next.session_ttl_secs = 30;
+        next.session.ttl_secs = 30;
         store.update_runtime(next).await.unwrap();
 
         let second = svc.issue_session("456", None).await.unwrap();

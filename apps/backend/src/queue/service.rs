@@ -153,11 +153,11 @@ where
     }
 
     pub fn timeout(&self) -> Duration {
-        Duration::from_secs(self.settings.read().roulette_timeout_secs)
+        Duration::from_secs(self.settings.read().roulette.timeout_secs)
     }
 
     pub async fn mark_timed_out(&self) -> Result<(), QueueServiceError> {
-        let timeout = Duration::from_secs(self.settings.read().roulette_timeout_secs);
+        let timeout = Duration::from_secs(self.settings.read().roulette.timeout_secs);
         let cutoff = Utc::now()
             .checked_sub_signed(chrono::Duration::seconds(timeout.as_secs() as i64))
             .unwrap_or_else(Utc::now);
@@ -221,7 +221,7 @@ where
     }
 
     pub async fn purge_expired(&self) -> Result<usize, QueueServiceError> {
-        let retention = Duration::from_secs(self.settings.read().retention_secs);
+        let retention = Duration::from_secs(self.settings.read().queue.retention_secs);
         let cutoff = Utc::now()
             .checked_sub_signed(chrono::Duration::seconds(retention.as_secs() as i64))
             .unwrap_or(Utc::now());
