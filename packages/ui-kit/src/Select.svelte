@@ -6,6 +6,7 @@
 		id?: string;
 		name?: string;
 		required?: boolean;
+		disabled?: boolean;
 		title?: string;
 		children?: Snippet;
 	}

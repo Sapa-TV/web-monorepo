@@ -7,6 +7,8 @@
 		name?: string;
 		required?: boolean;
 		minlength?: number;
+		min?: number;
+		step?: number;
 		title?: string;
 	}
 
