@@ -4,13 +4,12 @@ use tokio::sync::mpsc;
 
 use crate::actions::event::ActionEvent;
 use crate::actions::executor::ActionExecutor;
+use crate::consts::actions::BUS_CAPACITY;
 use crate::rules::engine::RuleEngine;
 use crate::state::AppState;
 
-const ACTION_BUS_CAPACITY: usize = 256;
-
 pub fn start_rule_pipeline(state: &AppState) {
-    let (tx, rx) = mpsc::channel::<ActionEvent>(ACTION_BUS_CAPACITY);
+    let (tx, rx) = mpsc::channel::<ActionEvent>(BUS_CAPACITY);
 
     let twitch_config = state.config.twitch().map(|twitch| Arc::new(twitch.clone()));
     let executor = Arc::new(ActionExecutor::new(

@@ -6,12 +6,11 @@ use chrono::Utc;
 use crate::admin::repository::AdminRepository;
 use crate::admin::service::AdminService;
 use crate::config::store::SharedSettings;
+use crate::consts::session::LOGIN_TICKET_TTL;
 use crate::error::RepositoryError;
 use crate::error::SessionServiceError;
 use crate::session::repository::SessionRepository;
 use crate::session::{LoginTicket, LoginTicketToken, Session, SessionToken};
-
-const LOGIN_TICKET_TTL: Duration = Duration::from_secs(10 * 60);
 
 #[non_exhaustive]
 pub struct SessionService<R>

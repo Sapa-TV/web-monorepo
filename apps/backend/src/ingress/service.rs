@@ -3,13 +3,11 @@ use std::sync::Arc;
 
 use tokio::sync::{broadcast, mpsc};
 
+use crate::consts::ingress::{CHANNEL_CAPACITY, DEDUP_WINDOW};
 use crate::error::ingress::PlatformError;
 use crate::ingress::event::{PlatformEvent, PlatformEventPayload};
 use crate::ingress::platform::EventSink;
 use crate::platform::PlatformId;
-
-const CHANNEL_CAPACITY: usize = 64;
-const DEDUP_WINDOW: usize = 1024;
 
 type EventKey = (PlatformId, String);
 

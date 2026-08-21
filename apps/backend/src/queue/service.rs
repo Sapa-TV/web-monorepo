@@ -4,6 +4,7 @@ use std::time::Duration;
 use chrono::Utc;
 
 use crate::config::store::SharedSettings;
+use crate::consts::queue::MAX_PAGE_LIMIT;
 use crate::error::QueueServiceError;
 use crate::event::BroadcastEventPublisher;
 use crate::queue::entry::{QueueEntry, QueueEntryId, QueuePage, QueueStats, QueueStatus};
@@ -18,8 +19,6 @@ use crate::roulette::slot_service::RouletteSlot;
 use crate::user::UserId;
 
 type Roulette<R> = RouletteService<StandartRandomProvider, Arc<R>>;
-
-const MAX_QUEUE_PAGE_LIMIT: usize = 100;
 
 #[non_exhaustive]
 pub struct QueueService<Q, R, S>
@@ -196,7 +195,7 @@ where
         cursor: Option<QueueEntryId>,
         limit: usize,
     ) -> Result<QueuePage, QueueServiceError> {
-        let limit = limit.clamp(1, MAX_QUEUE_PAGE_LIMIT);
+        let limit = limit.clamp(1, MAX_PAGE_LIMIT);
         let mut entries = self.queue_repo.list(status, cursor, limit + 1).await?;
         let next_cursor = if entries.len() > limit {
             entries.truncate(limit);

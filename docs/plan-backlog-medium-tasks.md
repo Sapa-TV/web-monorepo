@@ -12,23 +12,9 @@
 
 ## Задачи
 
-### M1. Consts → config с дефолтами
+### M1. Consts → один файл по скоупам
 
-Аудит констант бекенда: настраиваемые (tunables) переезжают в конфиг с default-значениями, протокольные остаются `const`.
-
-Кандидаты на перенос:
-- `runtime.rs`: `ACTION_BUS_CAPACITY`
-- `queue/service.rs`: `MAX_QUEUE_PAGE_LIMIT`
-- `session/service.rs`: `LOGIN_TICKET_TTL`
-- `ingress/service.rs`: `CHANNEL_CAPACITY`, `DEDUP_WINDOW`
-- `ingress/twitch.rs`: `INITIAL_RECONNECT_DELAY`, `MAX_RECONNECT_DELAY`
-
-Остаются const (протокольные): `SESSION_COOKIE`, `LOGIN_COOKIE`, `EVENTSUB_WS_URL`, `INGRESS_SCOPES`, platform id.
-
-Шаги:
-1. Добавить поля в `StaticConfig` (+ `RawConfig`/`Default`) — значения уровня процесса; TTL/делэи можно в static, т.к. runtime-секция для мутируемого.
-2. Заменить использования на чтение из конфига (через `AppState`).
-3. Тесты: дефолты не меняют поведение существующих тестов.
+✅ Готово (2026-08-21). Решение изменено в ходе работы: вместо расползания по StaticConfig/RuntimeConfig/TwitchConfig — редкоменяемые tunables собраны в одном файле `apps/backend/src/consts.rs`, разбитом на модули-скоупы (`actions`, `ingress`, `queue`, `session`). Перенесены: `BUS_CAPACITY`, `CHANNEL_CAPACITY`, `DEDUP_WINDOW`, `TWITCH_EVENTSUB_WS_URL`, `TWITCH_RECONNECT_{INITIAL,MAX}_DELAY`, `MAX_PAGE_LIMIT`, `LOGIN_TICKET_TTL`. Протокольные cookie-имена и `INGRESS_SCOPES` остались на местах. Проверки: clippy/fmt чисто, nextest 268/268.
 
 ### M2. Доменное разделение RuntimeConfig
 

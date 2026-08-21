@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use std::time::Duration;
 
 use futures_util::StreamExt;
 use tokio::time::sleep;
@@ -15,6 +14,9 @@ use twitch_api::helix::HelixClient;
 use twitch_oauth2::{TwitchToken, UserToken};
 
 use crate::config::TwitchConfig;
+use crate::consts::ingress::{
+    TWITCH_EVENTSUB_WS_URL, TWITCH_RECONNECT_INITIAL_DELAY, TWITCH_RECONNECT_MAX_DELAY,
+};
 use crate::error::ingress::PlatformError;
 use crate::ingress::event::PlatformEvent;
 use crate::ingress::platform::{EventSink, PlatformService};
@@ -22,10 +24,6 @@ use crate::ingress::twitch_auth::TwitchAuthService;
 use crate::platform::{
     Platform, PlatformCredentialRepository, PlatformCredentialService, PlatformId,
 };
-
-const EVENTSUB_WS_URL: &str = "wss://eventsub.wss.twitch.tv/ws";
-const INITIAL_RECONNECT_DELAY: Duration = Duration::from_secs(1);
-const MAX_RECONNECT_DELAY: Duration = Duration::from_secs(60);
 
 #[non_exhaustive]
 pub struct TwitchPlatformService<R>
@@ -56,7 +54,7 @@ where
         sink: EventSink,
         platform: PlatformId,
     ) -> Result<(), PlatformError> {
-        let (mut ws, _) = connect_async(EVENTSUB_WS_URL)
+        let (mut ws, _) = connect_async(TWITCH_EVENTSUB_WS_URL)
             .await
             .map_err(|e| PlatformError::WebSocket(e.to_string()))?;
 
@@ -168,7 +166,7 @@ where
     async fn run(&self, sink: EventSink) -> Result<(), PlatformError> {
         let helix = self.auth.helix();
 
-        let mut delay = INITIAL_RECONNECT_DELAY;
+        let mut delay = TWITCH_RECONNECT_INITIAL_DELAY;
         loop {
             let token = self.auth.user_token().await?;
             match self
@@ -179,7 +177,7 @@ where
                 Err(e) => {
                     tracing::warn!("twitch eventsub stopped: {e}; reconnecting in {delay:?}");
                     sleep(delay).await;
-                    delay = (delay * 2).min(MAX_RECONNECT_DELAY);
+                    delay = (delay * 2).min(TWITCH_RECONNECT_MAX_DELAY);
                 }
             }
         }
