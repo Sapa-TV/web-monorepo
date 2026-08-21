@@ -1,6 +1,7 @@
 pub mod actions;
 pub mod ingress;
 pub mod rewards;
+pub mod roulette;
 pub mod rules;
 pub mod twitch;
 
@@ -161,6 +162,7 @@ pub fn session_router() -> axum::Router<AppState> {
         .merge(actions::session_router())
         .merge(rules::session_router())
         .merge(rewards::session_router())
+        .merge(roulette::session_router())
 }
 
 pub fn root_router() -> axum::Router<AppState> {
