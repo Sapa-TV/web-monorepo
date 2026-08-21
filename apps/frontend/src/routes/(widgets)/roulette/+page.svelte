@@ -1,6 +1,11 @@
 <script lang="ts">
 	import { onMount } from "svelte";
-	import { WAPI_BASE, WS_URL, apiFetch } from "#lib/api";
+	import { WS_URL, wapi } from "#lib/api";
+	import {
+		HttpError,
+		NetworkError,
+		TimeoutError,
+	} from "@sapa-tv-ru/api-client";
 
 	type ConnState = "connected" | "disconnected";
 
@@ -15,6 +20,10 @@
 			? (new URLSearchParams(window.location.search).get("widget_access_key") ??
 				"")
 			: "";
+
+	const wapiAuth = {
+		headers: { Authorization: `Bearer ${widgetAccessKey}` },
+	};
 
 	let phase = $state<"idle" | "spinning" | "completed" | "error" | "denied">(
 		"idle",
@@ -90,11 +99,7 @@
 		spin = data;
 		idleTimer = setTimeout(() => {
 			if (currentEntryId === data.entry_id) {
-				apiFetch(
-					`${WAPI_BASE}/queue/${currentEntryId}/complete`,
-					{ method: "POST" },
-					widgetAccessKey,
-				).catch(() => {});
+				void wapi.complete(currentEntryId, wapiAuth);
 				setCompleted();
 			}
 		}, AUTO_MS);
@@ -189,25 +194,31 @@
 		}
 
 		setIdle();
-		apiFetch(`${WAPI_BASE}/queue`, {}, widgetAccessKey)
-			.then((res) => {
-				if (res.status === UNAUTHORIZED) {
-					failAuth();
-				} else if (!res.ok) {
-					setKeyBadge("bad", "ошибка запроса");
-					stateLabel = "Ошибка подключения виджета";
-					idleText = "Ошибка подключения виджета.";
-				} else {
+		wapi.list(null, null, null, wapiAuth).then((res) =>
+			res.match(
+				() => {
 					keyOk = true;
 					connectWs();
-				}
-			})
-			.catch(() => {
-				setConn("disconnected", "нет связи");
-				setKeyBadge("bad", "нет связи с сервером");
-				stateLabel = "Нет связи";
-				idleText = "Сервер недоступен.";
-			});
+				},
+				(err) => {
+					if (err instanceof HttpError && err.status === UNAUTHORIZED) {
+						failAuth();
+					} else if (
+						err instanceof NetworkError ||
+						err instanceof TimeoutError
+					) {
+						setConn("disconnected", "нет связи");
+						setKeyBadge("bad", "нет связи с сервером");
+						stateLabel = "Нет связи";
+						idleText = "Сервер недоступен.";
+					} else {
+						setKeyBadge("bad", "ошибка запроса");
+						stateLabel = "Ошибка подключения виджета";
+						idleText = "Ошибка подключения виджета.";
+					}
+				},
+			),
+		);
 
 		return () => {
 			clearTimeout(idleTimer);
