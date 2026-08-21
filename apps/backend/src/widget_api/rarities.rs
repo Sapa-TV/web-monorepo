@@ -1,7 +1,6 @@
 use axum::Json;
-use axum::extract::{Path, State};
-use axum::http::StatusCode;
-use serde::Deserialize;
+use axum::extract::State;
+use serde::Serialize;
 use utoipa::OpenApi;
 use utoipa::ToSchema;
 
@@ -9,7 +8,7 @@ use crate::error::api::ApiError;
 use crate::roulette::rarity::{Rarity, RarityId};
 use crate::state::AppState;
 
-#[derive(Debug, serde::Serialize, ToSchema)]
+#[derive(Debug, Serialize, ToSchema)]
 #[non_exhaustive]
 pub struct RarityResponse {
     pub id: RarityId,
@@ -31,30 +30,6 @@ impl From<Rarity> for RarityResponse {
     }
 }
 
-#[derive(Debug, Deserialize, ToSchema)]
-#[non_exhaustive]
-pub struct CreateRarityRequest {
-    pub name: String,
-    pub display_name: String,
-    pub image: String,
-    pub color: String,
-}
-
-#[derive(Debug, Deserialize, ToSchema)]
-#[non_exhaustive]
-pub struct UpdateRarityRequest {
-    pub name: String,
-    pub display_name: String,
-    pub image: String,
-    pub color: String,
-}
-
-#[derive(Debug, Deserialize, utoipa::IntoParams)]
-#[non_exhaustive]
-pub struct RarityIdParam {
-    pub id: RarityId,
-}
-
 #[utoipa::path(
     get,
     path = "/rarities",
@@ -72,98 +47,76 @@ pub async fn list_rarities(
     ))
 }
 
-#[utoipa::path(
-    post,
-    path = "/rarities",
-    tag = "rarities",
-    request_body = CreateRarityRequest,
-    responses(
-        (status = 201, description = "Rarity created", body = RarityResponse),
-    )
-)]
-pub async fn create_rarity(
-    State(state): State<AppState>,
-    Json(body): Json<CreateRarityRequest>,
-) -> Result<(StatusCode, Json<RarityResponse>), ApiError> {
-    let rarity = Rarity::new(
-        RarityId::new(0),
-        &body.name,
-        &body.display_name,
-        &body.image,
-        &body.color,
-    );
-    let saved = state.rarity_service.save(rarity).await?;
-    Ok((StatusCode::CREATED, Json(RarityResponse::from(saved))))
-}
-
-#[utoipa::path(
-    put,
-    path = "/rarities/{id}",
-    tag = "rarities",
-    params(RarityIdParam),
-    request_body = UpdateRarityRequest,
-    responses(
-        (status = 200, description = "Rarity updated", body = RarityResponse),
-        (status = 404, description = "Rarity not found"),
-    )
-)]
-pub async fn update_rarity(
-    State(state): State<AppState>,
-    Path(params): Path<RarityIdParam>,
-    Json(body): Json<UpdateRarityRequest>,
-) -> Result<Json<RarityResponse>, ApiError> {
-    let rarity = Rarity::new(
-        params.id,
-        &body.name,
-        &body.display_name,
-        &body.image,
-        &body.color,
-    );
-    let updated = state
-        .rarity_service
-        .update(rarity)
-        .await?
-        .ok_or_else(|| ApiError::new(StatusCode::NOT_FOUND, "rarity not found"))?;
-    Ok(Json(RarityResponse::from(updated)))
-}
-
-#[utoipa::path(
-    delete,
-    path = "/rarities/{id}",
-    tag = "rarities",
-    params(RarityIdParam),
-    responses(
-        (status = 204, description = "Rarity deleted"),
-        (status = 404, description = "Rarity not found"),
-    )
-)]
-pub async fn delete_rarity(
-    State(state): State<AppState>,
-    Path(params): Path<RarityIdParam>,
-) -> Result<StatusCode, ApiError> {
-    state
-        .rarity_service
-        .delete(params.id)
-        .await?
-        .then_some(())
-        .ok_or_else(|| ApiError::new(StatusCode::NOT_FOUND, "rarity not found"))?;
-    Ok(StatusCode::NO_CONTENT)
-}
-
 #[derive(OpenApi)]
-#[openapi(
-    paths(list_rarities, create_rarity, update_rarity, delete_rarity),
-    components(schemas(RarityResponse, CreateRarityRequest, UpdateRarityRequest,))
-)]
+#[openapi(paths(list_rarities), components(schemas(RarityResponse,)))]
 #[non_exhaustive]
 #[allow(dead_code)]
 pub(crate) struct RaritiesApiDoc;
 
 pub fn router() -> axum::Router<AppState> {
-    use axum::routing::{delete, get, post, put};
-    axum::Router::new()
-        .route("/rarities", get(list_rarities))
-        .route("/rarities", post(create_rarity))
-        .route("/rarities/{id}", put(update_rarity))
-        .route("/rarities/{id}", delete(delete_rarity))
+    use axum::routing::get;
+    axum::Router::new().route("/rarities", get(list_rarities))
+}
+
+#[cfg(test)]
+mod tests {
+    use axum::body::Body;
+    use axum::http::header;
+    use axum::http::{Request, StatusCode};
+    use tower::ServiceExt;
+
+    use crate::roulette::rarity::{Rarity, RarityId};
+    use crate::test_fixtures::{test_router, test_state};
+
+    #[tokio::test]
+    async fn rarities_are_read_only() {
+        let state = test_state().await;
+        let app = test_router(state.clone());
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/wapi/rarities")
+                    .header(header::CONTENT_TYPE, "application/json")
+                    .header(header::AUTHORIZATION, "Bearer test-key")
+                    .body(Body::from(
+                        r##"{"name":"x","display_name":"X","image":"x.png","color":"#fff"}"##,
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::METHOD_NOT_ALLOWED);
+    }
+
+    #[tokio::test]
+    async fn wak_key_can_list_rarities() {
+        let state = test_state().await;
+        state
+            .rarity_service
+            .save(Rarity::new(
+                RarityId::new(0),
+                "custom",
+                "Custom",
+                "c.png",
+                "#fff",
+            ))
+            .await
+            .unwrap();
+        let app = test_router(state.clone());
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri("/wapi/rarities")
+                    .header(header::AUTHORIZATION, "Bearer test-key")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+    }
 }

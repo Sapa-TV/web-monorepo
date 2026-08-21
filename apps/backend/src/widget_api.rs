@@ -1,4 +1,4 @@
-//! Thin HTTP layer for PAK-key-protected widget endpoints (`/wapi`).
+//! Thin HTTP layer for WAK-key-protected widget endpoints (`/wapi`).
 //!
 //! Boundary: handlers extract params -> call a service -> map to a DTO -> return a status.
 //! No business logic (`if`/`match`/`for`/`loop`) is allowed here; enforced by the ast-grep
