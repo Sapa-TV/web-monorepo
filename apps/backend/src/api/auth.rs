@@ -4,6 +4,8 @@ use axum::http::header;
 use axum::http::{HeaderValue, Method, Request, StatusCode};
 use axum::middleware::Next;
 use axum::response::Response;
+use axum_extra::extract::cookie::{Cookie, SameSite};
+use time::Duration;
 
 use crate::session::Session;
 use crate::state::AppState;
@@ -102,12 +104,13 @@ pub fn read_cookie(headers: &header::HeaderMap, name: &str) -> Option<String> {
 }
 
 pub fn cookie_header(name: &str, value: &str, max_age_secs: i64, secure: bool) -> HeaderValue {
-    let mut cookie = format!("{name}={value}; Path=/; HttpOnly; SameSite=Lax");
+    let mut builder = Cookie::build((name, value))
+        .path("/")
+        .http_only(true)
+        .same_site(SameSite::Lax)
+        .secure(secure);
     if max_age_secs >= 0 {
-        cookie.push_str(&format!("; Max-Age={max_age_secs}"));
+        builder = builder.max_age(Duration::seconds(max_age_secs));
     }
-    if secure {
-        cookie.push_str("; Secure");
-    }
-    HeaderValue::from_str(&cookie).expect("cookie header is valid")
+    HeaderValue::from_str(&builder.build().encoded().to_string()).expect("cookie header is valid")
 }

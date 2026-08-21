@@ -42,3 +42,5 @@ twitch_oauth2 = { workspace = true }
 url = { workspace = true }
 uuid = { workspace = true, features = ["v7"] }
 strum = { workspace = true, features = ["derive"] }
+axum-extra = { workspace = true, features = ["cookie"] }
+time = { workspace = true }
