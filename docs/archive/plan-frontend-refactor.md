@@ -1,10 +1,22 @@
 # План: рефакторинг фронтенда (ui-kit, layout-ы, lint)
 
-Статус: принят (2026-08-19). Утверждённые решения:
+Статус: **выполнен** (2026-08-21).
+
+Утверждённые решения:
 
 - ui-kit — отдельный workspace-пакет `packages/ui-kit` (`@sapa-tv-ru/ui-kit`)
 - миграция на ui-kit — полностью, все существующие страницы
 - lint-правило на цвета — «мягкое»: запрещены hex/rgb/hsl/oklch/named-colors, разрешены `transparent` и `currentcolor`
+
+Фактические отличия от плана:
+
+1. Lint-правила вынесены в отдельный workspace-пакет `@sapa-tv-ru/custom-eslint-rules`
+   (`packages/custom-eslint-rules/`) вместо `packages/ui-kit/lint/` — для переиспользования
+   в других проектах.
+2. `props-inline-type` подключён шире запланированного: не только `packages/ui-kit/src/**`,
+   но и весь frontend (`apps/frontend/src/**/*.svelte`); 4 корневых layout-а переведены
+   на `interface Props { children: Snippet }`.
+3. e2e не запускались; смоук закрыт prerender-проверкой build (200 на всех 8 маршрутах).
 
 Цели:
 
@@ -109,7 +121,7 @@ src/routes/
    - тип остатка (rest-пропсы типа `aria-*`, pass-through) выводится деструктуризацией,
      а не явным пересечением `& Record<...>`.
 
-Размещение правил: единый источник — `packages/ui-kit/lint/rules/`.
+Размещение правил: единый источник — `packages/custom-eslint-rules/`.
 Подключается и в `apps/frontend/eslint.config.js`, и в `eslint.config.js` ui-kit
 (чтобы правило покрывало оба пакета). ui-kit получает свой `lint`-скрипт
 (в turbo `lint` уже цепляет `^lint`).

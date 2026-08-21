@@ -259,17 +259,17 @@
 <style>
 	.widget {
 		position: relative;
-		background: color-mix(in oklch, oklch(0.12 0.01 47) 86%, transparent);
+		background: color-mix(in oklch, var(--widget-bg) 86%, transparent);
 		backdrop-filter: blur(14px);
 		border-radius: 20px;
 		padding: 44px 52px;
 		text-align: center;
 		min-width: 360px;
 		box-shadow:
-			0 18px 60px rgba(0, 0, 0, 0.6),
-			inset 0 1px 0 rgba(255, 255, 255, 0.08),
-			inset 0 0 0 1px rgba(255, 255, 255, 0.06);
-		border: 1px solid color-mix(in oklch, oklch(0.78 0.1 47) 22%, transparent);
+			0 18px 60px var(--widget-shadow),
+			inset 0 1px 0 var(--widget-hairline),
+			inset 0 0 0 1px var(--widget-hairline-soft);
+		border: 1px solid var(--widget-border);
 		overflow: hidden;
 	}
 
@@ -281,7 +281,7 @@
 		background-image: repeating-linear-gradient(
 			to bottom,
 			transparent 0 2px,
-			rgba(255, 255, 255, 0.025) 2px 3px
+			var(--widget-scanline) 2px 3px
 		);
 		border-radius: inherit;
 	}
@@ -294,7 +294,7 @@
 		font-size: 13px;
 		text-transform: uppercase;
 		letter-spacing: 0.22em;
-		color: color-mix(in oklch, oklch(0.78 0.1 47) 75%, white);
+		color: var(--widget-state);
 		margin-bottom: 18px;
 		font-weight: 600;
 	}
@@ -319,7 +319,7 @@
 
 	.idle-text {
 		font-size: 26px;
-		color: color-mix(in oklch, oklch(0.78 0.1 47) 60%, white);
+		color: var(--widget-idle);
 		font-weight: 300;
 		letter-spacing: 0.01em;
 	}
@@ -328,14 +328,14 @@
 		font-size: 20px;
 		font-weight: 600;
 		margin-bottom: 8px;
-		color: #f6efe5;
+		color: var(--widget-ink);
 	}
 
 	.slot-name {
 		font-size: 40px;
 		font-weight: 800;
 		margin-bottom: 6px;
-		color: oklch(0.85 0.16 47);
+		color: var(--widget-accent);
 		font-family: "Archivo", sans-serif;
 		letter-spacing: -0.01em;
 	}
@@ -344,14 +344,14 @@
 		font-size: 15px;
 		font-weight: 500;
 		opacity: 0.8;
-		color: #d9cfbf;
+		color: var(--widget-ink-muted);
 		text-transform: uppercase;
 		letter-spacing: 0.1em;
 	}
 
 	.entry-id {
 		font-size: 12px;
-		color: color-mix(in oklch, oklch(0.78 0.1 47) 55%, white);
+		color: var(--widget-entry);
 		margin-top: 14px;
 		font-family: "IBM Plex Mono", monospace;
 		letter-spacing: 0.04em;
@@ -360,9 +360,9 @@
 	.spinner {
 		width: 48px;
 		height: 48px;
-		border: 3px solid rgba(255, 255, 255, 0.08);
-		border-top-color: oklch(0.78 0.16 47);
-		border-right-color: oklch(0.78 0.16 47);
+		border: 3px solid var(--widget-track);
+		border-top-color: var(--widget-spinner);
+		border-right-color: var(--widget-spinner);
 		border-radius: 50%;
 		animation: spin 0.8s linear infinite;
 		margin: 0 auto 18px;
@@ -382,8 +382,8 @@
 		align-items: center;
 		gap: 6px;
 		font-size: 11px;
-		color: rgba(217, 207, 191, 0.65);
-		background: rgba(0, 0, 0, 0.5);
+		color: var(--widget-ink-faint);
+		background: var(--widget-overlay);
 		padding: 6px 12px;
 		border-radius: 6px;
 		font-family: "IBM Plex Mono", monospace;
@@ -397,11 +397,11 @@
 	}
 
 	.conn-dot.connected {
-		background: oklch(0.78 0.12 165);
+		background: var(--widget-ok-dot);
 	}
 
 	.conn-dot.disconnected {
-		background: oklch(0.65 0.2 25);
+		background: var(--widget-bad-dot);
 	}
 
 	.key-badge {
@@ -412,17 +412,17 @@
 	}
 
 	.key-badge.ok {
-		background: oklch(0.78 0.12 165 / 0.14);
-		color: oklch(0.8 0.12 165);
+		background: var(--widget-ok-dim);
+		color: var(--widget-ok);
 	}
 
 	.key-badge.missing {
-		background: oklch(0.78 0.12 85 / 0.14);
-		color: oklch(0.8 0.12 85);
+		background: var(--widget-missing-dim);
+		color: var(--widget-missing);
 	}
 
 	.key-badge.bad {
-		background: oklch(0.65 0.2 25 / 0.14);
-		color: oklch(0.75 0.18 25);
+		background: var(--widget-bad-dim);
+		color: var(--widget-bad);
 	}
 </style>

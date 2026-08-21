@@ -145,7 +145,7 @@
 			repeating-linear-gradient(
 				to bottom,
 				transparent 0 2px,
-				rgba(0 0 0 / 0.08) 2px 3px
+				var(--overlay-scan) 2px 3px
 			),
 			radial-gradient(
 				circle at 50% 42%,

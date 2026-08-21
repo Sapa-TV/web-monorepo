@@ -110,8 +110,8 @@
 		left: 0.6rem;
 		z-index: 2;
 		font-size: 0.8rem;
-		color: var(--on-surface-variant, #8b949e);
-		background: color-mix(in oklch, var(--surface, #0d1117) 70%, transparent);
+		color: var(--on-surface-variant);
+		background: color-mix(in oklch, var(--surface) 70%, transparent);
 		padding: 0.15rem 0.5rem;
 		border-radius: 6px;
 	}
@@ -120,9 +120,9 @@
 		flex: 1;
 		min-height: 0;
 		position: relative;
-		background-color: #000;
+		background-color: var(--video-bg);
 		overflow: hidden;
-		border: 1px solid var(--outline-variant, #30363d);
+		border: 1px solid var(--outline-variant);
 	}
 
 	video {
@@ -137,8 +137,8 @@
 	.chat-sidebar {
 		width: 360px;
 		flex-shrink: 0;
-		border-left: 1px solid var(--outline-variant, #30363d);
-		background-color: var(--surface, #0d1117);
+		border-left: 1px solid var(--outline-variant);
+		background-color: var(--surface);
 		position: relative;
 		z-index: 999;
 		isolation: isolate;
@@ -155,9 +155,9 @@
 		gap: 0.5rem;
 		width: 100%;
 		padding: 0.55rem 0.75rem;
-		border: 1px solid var(--outline-variant, #30363d);
-		background-color: var(--surface-container, #162128);
-		color: var(--on-surface, #ffffff);
+		border: 1px solid var(--outline-variant);
+		background-color: var(--surface-container);
+		color: var(--on-surface);
 		font: inherit;
 		font-size: 0.85rem;
 		font-weight: 600;
@@ -169,8 +169,8 @@
 	}
 
 	.chat-vk-btn:hover {
-		background-color: var(--secondary-container, #1f2d36);
-		border-color: var(--outline, #57606a);
+		background-color: var(--secondary-container);
+		border-color: var(--outline);
 	}
 
 	.chat-panel {
@@ -197,7 +197,7 @@
 			width: 100%;
 			height: clamp(360px, 40vh, 480px);
 			border-left: none;
-			border-top: 1px solid var(--outline-variant, #30363d);
+			border-top: 1px solid var(--outline-variant);
 		}
 	}
 </style>

@@ -135,9 +135,9 @@
 	}
 
 	.btn--twitch {
-		background: var(--twitch-brand, #9146ff);
+		background: var(--twitch-brand);
 		border-color: transparent;
-		color: var(--twitch-ink, #fff);
+		color: var(--twitch-ink);
 	}
 
 	.btn--twitch:hover:not(:disabled) {

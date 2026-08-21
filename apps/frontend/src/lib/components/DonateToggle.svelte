@@ -40,8 +40,8 @@
 		justify-content: center;
 		gap: 0.4rem;
 		width: 13rem;
-		background-color: var(--primary, #ffb01e);
-		color: var(--on-primary, #1a1202);
+		background-color: var(--primary);
+		color: var(--on-primary);
 		text-decoration: none;
 		padding: 0.4rem 0.85rem;
 		border-radius: 6px;
@@ -55,6 +55,6 @@
 
 	.donate-link:hover {
 		filter: brightness(1.08);
-		background-color: var(--primary-dim, #d99a0f);
+		background-color: var(--primary-dim);
 	}
 </style>

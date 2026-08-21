@@ -7,6 +7,10 @@ import globals from "globals";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript-eslint";
+import {
+	colorLiterals,
+	propsInlineType,
+} from "@sapa-tv-ru/custom-eslint-rules";
 
 const gitignorePath = path.resolve(
 	fileURLToPath(new URL(".", import.meta.url)),
@@ -27,6 +31,8 @@ export default defineConfig(
 			"no-console": ["warn", { allow: ["warn", "error"] }],
 		},
 	},
+	{ files: ["**/*.svelte"], ...colorLiterals },
+	{ files: ["src/**/*.svelte"], ...propsInlineType },
 	{
 		files: ["**/*.svelte"],
 		languageOptions: {

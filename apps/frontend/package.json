@@ -22,6 +22,7 @@
 		"@iconify-json/lucide": "^1.2.123",
 		"@iconify-json/simple-icons": "^1.2.93",
 		"@playwright/test": "^1.60.0",
+		"@sapa-tv-ru/custom-eslint-rules": "workspace:*",
 		"@sveltejs/adapter-static": "4.0.0-next.4",
 		"@sveltejs/kit": "3.0.0-next.16",
 		"@sveltejs/vite-plugin-svelte": "^7.1.2",

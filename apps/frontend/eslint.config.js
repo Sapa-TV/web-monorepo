@@ -8,6 +8,10 @@ import { defineConfig } from "eslint/config";
 import globals from "globals";
 import path from "node:path";
 import ts from "typescript-eslint";
+import {
+	colorLiterals,
+	propsInlineType,
+} from "@sapa-tv-ru/custom-eslint-rules";
 
 const gitignorePath = path.resolve(import.meta.dirname, ".gitignore");
 
@@ -60,6 +64,8 @@ export default defineConfig(
 			},
 		},
 	},
+	{ files: ["**/*.svelte"], ...colorLiterals },
+	{ files: ["src/**/*.svelte"], ...propsInlineType },
 	{
 		files: ["**/constants.ts", "**/constants/*.ts"],
 		rules: {

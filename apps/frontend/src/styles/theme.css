@@ -17,6 +17,33 @@
 	--youtube-brand: oklch(0.6 0.2 28);
 	--youtube-ink: oklch(0.98 0.01 28);
 	--stream-ink: oklch(0.97 0.02 293);
+	--overlay-scan: rgba(0 0 0 / 0.08);
+
+	--widget-bg: oklch(0.12 0.01 47);
+	--widget-frame: oklch(0.78 0.1 47);
+	--widget-accent: oklch(0.85 0.16 47);
+	--widget-spinner: oklch(0.78 0.16 47);
+	--widget-ink: #f6efe5;
+	--widget-ink-muted: #d9cfbf;
+	--widget-ink-faint: rgba(217, 207, 191, 0.65);
+	--widget-state: color-mix(in oklch, var(--widget-frame) 75%, white);
+	--widget-idle: color-mix(in oklch, var(--widget-frame) 60%, white);
+	--widget-entry: color-mix(in oklch, var(--widget-frame) 55%, white);
+	--widget-border: color-mix(in oklch, var(--widget-frame) 22%, transparent);
+	--widget-shadow: rgba(0, 0, 0, 0.6);
+	--widget-hairline: rgba(255, 255, 255, 0.08);
+	--widget-hairline-soft: rgba(255, 255, 255, 0.06);
+	--widget-scanline: rgba(255, 255, 255, 0.025);
+	--widget-track: rgba(255, 255, 255, 0.08);
+	--widget-overlay: rgba(0, 0, 0, 0.5);
+	--widget-ok: oklch(0.8 0.12 165);
+	--widget-ok-dim: oklch(0.78 0.12 165 / 0.14);
+	--widget-ok-dot: oklch(0.78 0.12 165);
+	--widget-missing: oklch(0.8 0.12 85);
+	--widget-missing-dim: oklch(0.78 0.12 85 / 0.14);
+	--widget-bad: oklch(0.75 0.18 25);
+	--widget-bad-dim: oklch(0.65 0.2 25 / 0.14);
+	--widget-bad-dot: oklch(0.65 0.2 25);
 }
 
 :root,

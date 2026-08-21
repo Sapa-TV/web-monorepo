@@ -1,8 +1,13 @@
 <script lang="ts">
+	import type { Snippet } from "svelte";
 	import SiteNav from "#lib/components/SiteNav.svelte";
 	import "../../styles/site.css";
 
-	let { children } = $props();
+	interface Props {
+		children: Snippet;
+	}
+
+	let { children }: Props = $props();
 </script>
 
 <svelte:head>

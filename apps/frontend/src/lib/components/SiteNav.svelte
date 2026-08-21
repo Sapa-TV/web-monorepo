@@ -62,8 +62,8 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 0.4rem;
-		background-color: var(--error, #e64040);
-		color: var(--on-error, #ffffff);
+		background-color: var(--error);
+		color: var(--on-error);
 		padding: 0.15rem 0.6rem;
 		border-radius: 6px;
 		font-weight: 700;
