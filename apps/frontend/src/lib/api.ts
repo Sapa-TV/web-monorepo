@@ -1,4 +1,4 @@
-import { createApi } from "@sapa-tv-ru/api-client";
+import { createApi, createWapi } from "@sapa-tv-ru/api-client";
 
 const defaultOrigin =
 	typeof location !== "undefined"
@@ -12,6 +12,8 @@ export const WAPI_BASE = "/wapi";
 const httpOrigin = typeof location !== "undefined" ? location.origin : "";
 
 export const api = createApi(httpOrigin);
+
+export const wapi = createWapi(httpOrigin);
 
 export const WS_URL = `${defaultOrigin}${WAPI_BASE}/ws`;
 

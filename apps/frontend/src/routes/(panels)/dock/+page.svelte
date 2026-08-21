@@ -1,12 +1,7 @@
 <script lang="ts">
 	import { onMount } from "svelte";
-	import {
-		WAPI_BASE,
-		WS_URL,
-		apiFetch,
-		type QueueEntry,
-		type QueueStats,
-	} from "#lib/api";
+	import { WS_URL, wapi, type QueueEntry } from "#lib/api";
+	import { HttpError, TimeoutError } from "@sapa-tv-ru/api-client";
 	import { Badge, Button, Input, Section, TableWrap } from "@sapa-tv-ru/ui-kit";
 	import IconKeyRound from "~icons/lucide/key-round";
 	import IconRefreshCw from "~icons/lucide/refresh-cw";
@@ -27,6 +22,10 @@
 	const WS_RETRY_BASE_MS = 1_000;
 	const WS_RETRY_MAX_MS = 15_000;
 	const REFRESH_INTERVAL_MS = 10_000;
+
+	const wapiAuth = {
+		headers: { Authorization: `Bearer ${widgetAccessKey}` },
+	};
 
 	type BadgeTone =
 		| "ok"
@@ -78,106 +77,82 @@
 		].slice(0, LOG_LIMIT);
 	}
 
+	function isUnauthorized(err: unknown): boolean {
+		return err instanceof HttpError && err.status === UNAUTHORIZED;
+	}
+
+	function describeError(err: unknown): string {
+		if (err instanceof HttpError) return `HTTP ${err.status}`;
+		if (err instanceof TimeoutError) return "timeout";
+		return "network error";
+	}
+
 	async function loadAll() {
-		try {
-			const [listRes, statsRes] = await Promise.all([
-				apiFetch(`${WAPI_BASE}/queue`, {}, widgetAccessKey),
-				apiFetch(`${WAPI_BASE}/queue/stats`, {}, widgetAccessKey),
-			]);
+		const [listRes, statsRes] = await Promise.all([
+			wapi.list(null, null, null, wapiAuth),
+			wapi.stats(wapiAuth),
+		]);
 
-			if (listRes.status === UNAUTHORIZED) {
-				setKeyState(widgetAccessKey ? "bad" : "missing");
-			} else {
+		listRes.match(
+			(data) => {
 				setKeyState("ok");
-			}
-
-			if (listRes.ok) {
-				const data = (await listRes.json()) as {
-					entries: QueueEntry[];
-					next_cursor: number | null;
-				};
 				entries = data.entries;
-			}
+				const hasSpinning = entries.some((e) => e.status === "Spinning");
+				if (!hasSpinning) {
+					const next = entries.find(
+						(e) => e.status === "Error" || e.status === "Pending",
+					);
+					nextUser = next ? next.user_name || "" : "";
+				}
+			},
+			(err) => {
+				if (isUnauthorized(err))
+					setKeyState(widgetAccessKey ? "bad" : "missing");
+			},
+		);
 
-			const hasSpinning = entries.some((e) => e.status === "Spinning");
-			if (!hasSpinning) {
-				const next = entries.find(
-					(e) => e.status === "Error" || e.status === "Pending",
-				);
-				nextUser = next ? next.user_name || "" : "";
-			}
-
-			if (statsRes.ok) {
-				const s = (await statsRes.json()) as QueueStats;
+		statsRes.match(
+			(s) => {
 				dequeueLabel = `▶ Dequeue (${s.pending + s.error})`;
-			}
-		} catch {
-			// ignore
-		}
+			},
+			() => {},
+		);
 	}
 
 	async function dequeueNext() {
 		nextBusy = true;
 		try {
-			const r = await apiFetch(
-				`${WAPI_BASE}/queue/next`,
-				{ method: "POST" },
-				widgetAccessKey,
+			const res = await wapi.dequeueNext(wapiAuth);
+			res.match(
+				(data) =>
+					addEvent(
+						`🎰 ${data.slot?.name} → #${data.entry.id} (${data.entry.user_name})`,
+						"start",
+					),
+				(err) => addEvent(`❌ Dequeue: ${describeError(err)}`, "error"),
 			);
-			const data = (await r.json()) as {
-				slot?: { name: string };
-				entry?: { id: number; user_name: string };
-			};
-			if (r.ok) {
-				addEvent(
-					`🎰 ${data.slot?.name} → #${data.entry?.id} (${data.entry?.user_name})`,
-					"start",
-				);
-			} else {
-				addEvent(`❌ Dequeue: ${r.status}`, "error");
-			}
 			await loadAll();
-		} catch (err) {
-			addEvent(`❌ ${err instanceof Error ? err.message : err}`, "error");
 		} finally {
 			nextBusy = false;
 		}
 	}
 
 	async function completeEntry(id: number) {
-		try {
-			const r = await apiFetch(
-				`${WAPI_BASE}/queue/${id}/complete`,
-				{ method: "POST" },
-				widgetAccessKey,
-			);
-			if (r.ok) {
-				addEvent(`✔ #${id} завершён`, "complete");
-			} else {
-				addEvent(`❌ Complete #${id}: ${r.status}`, "error");
-			}
-			await loadAll();
-		} catch (err) {
-			addEvent(`❌ ${err instanceof Error ? err.message : err}`, "error");
-		}
+		const res = await wapi.complete(id, wapiAuth);
+		res.match(
+			() => addEvent(`✔ #${id} завершён`, "complete"),
+			(err) => addEvent(`❌ Complete #${id}: ${describeError(err)}`, "error"),
+		);
+		await loadAll();
 	}
 
 	async function cancelEntry(id: number) {
-		try {
-			const r = await apiFetch(
-				`${WAPI_BASE}/queue/${id}/cancel`,
-				{ method: "POST" },
-				widgetAccessKey,
-			);
-			if (r.ok) {
-				addEvent(`✕ #${id} отменён`, "error");
-			} else {
-				addEvent(`❌ Cancel #${id}: ${r.status}`, "error");
-			}
-			await loadAll();
-		} catch (err) {
-			addEvent(`❌ ${err instanceof Error ? err.message : err}`, "error");
-		}
+		const res = await wapi.cancel(id, wapiAuth);
+		res.match(
+			() => addEvent(`✕ #${id} отменён`, "error"),
+			(err) => addEvent(`❌ Cancel #${id}: ${describeError(err)}`, "error"),
+		);
+		await loadAll();
 	}
 
 	async function enqueueEntry() {
@@ -185,24 +160,15 @@
 		if (!name) return;
 		enqBusy = true;
 		try {
-			const r = await apiFetch(
-				`${WAPI_BASE}/queue/anonymous`,
-				{
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ name }),
+			const res = await wapi.enqueueAnonymous({ name }, wapiAuth);
+			res.match(
+				() => {
+					enqName = "";
+					addEvent(`➕ ${name} добавлен`, "complete");
 				},
-				widgetAccessKey,
+				(err) => addEvent(`❌ Ошибка ${describeError(err)}`, "error"),
 			);
-			if (r.ok) {
-				enqName = "";
-				addEvent(`➕ ${name} добавлен`, "complete");
-			} else {
-				addEvent(`❌ Ошибка ${r.status}`, "error");
-			}
 			await loadAll();
-		} catch (err) {
-			addEvent(`❌ ${err instanceof Error ? err.message : err}`, "error");
 		} finally {
 			enqBusy = false;
 		}

@@ -1,6 +1,8 @@
 import { Api } from "../generated/Api";
+import { Wapi } from "../generated/Wapi";
 
 export { Api } from "../generated/Api";
+export { Wapi } from "../generated/Wapi";
 export * from "../generated/data-contracts";
 export { ContentType } from "../generated/http-client";
 export type {
@@ -27,6 +29,15 @@ export interface CreateApiOptions {
 
 export function createApi(baseUrl: string, options: CreateApiOptions = {}) {
 	return new Api({
+		baseUrl,
+		timeoutMs: options.timeoutMs,
+		credentials: options.credentials,
+		headers: options.headers,
+	});
+}
+
+export function createWapi(baseUrl: string, options: CreateApiOptions = {}) {
+	return new Wapi({
 		baseUrl,
 		timeoutMs: options.timeoutMs,
 		credentials: options.credentials,
