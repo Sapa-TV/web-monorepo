@@ -251,6 +251,242 @@
         }
       }
     },
+    "/api/admin/roulette/rarities": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "list_rarities",
+        "responses": {
+          "200": {
+            "description": "List all rarities",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RarityResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "create_rarity",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertRarityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Rarity created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RarityResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/roulette/rarities/{id}": {
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "update_rarity",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/RarityId"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertRarityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Rarity updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RarityResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rarity not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "delete_rarity",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/RarityId"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Rarity removed"
+          },
+          "404": {
+            "description": "Rarity not found"
+          }
+        }
+      }
+    },
+    "/api/admin/roulette/slots": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "list_slots",
+        "responses": {
+          "200": {
+            "description": "List all roulette slots",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RouletteSlotResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "create_slot",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertRouletteSlotRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Roulette slot created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouletteSlotResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/roulette/slots/{id}": {
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "update_slot",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/RouletteSlotId"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertRouletteSlotRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Roulette slot updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouletteSlotResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Roulette slot not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "delete_slot",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/RouletteSlotId"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Roulette slot removed"
+          },
+          "404": {
+            "description": "Roulette slot not found"
+          }
+        }
+      }
+    },
     "/api/admin/rules": {
       "get": {
         "tags": [
@@ -2021,6 +2257,17 @@
         "format": "int32",
         "minimum": 0
       },
+      "RarityIdParam": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/RarityId"
+          }
+        }
+      },
       "RarityResponse": {
         "type": "object",
         "required": [
@@ -2301,6 +2548,17 @@
           }
         }
       },
+      "SlotIdParam": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/RouletteSlotId"
+          }
+        }
+      },
       "StreamStatusResponse": {
         "type": "object",
         "required": [
@@ -2458,6 +2716,54 @@
           },
           "name": {
             "type": "string"
+          }
+        }
+      },
+      "UpsertRarityRequest": {
+        "type": "object",
+        "required": [
+          "name",
+          "display_name",
+          "image",
+          "color"
+        ],
+        "properties": {
+          "color": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "UpsertRouletteSlotRequest": {
+        "type": "object",
+        "required": [
+          "name",
+          "rarity_id",
+          "weight",
+          "action"
+        ],
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "rarity_id": {
+            "$ref": "#/components/schemas/RarityId"
+          },
+          "weight": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
           }
         }
       },
