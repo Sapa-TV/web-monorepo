@@ -7,7 +7,6 @@
       Из-за этого в сгенерированном клиенте они объявлены аргументами, но в запрос не попадают.
       Починить генерацию спеки на бекенде (стоит пометить: поправить utoipa/introspection, чтобы параметры были `in: query`), затем выполнить `just gen-client`.
       Пока обходимся передачей query вручную: `api.api.<method>(args, { query: { status: "Pending" } })`
-- [ ] `apps/frontend/src/lib/api.ts`: убрать дубли `QueueEntry`/`QueueStats`, re-export из `@sapa-tv-ru/api-client` (интерфейсы `QueueEntryResponse`/`QueueStats` уже в generated); `apiFetch`/`WS_URL` пока оставить
 - [ ] `apps/frontend/src/routes/(panels)/dock/+page.svelte`: заменить `apiFetch` на методы `api.api.*` (`list`, `stats`, `dequeueNext`, `complete`, `cancel`, `enqueueAnonymous`); 401-логику `setKeyState` перевести на проверку `HttpError.status === 401` через `Result.match`
 - [ ] `apps/frontend/src/routes/(widgets)/roulette/+page.svelte`: заменить `apiFetch` на `api.api.complete` (и остальные используемые методы) с обработкой `Result`
 - [ ] после пунктов выше: удалить `apiFetch`/`API_BASE` из `apps/frontend/src/lib/api.ts` (останется `api`, `WS_URL`)

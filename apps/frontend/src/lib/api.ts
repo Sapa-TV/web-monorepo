@@ -15,24 +15,8 @@ export const api = createApi(httpOrigin);
 
 export const WS_URL = `${defaultOrigin}${WAPI_BASE}/ws`;
 
-export interface QueueEntry {
-	id: number;
-	user_id: string;
-	user_name: string;
-	status: "Pending" | "Spinning" | "Completed" | "Cancelled" | "Error";
-	result_slot_id: number | null;
-	slot_name: string | null;
-	created_at: string;
-	updated_at: string;
-}
-
-export interface QueueStats {
-	pending: number;
-	spinning: number;
-	completed: number;
-	error: number;
-	cancelled: number;
-}
+export type { QueueStats } from "@sapa-tv-ru/api-client";
+export type { QueueEntryResponse as QueueEntry } from "@sapa-tv-ru/api-client";
 
 export function apiFetch(
 	path: string,
