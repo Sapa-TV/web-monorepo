@@ -3,6 +3,8 @@
 import "unplugin-icons/types/svelte";
 
 declare global {
+	const __GIT_SHA__: string;
+
 	namespace App {
 		// interface Error {}
 		// interface Locals {}

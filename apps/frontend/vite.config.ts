@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process";
 import { defineConfig } from "vitest/config";
 import { playwright } from "@vitest/browser-playwright";
 import adapter from "@sveltejs/adapter-static";
@@ -5,6 +6,16 @@ import { sveltekit } from "@sveltejs/kit/vite";
 import Icons from "unplugin-icons/vite";
 
 const backendTarget = process.env.VITE_BACKEND_URL ?? "http://localhost:3000";
+
+const gitSha =
+	process.env.VITE_BUILD_SHA ??
+	(() => {
+		try {
+			return execSync("git rev-parse --short HEAD").toString().trim();
+		} catch {
+			return "unknown";
+		}
+	})();
 
 function normalizeBase(input: string): string {
 	if (!input) return "";
@@ -15,6 +26,9 @@ function normalizeBase(input: string): string {
 }
 
 export default defineConfig({
+	define: {
+		__GIT_SHA__: JSON.stringify(gitSha),
+	},
 	server: {
 		proxy: {
 			"/api": { target: backendTarget, changeOrigin: true },

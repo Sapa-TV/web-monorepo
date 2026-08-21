@@ -9,7 +9,6 @@
 - [ ] `apps/frontend/src/routes/(panels)/dock/+page.svelte`: заменить `apiFetch` на методы `api.api.*` (`list`, `stats`, `dequeueNext`, `complete`, `cancel`, `enqueueAnonymous`); 401-логику `setKeyState` перевести на проверку `HttpError.status === 401` через `Result.match`
 - [ ] `apps/frontend/src/routes/(widgets)/roulette/+page.svelte`: заменить `apiFetch` на `api.api.complete` (и остальные используемые методы) с обработкой `Result`
 - [ ] после пунктов выше: удалить `apiFetch`/`API_BASE` из `apps/frontend/src/lib/api.ts` (останется `api`, `WS_URL`)
-- [ ] Зашивать commit/GIT_SHA в финальную сборку фронта (env при vite build / build.json в статике) — чтобы знать, какой билд фронта на сервере
 - [ ] Добавить юз-кейс/e2e тесты (сейчас межмодульные сценарии вроде «ротация PAK → старый ключ на widget-эндпоинте не работает» покрыты только unit-тестами)
 - [ ] Переделать создание структур - все структуры должны создаваться в одном месте - через методы new\build\builder, для этого во все добавить не публичное zero-size поле ()
 - [ ] Админка - процесс обновления access_key - подверждение надо или сделать через нормальные диалоги, или убрать

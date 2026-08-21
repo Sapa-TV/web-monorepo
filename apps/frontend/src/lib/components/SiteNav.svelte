@@ -4,6 +4,7 @@
 	import IconMoon from "~icons/lucide/moon";
 	import IconSun from "~icons/lucide/sun";
 	import DonateToggle from "./DonateToggle.svelte";
+	import { GIT_SHA } from "#lib/build-info";
 
 	let isStream = $derived(page.url.pathname === "/stream");
 
@@ -37,6 +38,7 @@
 		</a>
 
 		<div class="nav-actions">
+			<span class="build-sha" title="Build commit">{GIT_SHA}</span>
 			<!-- <a class="nav-link" href="/links">
 				<IconBook aria-hidden="true" />
 				Каталог
@@ -58,6 +60,13 @@
 </nav>
 
 <style>
+	.build-sha {
+		font-family: ui-monospace, monospace;
+		font-size: 0.72rem;
+		color: var(--on-surface-variant);
+		user-select: all;
+	}
+
 	.badge-live {
 		display: inline-flex;
 		align-items: center;

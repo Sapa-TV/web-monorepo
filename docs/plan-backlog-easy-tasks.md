@@ -41,17 +41,17 @@ utoipa `in: query` баг генерации спеки · e2e-тесты · bui
 
 ### Этап A — api-client и типы
 
-1. ✅ Готово (2026-08-21). `packages/api-client/src/base-client.ts`: добавить `credentials?: RequestCredentials` и `headers?: Record<string, string>` в `ApiConfig`; сохранить как поля `HttpClient`, мерджить с per-request headers (default первыми), `credentials ?? "include"` (сейчас `"include"` захардкожен в fetch-options). Также расширены `CreateApiOptions`/`createApi`.
-2. ✅ Готово (2026-08-21). `apps/frontend/src/lib/api.ts`: удалить локальные интерфейсы `QueueEntry`/`QueueStats`, re-export типов из `@sapa-tv-ru/api-client`; поправить импорты по фронту. Реализовано как alias `QueueEntryResponse as QueueEntry`, чтобы не трогать dock-страницу до шага D7.
+1. ✅ Готово. `packages/api-client/src/base-client.ts`: добавить `credentials?: RequestCredentials` и `headers?: Record<string, string>` в `ApiConfig`; сохранить как поля `HttpClient`, мерджить с per-request headers (default первыми), `credentials ?? "include"` (сейчас `"include"` захардкожен в fetch-options).
+2. ✅ Готово. `apps/frontend/src/lib/api.ts`: удалить локальные интерфейсы `QueueEntry`/`QueueStats`, re-export типов из `@sapa-tv-ru/api-client`.
 
 ### Этап B — бекенд
 
-3. ✅ Готово (2026-08-21). `remove_admin`: отклонять удаление собственного аккаунта (сравнение id сессии и цели), 40x + тест. Реализовано: `AdminServiceError::CannotRemoveSelf` → 409, сессия достаётся через `Extension<Session>`, тест `root_cannot_remove_self`.
-4. ✅ Готово (2026-08-21). Заменить ручные cookie-строки (`format!("{name}={value}; Path=/; HttpOnly; SameSite=Lax")`) на `axum_extra::cookie::Cookie` builder в auth/session + прогнать тесты auth.
+3. ✅ Готово. `remove_admin`: отклонять удаление собственного аккаунта (сравнение id сессии и цели), 40x + тест.
+4. ✅ Готово. Заменить ручные cookie-строки (`format!("{name}={value}; Path=/; HttpOnly; SameSite=Lax")`) на `axum_extra::cookie::Cookie` builder в auth/session + прогнать тесты auth.
 
 ### Этап C — фронт-мелочи
 
-5. GIT_SHA: в `vite.config` через `define` инжектить `git rev-parse --short HEAD`, показать версию в UI.
+5. ✅ Готово. GIT_SHA: в `vite.config` через `define` инжектить `git rev-parse --short HEAD`, показать версию в UI.
 6. `ConfirmDialog.svelte` в `packages/ui-kit/src` + подключить в `AccessKeyCard.svelte` вместо `window.confirm`.
 
 ### Этап D — миграция на `api.api.*` и удаление `apiFetch`
