@@ -14,6 +14,8 @@ pub enum AdminServiceError {
     AlreadyAdmin,
     #[error("cannot remove the last root admin")]
     CannotRemoveLastRoot,
+    #[error("cannot remove your own account")]
+    CannotRemoveSelf,
     #[error("{0}")]
     Repo(RepositoryError),
 }
@@ -32,6 +34,9 @@ impl From<AdminServiceError> for ApiError {
             AdminServiceError::AlreadyAdmin => ApiError::new(StatusCode::CONFLICT, e.to_string()),
             AdminServiceError::CannotRemoveLastRoot => {
                 ApiError::new(StatusCode::FORBIDDEN, e.to_string())
+            }
+            AdminServiceError::CannotRemoveSelf => {
+                ApiError::new(StatusCode::CONFLICT, e.to_string())
             }
         }
     }

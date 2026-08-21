@@ -5,15 +5,16 @@ pub mod roulette;
 pub mod rules;
 pub mod twitch;
 
-use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
+use axum::{Extension, Json};
 use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, OpenApi, ToSchema};
 
 use crate::admin::Admin;
 use crate::error::AdminServiceError;
 use crate::error::api::ApiError;
+use crate::session::Session;
 use crate::state::AppState;
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -100,12 +101,17 @@ pub async fn add_admin(
         (status = 204, description = "Admin removed"),
         (status = 404, description = "Admin not found"),
         (status = 403, description = "Cannot remove the last root admin"),
+        (status = 409, description = "Cannot remove your own account"),
     )
 )]
 pub async fn remove_admin(
     State(state): State<AppState>,
+    Extension(session): Extension<Session>,
     Path(params): Path<TwitchIdParam>,
 ) -> Result<StatusCode, AdminServiceError> {
+    if session.twitch_user_id == params.twitch_id {
+        return Err(AdminServiceError::CannotRemoveSelf);
+    }
     state.admin_service.remove(&params.twitch_id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
@@ -357,6 +363,29 @@ pub(crate) mod tests {
             .unwrap();
         assert_eq!(response.status(), StatusCode::NO_CONTENT);
         assert!(!state.admin_service.is_admin("200").await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn root_cannot_remove_self() {
+        let state = test_state().await;
+        state.admin_service.add("100", None).await.unwrap();
+        state.admin_service.set_root("100", true).await.unwrap();
+        let app = test_router(state.clone());
+        let root_cookie = session_cookie(&state, "100").await;
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("DELETE")
+                    .uri(api_path("/admin/100"))
+                    .header(header::COOKIE, root_cookie)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::CONFLICT);
+        assert!(state.admin_service.is_admin("100").await.unwrap());
     }
 
     #[tokio::test]

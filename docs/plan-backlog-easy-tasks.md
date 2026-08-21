@@ -46,7 +46,7 @@ utoipa `in: query` баг генерации спеки · e2e-тесты · bui
 
 ### Этап B — бекенд
 
-3. `remove_admin`: отклонять удаление собственного аккаунта (сравнение id сессии и цели), 40x + тест.
+3. ✅ Готово (2026-08-21). `remove_admin`: отклонять удаление собственного аккаунта (сравнение id сессии и цели), 40x + тест. Реализовано: `AdminServiceError::CannotRemoveSelf` → 409, сессия достаётся через `Extension<Session>`, тест `root_cannot_remove_self`.
 4. Заменить ручные cookie-строки (`format!("{name}={value}; Path=/; HttpOnly; SameSite=Lax")`) на `axum_extra::cookie::Cookie` builder в auth/session + прогнать тесты auth.
 
 ### Этап C — фронт-мелочи

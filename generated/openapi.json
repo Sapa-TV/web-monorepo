@@ -745,6 +745,9 @@
           },
           "404": {
             "description": "Admin not found"
+          },
+          "409": {
+            "description": "Cannot remove your own account"
           }
         }
       }
