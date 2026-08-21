@@ -34,6 +34,11 @@
 - Root-only разделы видны всем в меню, но не-root видит заглушку «нет доступа».
 - Переименовать всё `Pak*` → `Wak*` (widget access key): `loadPak` → `loadWak`, `rotatePak` → `rotateWak`, `copyPak` → `copyWak`.
 - Фронтенд по возможности разбивать на минимальные компоненты (одна ответственность на компонент): шапка, пункт меню, меню и т.д. — вместо крупных монолитных файлов. Новые страницы/секции собирать из маленьких компонентов.
+- Компоненты живут в `src/lib/components/`, разложены по папкам по смыслу, а не рядом с роутами:
+  - `components/admin/` — каркас админ-панели (`PanelHeader`, `SidebarMenu`, `SidebarItem`);
+  - `components/admin/platforms/` — карточки платформ (`TwitchPlatformCard`, позже YouTube/Kick);
+  - `components/admin/widgets/` — виджеты (`AccessKeyCard`, `WidgetLinksCard`);
+  - `components/admin/actions/` — действия и триггеры (`ActionsSection`, `RulesSection`).
 
 ## Целевая структура
 
@@ -59,7 +64,7 @@ Runes-модуль с полями `loaded`, `isRoot`. Заполняется gu
 ### 2. `+layout.svelte` панели (разбит на минимальные компоненты)
 
 - `guardAdmin()` в `onMount` (логика из текущей страницы): `NotLoggedIn` → редирект на логин, `NotAdmin` → на главную; иначе заполнить panel-state.
-- Компоненты рядом с роутом:
+- Компоненты в `src/lib/components/admin/`:
   - `PanelHeader.svelte` — заголовок «Админ-панель», root-badge, кнопка «Выйти»;
   - `SidebarMenu.svelte` — список разделов, определение активного пункта по `page.url.pathname`;
   - `SidebarItem.svelte` — один пункт меню (иконка, подпись, href, active).

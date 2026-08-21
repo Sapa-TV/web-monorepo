@@ -5,7 +5,7 @@
 	import IconTv from "~icons/lucide/tv";
 	import IconUsers from "~icons/lucide/users";
 	import IconZap from "~icons/lucide/zap";
-	import SidebarItem from "./SidebarItem.svelte";
+	import SidebarItem from "#lib/components/admin/SidebarItem.svelte";
 
 	const panelBase = resolve("admin/panel");
 

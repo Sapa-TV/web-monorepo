@@ -1,5 +1,5 @@
 <script lang="ts">
-	import TwitchPlatformCard from "./TwitchPlatformCard.svelte";
+	import TwitchPlatformCard from "#lib/components/admin/platforms/TwitchPlatformCard.svelte";
 </script>
 
 <svelte:head>

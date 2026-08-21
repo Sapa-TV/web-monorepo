@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { panelState } from "#lib/admin/panel-state.svelte";
 	import { guardAdmin, GuardStatus } from "#lib/admin/session";
+	import PanelHeader from "#lib/components/admin/PanelHeader.svelte";
+	import SidebarMenu from "#lib/components/admin/SidebarMenu.svelte";
 	import { goto } from "$app/navigation";
 	import { resolve } from "$app/paths";
 	import { Alert } from "@sapa-tv-ru/ui-kit";
 	import { onMount, type Snippet } from "svelte";
-	import PanelHeader from "./PanelHeader.svelte";
-	import SidebarMenu from "./SidebarMenu.svelte";
 
 	interface Props {
 		children: Snippet;
