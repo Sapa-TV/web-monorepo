@@ -41,7 +41,7 @@ utoipa `in: query` баг генерации спеки · e2e-тесты · bui
 
 ### Этап A — api-client и типы
 
-1. `packages/api-client/src/base-client.ts`: добавить `credentials?: RequestCredentials` и `headers?: Record<string, string>` в `ApiConfig`; сохранить как поля `HttpClient`, мерджить с per-request headers (default первыми), `credentials ?? "include"` (сейчас `"include"` захардкожен в fetch-options).
+1. ✅ Готово (2026-08-21). `packages/api-client/src/base-client.ts`: добавить `credentials?: RequestCredentials` и `headers?: Record<string, string>` в `ApiConfig`; сохранить как поля `HttpClient`, мерджить с per-request headers (default первыми), `credentials ?? "include"` (сейчас `"include"` захардкожен в fetch-options). Также расширены `CreateApiOptions`/`createApi`.
 2. `apps/frontend/src/lib/api.ts`: удалить локальные интерфейсы `QueueEntry`/`QueueStats`, re-export типов из `@sapa-tv-ru/api-client`; поправить импорты по фронту.
 
 ### Этап B — бекенд

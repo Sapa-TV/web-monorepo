@@ -3,6 +3,8 @@ import { Result, ResultAsync, errAsync, okAsync } from "neverthrow";
 export interface ApiConfig {
 	baseUrl: string;
 	timeoutMs?: number;
+	credentials?: RequestCredentials;
+	headers?: Record<string, string>;
 }
 
 export class TimeoutError extends Error {
@@ -50,10 +52,14 @@ interface RequestParams {
 export class HttpClient<SecurityDataType = unknown> {
 	public baseUrl: string;
 	private timeoutMs: number;
+	private credentials: RequestCredentials;
+	private defaultHeaders: Record<string, string>;
 
 	constructor(config: ApiConfig) {
 		this.baseUrl = config.baseUrl;
 		this.timeoutMs = config.timeoutMs ?? 10000;
+		this.credentials = config.credentials ?? "include";
+		this.defaultHeaders = config.headers ?? {};
 	}
 
 	// TODO: Add retry logic for transient failures (5xx, network errors)
@@ -76,7 +82,10 @@ export class HttpClient<SecurityDataType = unknown> {
 		const controller = new AbortController();
 		const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
 
-		const headersInit: Record<string, string> = { ...headers };
+		const headersInit: Record<string, string> = {
+			...this.defaultHeaders,
+			...headers,
+		};
 		if (!(body instanceof FormData) && body) {
 			headersInit["Content-Type"] = "application/json";
 		}
@@ -85,7 +94,7 @@ export class HttpClient<SecurityDataType = unknown> {
 			method,
 			headers: headersInit,
 			signal: controller.signal,
-			credentials: "include",
+			credentials: this.credentials,
 			body:
 				body instanceof FormData
 					? body

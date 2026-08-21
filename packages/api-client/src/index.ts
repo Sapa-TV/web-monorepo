@@ -21,8 +21,15 @@ export type { ApiConfig } from "./base-client";
 
 export interface CreateApiOptions {
 	timeoutMs?: number;
+	credentials?: RequestCredentials;
+	headers?: Record<string, string>;
 }
 
 export function createApi(baseUrl: string, options: CreateApiOptions = {}) {
-	return new Api({ baseUrl, timeoutMs: options.timeoutMs });
+	return new Api({
+		baseUrl,
+		timeoutMs: options.timeoutMs,
+		credentials: options.credentials,
+		headers: options.headers,
+	});
 }
