@@ -12,8 +12,6 @@
 
 import {
   AnonymousEnqueueRequest,
-  CreateRarityRequest,
-  CreateRouletteSlotRequest,
   CreateUserRequest,
   EnqueueRequest,
   LinkPlatformRequest,
@@ -24,15 +22,11 @@ import {
   QueueListResponse,
   QueueStats,
   QueueStatus,
-  RarityId,
   RarityResponse,
-  RouletteSlotId,
   RouletteSlotResponse,
   SetStreamStatusRequest,
   StreamStatusResponse,
   UpdatePlatformRequest,
-  UpdateRarityRequest,
-  UpdateRouletteSlotRequest,
   UpdateUserRequest,
   UserId,
   UserResponse,
@@ -209,55 +203,6 @@ export class Wapi<
   /**
    * No description
    *
-   * @tags rarities
-   * @name CreateRarity
-   * @request POST:/wapi/rarities
-   */
-  createRarity = (data: CreateRarityRequest, params: RequestParams = {}) =>
-    this.request<RarityResponse, any>({
-      path: `/wapi/rarities`,
-      method: "POST",
-      body: data,
-      type: ContentType.Json,
-      format: "json",
-      ...params,
-    });
-  /**
-   * No description
-   *
-   * @tags rarities
-   * @name UpdateRarity
-   * @request PUT:/wapi/rarities/{id}
-   */
-  updateRarity = (
-    id: RarityId,
-    data: UpdateRarityRequest,
-    params: RequestParams = {},
-  ) =>
-    this.request<RarityResponse, void>({
-      path: `/wapi/rarities/${id}`,
-      method: "PUT",
-      body: data,
-      type: ContentType.Json,
-      format: "json",
-      ...params,
-    });
-  /**
-   * No description
-   *
-   * @tags rarities
-   * @name DeleteRarity
-   * @request DELETE:/wapi/rarities/{id}
-   */
-  deleteRarity = (id: RarityId, params: RequestParams = {}) =>
-    this.request<void, void>({
-      path: `/wapi/rarities/${id}`,
-      method: "DELETE",
-      ...params,
-    });
-  /**
-   * No description
-   *
    * @tags slots
    * @name ListSlots
    * @request GET:/wapi/slots
@@ -267,55 +212,6 @@ export class Wapi<
       path: `/wapi/slots`,
       method: "GET",
       format: "json",
-      ...params,
-    });
-  /**
-   * No description
-   *
-   * @tags slots
-   * @name CreateSlot
-   * @request POST:/wapi/slots
-   */
-  createSlot = (data: CreateRouletteSlotRequest, params: RequestParams = {}) =>
-    this.request<RouletteSlotResponse, void>({
-      path: `/wapi/slots`,
-      method: "POST",
-      body: data,
-      type: ContentType.Json,
-      format: "json",
-      ...params,
-    });
-  /**
-   * No description
-   *
-   * @tags slots
-   * @name UpdateSlot
-   * @request PUT:/wapi/slots/{id}
-   */
-  updateSlot = (
-    id: RouletteSlotId,
-    data: UpdateRouletteSlotRequest,
-    params: RequestParams = {},
-  ) =>
-    this.request<RouletteSlotResponse, void>({
-      path: `/wapi/slots/${id}`,
-      method: "PUT",
-      body: data,
-      type: ContentType.Json,
-      format: "json",
-      ...params,
-    });
-  /**
-   * No description
-   *
-   * @tags slots
-   * @name DeleteSlot
-   * @request DELETE:/wapi/slots/{id}
-   */
-  deleteSlot = (id: RouletteSlotId, params: RequestParams = {}) =>
-    this.request<void, void>({
-      path: `/wapi/slots/${id}`,
-      method: "DELETE",
       ...params,
     });
   /**

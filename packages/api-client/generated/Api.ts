@@ -16,7 +16,11 @@ import {
   AdminResponse,
   CreateSessionRequest,
   IngressCredentialsResponse,
+  RarityId,
+  RarityResponse,
   RewardResponse,
+  RouletteSlotId,
+  RouletteSlotResponse,
   RuleResponse,
   SessionResponse,
   StreamStatusResponse,
@@ -25,6 +29,8 @@ import {
   TwitchLoginCallbackResponse,
   TwitchLoginStartResponse,
   UpsertActionRequest,
+  UpsertRarityRequest,
+  UpsertRouletteSlotRequest,
   UpsertRuleRequest,
   WidgetAccessKeyResponse,
 } from "./data-contracts";
@@ -165,6 +171,132 @@ export class Api<
       path: `/api/admin/rewards`,
       method: "GET",
       format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags admin
+   * @name ListRarities
+   * @request GET:/api/admin/roulette/rarities
+   */
+  listRarities = (params: RequestParams = {}) =>
+    this.request<RarityResponse[], any>({
+      path: `/api/admin/roulette/rarities`,
+      method: "GET",
+      format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags admin
+   * @name CreateRarity
+   * @request POST:/api/admin/roulette/rarities
+   */
+  createRarity = (data: UpsertRarityRequest, params: RequestParams = {}) =>
+    this.request<RarityResponse, any>({
+      path: `/api/admin/roulette/rarities`,
+      method: "POST",
+      body: data,
+      type: ContentType.Json,
+      format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags admin
+   * @name UpdateRarity
+   * @request PUT:/api/admin/roulette/rarities/{id}
+   */
+  updateRarity = (
+    id: RarityId,
+    data: UpsertRarityRequest,
+    params: RequestParams = {},
+  ) =>
+    this.request<RarityResponse, void>({
+      path: `/api/admin/roulette/rarities/${id}`,
+      method: "PUT",
+      body: data,
+      type: ContentType.Json,
+      format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags admin
+   * @name DeleteRarity
+   * @request DELETE:/api/admin/roulette/rarities/{id}
+   */
+  deleteRarity = (id: RarityId, params: RequestParams = {}) =>
+    this.request<void, void>({
+      path: `/api/admin/roulette/rarities/${id}`,
+      method: "DELETE",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags admin
+   * @name ListSlots
+   * @request GET:/api/admin/roulette/slots
+   */
+  listSlots = (params: RequestParams = {}) =>
+    this.request<RouletteSlotResponse[], any>({
+      path: `/api/admin/roulette/slots`,
+      method: "GET",
+      format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags admin
+   * @name CreateSlot
+   * @request POST:/api/admin/roulette/slots
+   */
+  createSlot = (data: UpsertRouletteSlotRequest, params: RequestParams = {}) =>
+    this.request<RouletteSlotResponse, any>({
+      path: `/api/admin/roulette/slots`,
+      method: "POST",
+      body: data,
+      type: ContentType.Json,
+      format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags admin
+   * @name UpdateSlot
+   * @request PUT:/api/admin/roulette/slots/{id}
+   */
+  updateSlot = (
+    id: RouletteSlotId,
+    data: UpsertRouletteSlotRequest,
+    params: RequestParams = {},
+  ) =>
+    this.request<RouletteSlotResponse, void>({
+      path: `/api/admin/roulette/slots/${id}`,
+      method: "PUT",
+      body: data,
+      type: ContentType.Json,
+      format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags admin
+   * @name DeleteSlot
+   * @request DELETE:/api/admin/roulette/slots/{id}
+   */
+  deleteSlot = (id: RouletteSlotId, params: RequestParams = {}) =>
+    this.request<void, void>({
+      path: `/api/admin/roulette/slots/${id}`,
+      method: "DELETE",
       ...params,
     });
   /**

@@ -86,24 +86,6 @@ export interface AnonymousEnqueueRequest {
   name: string;
 }
 
-export interface CreateRarityRequest {
-  color: string;
-  display_name: string;
-  image: string;
-  name: string;
-}
-
-export interface CreateRouletteSlotRequest {
-  action: string;
-  name: string;
-  rarity_id: RarityId;
-  /**
-   * @format int64
-   * @min 0
-   */
-  weight: number;
-}
-
 export interface CreateSessionRequest {
   ticket: string;
 }
@@ -203,6 +185,10 @@ export interface QueueStats {
  * @min 0
  */
 export type RarityId = number;
+
+export interface RarityIdParam {
+  id: RarityId;
+}
 
 export interface RarityResponse {
   color: string;
@@ -306,6 +292,10 @@ export interface SetStreamStatusRequest {
   online: boolean;
 }
 
+export interface SlotIdParam {
+  id: RouletteSlotId;
+}
+
 export interface StreamStatusResponse {
   online: boolean;
 }
@@ -333,24 +323,6 @@ export interface UpdatePlatformRequest {
   platform_username: string;
 }
 
-export interface UpdateRarityRequest {
-  color: string;
-  display_name: string;
-  image: string;
-  name: string;
-}
-
-export interface UpdateRouletteSlotRequest {
-  action: string;
-  name: string;
-  rarity_id: RarityId;
-  /**
-   * @format int64
-   * @min 0
-   */
-  weight: number;
-}
-
 export interface UpdateUserRequest {
   display_name: string;
 }
@@ -359,6 +331,24 @@ export interface UpsertActionRequest {
   enabled: boolean;
   kind: ActionKind;
   name: string;
+}
+
+export interface UpsertRarityRequest {
+  color: string;
+  display_name: string;
+  image: string;
+  name: string;
+}
+
+export interface UpsertRouletteSlotRequest {
+  action: string;
+  name: string;
+  rarity_id: RarityId;
+  /**
+   * @format int64
+   * @min 0
+   */
+  weight: number;
 }
 
 export interface UpsertRuleRequest {
