@@ -52,7 +52,7 @@ utoipa `in: query` баг генерации спеки · e2e-тесты · bui
 ### Этап C — фронт-мелочи
 
 5. ✅ Готово. GIT_SHA: в `vite.config` через `define` инжектить `git rev-parse --short HEAD`, показать версию в UI.
-6. `ConfirmDialog.svelte` в `packages/ui-kit/src` + подключить в `AccessKeyCard.svelte` вместо `window.confirm`.
+6. ✅ Готово. `ConfirmDialog.svelte` в `packages/ui-kit/src` + подключить в `AccessKeyCard.svelte` вместо `window.confirm`.
 
 ### Этап D — миграция на `api.api.*` и удаление `apiFetch`
 

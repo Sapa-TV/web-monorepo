@@ -5,6 +5,7 @@ export { default as Button } from "./Button.svelte";
 export { default as Card } from "./Card.svelte";
 export { default as Checkbox } from "./Checkbox.svelte";
 export { default as Code } from "./Code.svelte";
+export { default as ConfirmDialog } from "./ConfirmDialog.svelte";
 export { default as Field } from "./Field.svelte";
 export { default as Input } from "./Input.svelte";
 export { default as Section } from "./Section.svelte";

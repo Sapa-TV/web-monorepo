@@ -1,6 +1,13 @@
 <script lang="ts">
 	import { api } from "#lib/api";
-	import { Alert, Button, Card, Code, Section } from "@sapa-tv-ru/ui-kit";
+	import {
+		Alert,
+		Button,
+		Card,
+		Code,
+		ConfirmDialog,
+		Section,
+	} from "@sapa-tv-ru/ui-kit";
 	import { onDestroy } from "svelte";
 	import IconCheck from "~icons/lucide/check";
 	import IconCopy from "~icons/lucide/copy";
@@ -17,6 +24,7 @@
 	let wakBusy = $state(false);
 	let error = $state("");
 	let hint = $state("");
+	let rotateOpen = $state(false);
 
 	let copyTimer: ReturnType<typeof setTimeout> | null = null;
 	const COPY_FEEDBACK_MS = 1500;
@@ -37,13 +45,12 @@
 	}
 
 	async function rotateWak() {
-		if (!confirm("Сгенерировать новый access_key? Старый перестанет работать."))
-			return;
 		wakBusy = true;
 		error = "";
 		try {
 			const res = await api.rotateWidgetAccessKey();
 			if (res.isErr()) throw res.error;
+			rotateOpen = false;
 			onrotated();
 			hint = "Access key обновлён.";
 		} catch (err) {
@@ -88,7 +95,7 @@
 		<Button
 			variant="primary"
 			type="button"
-			onclick={rotateWak}
+			onclick={() => (rotateOpen = true)}
 			disabled={wakBusy}
 		>
 			<IconRefreshCw aria-hidden="true" />
@@ -96,6 +103,20 @@
 		</Button>
 	</Section>
 </Card>
+
+<ConfirmDialog
+	bind:open={rotateOpen}
+	title="Сгенерировать новый access_key?"
+	confirmLabel="Сгенерировать"
+	danger
+	busy={wakBusy}
+	onconfirm={rotateWak}
+>
+	<p>
+		Старый ключ перестанет работать. Панели и виджеты со старым ключом потеряют
+		доступ.
+	</p>
+</ConfirmDialog>
 
 <style>
 	.key-row {
