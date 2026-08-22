@@ -13,7 +13,7 @@ chrono = { workspace = true }
 rand = { workspace = true, features = ["thread_rng"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
-sqlx = { workspace = true, features = ["sqlite", "chrono", "runtime-tokio"] }
+sqlx = { workspace = true, features = ["sqlite", "chrono", "runtime-tokio", "migrate", "macros"] }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 tower = { workspace = true }

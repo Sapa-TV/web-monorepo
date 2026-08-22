@@ -44,12 +44,15 @@
   скриптом. Динамический SQL (queue `list` с опциональными фильтрами статуса/курсора) — runtime API,
   остальное — макросы. Корректность SQL дополнительно дублируется паритет-тестами.
 - Воркфлоу метаданных:
+  - запуск: **`just sqlx-prepare`** (рецепт в корневом justfile → `apps/backend/scripts/sqlx-prepare.ps1`);
+  - версия sqlx-cli должна совпадать с версией крейса sqlx (сейчас 0.9.0) — иначе prepare
+    может выдать метаданные несовместимого формата;
   - dev/check-БД: `apps/backend/data/query-check.db` (уже gitignored через `data/*.db`);
-  - скрипт `apps/backend/scripts/sqlx-prepare.ps1`:
-    `DATABASE_URL=sqlite:data/query-check.db` → `sqlx database create` → `sqlx migrate run`
+    скрипт: `DATABASE_URL=sqlite:data/query-check.db` → `sqlx database create` → `sqlx migrate run`
     → `cargo sqlx prepare -- --all-targets`;
-  - правило: поменял запрос или миграцию → запусти скрипт → закоммить обновлённый `.sqlx`;
-  - обычная сборка без `DATABASE_URL` сама падает обратно на `.sqlx` (offline mode), CI ничего поднимать не должен.
+  - правило: поменял запрос или миграцию → запусти рецепт → закоммить обновлённый `.sqlx`;
+  - обычная сборка без `DATABASE_URL` сама падает обратно на `.sqlx` (offline mode), CI ничего
+    поднимать не должен — там только deploy-пайплайны, prepare на CI не нужен.
 - Старые юнит-тесты остаются на in-memory. Для sqlite пишем общие generic паритет-сьюты,
   гоняемые против обеих реализаций.
 - Тестовые БД — temp-файлы (`std::env::temp_dir()` + uuid v7) + прогон MIGRATOR.
@@ -76,7 +79,8 @@
    Критично: migrator выполнит её на свежей БД — создаст свои `rarities`/`roulette_slots`
    с mojibake-сидами, и `0005_rarities.sql` упадёт на «table already exists».
 2. `apps/backend/Cargo.toml`: sqlx features += `"migrate"`, `"macros"`.
-3. `scripts/sqlx-prepare.ps1` — регенерация `.sqlx` (см. «Воркфлоу метаданных»).
+3. `scripts/sqlx-prepare.ps1` + рецепт `sqlx-prepare` в корневом justfile
+   (см. «Воркфлоу метаданных»). ✅
 4. `src/db/sqlite/mod.rs`:
    - `static MIGRATOR: Migrator = sqlx::migrate!();`
    - `pub async fn connect(path) -> SqlitePool` — create_if_missing, journal_mode=WAL,

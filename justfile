@@ -2,6 +2,7 @@
 #   just          — list recipes
 #   just run      — run the backend
 #   just gen      — generate OpenAPI spec to generated/openapi.json
+#   just sqlx-prepare — regenerate sqlx offline metadata (.sqlx) after query/migration changes
 #   just lint     — run custom ast-grep lints (own code only)
 #   just lint-test — run ast-grep rule tests (CI-ready)
 #   just astg-update — refresh ast-grep test snapshots after editing rules/cases
@@ -23,6 +24,10 @@ run:
 # Generate OpenAPI spec file
 gen path='generated/openapi.json':
     cargo run -p gen-openapi -- {{path}}
+
+# Regenerate sqlx offline metadata (.sqlx): run after query or migration changes, then commit .sqlx
+sqlx-prepare:
+    powershell -NoProfile -ExecutionPolicy Bypass -File apps/backend/scripts/sqlx-prepare.ps1
 
 # Generate OpenAPI spec + TS REST client for @sapa-tv-ru/api-client
 gen-client:
