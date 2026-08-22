@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO platform_credentials (platform_id, credential) VALUES (?, ?)\n             ON CONFLICT(platform_id) DO UPDATE SET credential = excluded.credential",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "01640958ba6aaaa129c1d7c603ec5cd51e618fdb9f6790626a5eb93f48475558"
+}

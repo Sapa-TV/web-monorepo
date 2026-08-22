@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT credential FROM platform_credentials WHERE platform_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "credential",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "platform_credentials",
+            "name": "credential"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "5d552644011a352002f1e92aa68d009d0d228358baf7c5f671f195a7e8aa1073"
+}

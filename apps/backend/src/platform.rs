@@ -19,6 +19,10 @@ impl PlatformId {
         Self(id)
     }
 
+    pub const fn get(self) -> u32 {
+        self.0
+    }
+
     pub const TWITCH: PlatformId = PlatformId::new(1);
     pub const YOUTUBE: PlatformId = PlatformId::new(2);
     pub const VK_VIDEO_LIVE: PlatformId = PlatformId::new(3);

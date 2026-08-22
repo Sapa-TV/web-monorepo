@@ -14,6 +14,8 @@ use crate::error::RepositoryError;
 
 pub mod admin;
 pub mod config;
+pub mod platform;
+pub mod platform_credential;
 
 pub async fn connect_url(url: &str) -> Result<SqlitePool, RepositoryError> {
     let options: SqliteConnectOptions = url

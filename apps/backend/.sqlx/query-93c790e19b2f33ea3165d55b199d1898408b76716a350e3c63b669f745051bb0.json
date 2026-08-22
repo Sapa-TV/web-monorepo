@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM platform_credentials WHERE platform_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "93c790e19b2f33ea3165d55b199d1898408b76716a350e3c63b669f745051bb0"
+}
