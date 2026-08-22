@@ -1,14 +1,40 @@
 # OpenAPI: миграция роутеров на utoipa-axum (query-параметры как `in: query`)
 
-Статус: **план готов, не начато**.
+Статус: **выполнено** (2026-08-22).
 
-Дата: 2026-08-22
+Дата плана: 2026-08-22
 
 Задача из `backlog.md`: бекенд выдаёт query-параметры в openapi.json как `in: path`
 (у `GET /api/queue` status/limit/cursor, у `GET /api/users` platform/platform_user_id и т.п.),
 в сгенерированном клиенте они объявлены аргументами, но в запрос не попадают.
 Обходной путь во фронте: ручная передача `{ query: { ... } }`
 (`apps/frontend/src/lib/admin/creds.ts:15`, `apps/frontend/src/lib/admin/session.ts:41`).
+
+## Итог
+
+Выполнено по плану ниже, все шаги закрыты:
+
+- фича `axum_extras` включена (`apps/backend/Cargo.toml`: `utoipa = { workspace = true, features = ["axum_extras"] }`);
+- все роутеры backend переведены на `OpenApiRouter` + `routes!()`, 12 структур `XxxApiDoc`
+  и `MergeSubdocs` удалены; спека собирается из дерева роутеров в `backend::openapi()`;
+- `just gen-client` перегенерировал `generated/openapi.json` и TS-клиент;
+- query-параметры теперь `in: query` с корректным `required`; `in: path` остался только
+  на шаблонных путях; спека выросла до 38 путей (+ `/api/health`, `/api/version`, тег `system`);
+- обходные пути во фронте убраны: `creds.ts`, `session.ts`, `AdminsCard.svelte`,
+  `dock/+page.svelte`, `roulette/+page.svelte`;
+- проверки: `cargo clippy --all-targets`, `cargo nextest run -p backend` (272/272),
+  `cargo fmt --check`, `svelte-check` (0 ошибок), vitest (21/21), eslint, prettier — зелёные.
+
+Нюансы, обнаруженные при реализации (не были в плане):
+
+1. Один вызов `routes!(a, b, c)` создаёт **один** `MethodRouter` — хендлеры группируются
+   по одному пути на вызов (`/queue` → `routes!(enqueue, list)`), иначе runtime-паника
+   `Overlapping method route`.
+2. Модульные `openapi_router()` уже содержат префикс (`nest` внутри модуля), поэтому в
+   `backend::openapi()` используется `merge`, а не повторный `nest` (иначе двойной
+   префикс `/wapi/wapi/...`).
+3. Clippy `-D clippy::absolute-paths` потребовал импорта типа вместо полного пути.
+4. Из `tools/gen-openapi` снята прямая зависимость на `utoipa` (`cargo remove`).
 
 ## Причина бага (проверено по исходникам utoipa 5.5.0)
 
