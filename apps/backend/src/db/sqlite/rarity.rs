@@ -18,12 +18,11 @@ impl SqliteRarityRepository {
 
 impl RarityRepository for SqliteRarityRepository {
     async fn load_all(&self) -> Result<Vec<Rarity>, RepositoryError> {
-        let rows = sqlx::query!(
-            "SELECT id, name, display_name, image, color FROM rarities ORDER BY id"
-        )
-        .fetch_all(&self.pool)
-        .await
-        .map_err(map_err)?;
+        let rows =
+            sqlx::query!("SELECT id, name, display_name, image, color FROM rarities ORDER BY id")
+                .fetch_all(&self.pool)
+                .await
+                .map_err(map_err)?;
         Ok(rows
             .into_iter()
             .map(|row| {
@@ -121,7 +120,13 @@ mod tests {
         let repo = repo().await;
 
         let saved = repo
-            .save(Rarity::new(RarityId::new(0), "mythic", "Mythic", "mythic.png", "#733f88"))
+            .save(Rarity::new(
+                RarityId::new(0),
+                "mythic",
+                "Mythic",
+                "mythic.png",
+                "#733f88",
+            ))
             .await
             .unwrap();
 
@@ -147,7 +152,18 @@ mod tests {
         assert_eq!(updated.display_name, "Common Renamed");
         assert_eq!(updated.id.get(), 1);
 
-        assert!(repo.update(Rarity::new(RarityId::new(999), "x", "X", "x.png", "#000000")).await.unwrap().is_none());
+        assert!(
+            repo.update(Rarity::new(
+                RarityId::new(999),
+                "x",
+                "X",
+                "x.png",
+                "#000000"
+            ))
+            .await
+            .unwrap()
+            .is_none()
+        );
     }
 
     #[tokio::test]

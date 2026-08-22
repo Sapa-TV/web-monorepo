@@ -157,7 +157,11 @@ mod tests {
         repo.create("2", None, false).await.unwrap();
         repo.create("1", None, false).await.unwrap();
 
-        let updated = repo.update_display_name("2", "second").await.unwrap().unwrap();
+        let updated = repo
+            .update_display_name("2", "second")
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(updated.display_name.as_deref(), Some("second"));
 
         let listed = repo.list().await.unwrap();

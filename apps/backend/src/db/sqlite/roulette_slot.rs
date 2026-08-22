@@ -2,8 +2,8 @@ use sqlx::SqlitePool;
 
 use crate::db::sqlite::map_err;
 use crate::error::RepositoryError;
-use crate::roulette::repository::RouletteSlotRepository;
 use crate::roulette::rarity::RarityId;
+use crate::roulette::repository::RouletteSlotRepository;
 use crate::roulette::slot_service::{RouletteSlot, RouletteSlotId};
 
 #[non_exhaustive]
@@ -18,8 +18,7 @@ impl SqliteRouletteSlotRepository {
 }
 
 fn weight_to_db(weight: u64) -> Result<i64, RepositoryError> {
-    i64::try_from(weight)
-        .map_err(|_| RepositoryError::Conflict("weight out of range".to_string()))
+    i64::try_from(weight).map_err(|_| RepositoryError::Conflict("weight out of range".to_string()))
 }
 
 impl RouletteSlotRepository for SqliteRouletteSlotRepository {
@@ -170,8 +169,8 @@ mod tests {
         assert_eq!(updated.weight, 99);
         assert_eq!(updated.rarity_id, RarityId::new(3));
 
-        assert!(repo
-            .update(RouletteSlot::new(
+        assert!(
+            repo.update(RouletteSlot::new(
                 RouletteSlotId::new(999),
                 "x",
                 RarityId::new(1),
@@ -180,7 +179,8 @@ mod tests {
             ))
             .await
             .unwrap()
-            .is_none());
+            .is_none()
+        );
     }
 
     #[tokio::test]
