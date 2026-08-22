@@ -2,7 +2,10 @@ use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use serde::{Deserialize, Serialize};
-use utoipa::{IntoParams, OpenApi, ToSchema};
+use utoipa::IntoParams;
+use utoipa::ToSchema;
+use utoipa_axum::router::OpenApiRouter;
+use utoipa_axum::routes;
 
 use crate::error::api::ApiError;
 use crate::roulette::rarity::{Rarity, RarityId};
@@ -282,47 +285,12 @@ pub async fn delete_rarity(
     }
 }
 
-#[derive(OpenApi)]
-#[openapi(
-    paths(
-        list_slots,
-        create_slot,
-        update_slot,
-        delete_slot,
-        list_rarities,
-        create_rarity,
-        update_rarity,
-        delete_rarity,
-    ),
-    components(schemas(
-        RouletteSlotResponse,
-        UpsertRouletteSlotRequest,
-        SlotIdParam,
-        RarityResponse,
-        UpsertRarityRequest,
-        RarityIdParam,
-    ))
-)]
-#[non_exhaustive]
-#[allow(dead_code)]
-pub(crate) struct AdminRouletteApiDoc;
-
-pub fn session_router() -> axum::Router<AppState> {
-    use axum::routing::{get, put};
-    axum::Router::new()
-        .route("/admin/roulette/slots", get(list_slots).post(create_slot))
-        .route(
-            "/admin/roulette/slots/{id}",
-            put(update_slot).delete(delete_slot),
-        )
-        .route(
-            "/admin/roulette/rarities",
-            get(list_rarities).post(create_rarity),
-        )
-        .route(
-            "/admin/roulette/rarities/{id}",
-            put(update_rarity).delete(delete_rarity),
-        )
+pub fn session_router() -> OpenApiRouter<AppState> {
+    OpenApiRouter::new()
+        .routes(routes!(list_slots, create_slot))
+        .routes(routes!(update_slot, delete_slot))
+        .routes(routes!(list_rarities, create_rarity))
+        .routes(routes!(update_rarity, delete_rarity))
 }
 
 #[cfg(test)]

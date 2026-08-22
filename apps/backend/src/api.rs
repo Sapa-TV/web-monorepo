@@ -13,14 +13,15 @@ pub mod stream;
 use axum::Router;
 use axum::middleware::from_fn_with_state;
 use axum::routing::get;
+use utoipa_axum::router::OpenApiRouter;
 
 use crate::api::auth::require_admin;
 use crate::api::auth::require_root;
 use crate::api::auth::require_session;
 use crate::state::AppState;
 
-fn public_router() -> Router<AppState> {
-    Router::new()
+fn public_router() -> OpenApiRouter<AppState> {
+    OpenApiRouter::<AppState>::new()
         .route("/health", get(health))
         .route("/version", get(version))
         .merge(stream::public_router())
@@ -38,6 +39,19 @@ async fn version() -> axum::Json<serde_json::Value> {
     }))
 }
 
+fn assemble(inner: OpenApiRouter<AppState>) -> OpenApiRouter<AppState> {
+    OpenApiRouter::<AppState>::new().nest("/api", inner)
+}
+
+pub fn openapi_router() -> OpenApiRouter<AppState> {
+    assemble(
+        public_router()
+            .merge(session::session_router())
+            .merge(admin::session_router())
+            .merge(admin::root_router()),
+    )
+}
+
 pub fn router(state: AppState) -> Router {
     let session_layer = from_fn_with_state(state.clone(), require_session);
     let admin_layer = from_fn_with_state(state.clone(), require_admin);
@@ -50,7 +64,7 @@ pub fn router(state: AppState) -> Router {
         .merge(root_protected)
         .route_layer(session_layer);
 
-    Router::new()
-        .nest("/api", public_router().merge(session_protected))
+    assemble(public_router().merge(session_protected))
         .with_state(state)
+        .into()
 }

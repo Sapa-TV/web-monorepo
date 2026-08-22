@@ -2,8 +2,9 @@ use axum::Json;
 use axum::extract::State;
 use axum::http::StatusCode;
 use serde::Serialize;
-use utoipa::OpenApi;
 use utoipa::ToSchema;
+use utoipa_axum::router::OpenApiRouter;
+use utoipa_axum::routes;
 
 use crate::state::AppState;
 
@@ -44,21 +45,6 @@ pub async fn revoke_ingress_credentials(
     Ok(StatusCode::NO_CONTENT)
 }
 
-#[derive(OpenApi)]
-#[openapi(
-    paths(get_ingress_credentials, revoke_ingress_credentials),
-    components(schemas(IngressCredentialsResponse,))
-)]
-#[non_exhaustive]
-#[allow(dead_code)]
-pub(crate) struct AdminIngressApiDoc;
-
-pub fn root_router() -> axum::Router<AppState> {
-    use axum::routing::{delete, get};
-    axum::Router::new()
-        .route("/admin/ingress/credentials", get(get_ingress_credentials))
-        .route(
-            "/admin/ingress/credentials",
-            delete(revoke_ingress_credentials),
-        )
+pub fn root_router() -> OpenApiRouter<AppState> {
+    OpenApiRouter::new().routes(routes!(get_ingress_credentials, revoke_ingress_credentials))
 }

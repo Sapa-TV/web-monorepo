@@ -5,8 +5,9 @@ use axum::extract::State;
 use axum::http::StatusCode;
 use serde::Serialize;
 use twitch_api::helix::points::CustomReward;
-use utoipa::OpenApi;
 use utoipa::ToSchema;
+use utoipa_axum::router::OpenApiRouter;
+use utoipa_axum::routes;
 
 use crate::state::AppState;
 
@@ -63,15 +64,8 @@ pub async fn list_rewards(
     ))
 }
 
-#[derive(OpenApi)]
-#[openapi(paths(list_rewards), components(schemas(RewardResponse,)))]
-#[non_exhaustive]
-#[allow(dead_code)]
-pub(crate) struct AdminRewardsApiDoc;
-
-pub fn session_router() -> axum::Router<AppState> {
-    use axum::routing::get;
-    axum::Router::new().route("/admin/rewards", get(list_rewards))
+pub fn session_router() -> OpenApiRouter<AppState> {
+    OpenApiRouter::new().routes(routes!(list_rewards))
 }
 
 #[cfg(test)]

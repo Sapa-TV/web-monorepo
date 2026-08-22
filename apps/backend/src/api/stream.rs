@@ -1,7 +1,8 @@
 use axum::Json;
 use axum::extract::State;
-use utoipa::OpenApi;
 use utoipa::ToSchema;
+use utoipa_axum::router::OpenApiRouter;
+use utoipa_axum::routes;
 
 use crate::state::AppState;
 
@@ -25,15 +26,8 @@ pub async fn get_stream_status(State(state): State<AppState>) -> Json<StreamStat
     })
 }
 
-#[derive(OpenApi)]
-#[openapi(paths(get_stream_status), components(schemas(StreamStatusResponse,)))]
-#[non_exhaustive]
-#[allow(dead_code)]
-pub(crate) struct StreamApiDoc;
-
-pub fn public_router() -> axum::Router<AppState> {
-    use axum::routing::get;
-    axum::Router::new().route("/stream/status", get(get_stream_status))
+pub fn public_router() -> OpenApiRouter<AppState> {
+    OpenApiRouter::new().routes(routes!(get_stream_status))
 }
 
 #[cfg(test)]

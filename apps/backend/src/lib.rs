@@ -27,27 +27,7 @@ pub mod test_fixtures;
 pub mod user;
 pub mod widget_api;
 
-use utoipa::Modify;
 use utoipa::OpenApi;
-use utoipa::openapi::OpenApi as OpenApiSchema;
-
-struct MergeSubdocs;
-
-impl Modify for MergeSubdocs {
-    fn modify(&self, openapi: &mut OpenApiSchema) {
-        let mut main = OpenApiSchema::default();
-        main.merge(api::stream::StreamApiDoc::openapi());
-        main.merge(api::admin::twitch::AdminTwitchApiDoc::openapi());
-        main.merge(api::admin::ingress::AdminIngressApiDoc::openapi());
-        main.merge(api::admin::actions::AdminActionsApiDoc::openapi());
-        main.merge(api::admin::roulette::AdminRouletteApiDoc::openapi());
-        main.merge(api::admin::rules::AdminRulesApiDoc::openapi());
-        main.merge(api::admin::rewards::AdminRewardsApiDoc::openapi());
-        main.merge(api::admin::AdminApiDoc::openapi());
-        main.merge(api::session::SessionApiDoc::openapi());
-        *openapi = openapi.clone().nest("/api", main);
-    }
-}
 
 #[derive(OpenApi)]
 #[openapi(
@@ -64,8 +44,7 @@ impl Modify for MergeSubdocs {
         (name = "stream", description = "Stream status"),
         (name = "auth", description = "Sessions and login"),
         (name = "admin", description = "Administrative endpoints")
-    ),
-    modifiers(&MergeSubdocs)
+    )
 )]
 #[non_exhaustive]
 pub struct ApiDoc;

@@ -3,8 +3,9 @@ use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use serde::{Deserialize, Serialize};
 use utoipa::IntoParams;
-use utoipa::OpenApi;
 use utoipa::ToSchema;
+use utoipa_axum::router::OpenApiRouter;
+use utoipa_axum::routes;
 
 use crate::state::AppState;
 
@@ -105,25 +106,11 @@ pub async fn find_twitch_user(
     }))
 }
 
-#[derive(OpenApi)]
-#[openapi(
-    paths(start_twitch_auth, twitch_auth_callback, find_twitch_user),
-    components(schemas(
-        TwitchAuthStartResponse,
-        TwitchAuthCallbackResponse,
-        TwitchUserResponse,
-    ))
-)]
-#[non_exhaustive]
-#[allow(dead_code)]
-pub(crate) struct AdminTwitchApiDoc;
-
-pub fn root_router() -> axum::Router<AppState> {
-    use axum::routing::get;
-    axum::Router::new()
-        .route("/admin/twitch/auth", get(start_twitch_auth))
-        .route("/admin/twitch/auth/callback", get(twitch_auth_callback))
-        .route("/admin/twitch/users", get(find_twitch_user))
+pub fn root_router() -> OpenApiRouter<AppState> {
+    OpenApiRouter::new()
+        .routes(routes!(start_twitch_auth))
+        .routes(routes!(twitch_auth_callback))
+        .routes(routes!(find_twitch_user))
 }
 
 #[cfg(test)]

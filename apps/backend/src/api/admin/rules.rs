@@ -2,7 +2,10 @@ use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use serde::{Deserialize, Serialize};
-use utoipa::{IntoParams, OpenApi, ToSchema};
+use utoipa::IntoParams;
+use utoipa::ToSchema;
+use utoipa_axum::router::OpenApiRouter;
+use utoipa_axum::routes;
 
 use crate::actions::action::ActionId;
 use crate::error::RuleServiceError;
@@ -147,31 +150,14 @@ pub async fn delete_rule(
     Ok(StatusCode::NO_CONTENT)
 }
 
-#[derive(OpenApi)]
-#[openapi(
-    paths(list_rules, create_rule, update_rule, delete_rule),
-    components(schemas(
-        RuleResponse,
-        UpsertRuleRequest,
-        RuleIdParam,
-        RuleTrigger,
-        RuleConditions,
-    ))
-)]
-#[non_exhaustive]
-#[allow(dead_code)]
-pub(crate) struct AdminRulesApiDoc;
-
-pub fn session_router() -> axum::Router<AppState> {
-    use axum::routing::get;
-    axum::Router::new().route("/admin/rules", get(list_rules))
+pub fn session_router() -> OpenApiRouter<AppState> {
+    OpenApiRouter::new().routes(routes!(list_rules))
 }
 
-pub fn root_router() -> axum::Router<AppState> {
-    use axum::routing::{post, put};
-    axum::Router::new()
-        .route("/admin/rules", post(create_rule))
-        .route("/admin/rules/{id}", put(update_rule).delete(delete_rule))
+pub fn root_router() -> OpenApiRouter<AppState> {
+    OpenApiRouter::new()
+        .routes(routes!(create_rule))
+        .routes(routes!(update_rule, delete_rule))
 }
 
 #[cfg(test)]

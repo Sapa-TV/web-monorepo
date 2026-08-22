@@ -6,7 +6,10 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum_extra::extract::CookieJar;
 use serde::{Deserialize, Serialize};
-use utoipa::{IntoParams, OpenApi, ToSchema};
+use utoipa::IntoParams;
+use utoipa::ToSchema;
+use utoipa_axum::router::OpenApiRouter;
+use utoipa_axum::routes;
 
 use crate::admin::auth::ExchangedToken;
 use crate::api::auth::{LOGIN_COOKIE, SESSION_COOKIE, auth_cookie};
@@ -214,39 +217,15 @@ impl IntoResponse for Unauthorized {
     }
 }
 
-#[derive(OpenApi)]
-#[openapi(
-    paths(
-        start_twitch_login,
-        twitch_login_callback,
-        create_session,
-        get_me,
-        logout
-    ),
-    components(schemas(
-        TwitchLoginStartResponse,
-        TwitchLoginCallbackResponse,
-        CreateSessionRequest,
-        SessionResponse,
-    ))
-)]
-#[non_exhaustive]
-#[allow(dead_code)]
-pub(crate) struct SessionApiDoc;
-
-pub fn public_router() -> axum::Router<AppState> {
-    use axum::routing::{get, post};
-    axum::Router::new()
-        .route("/auth/twitch", get(start_twitch_login))
-        .route("/auth/twitch/callback", get(twitch_login_callback))
-        .route("/sessions", post(create_session))
+pub fn public_router() -> OpenApiRouter<AppState> {
+    OpenApiRouter::new()
+        .routes(routes!(start_twitch_login))
+        .routes(routes!(twitch_login_callback))
+        .routes(routes!(create_session))
 }
 
-pub fn session_router() -> axum::Router<AppState> {
-    use axum::routing::{delete, get};
-    axum::Router::new()
-        .route("/sessions/me", get(get_me))
-        .route("/sessions/me", delete(logout))
+pub fn session_router() -> OpenApiRouter<AppState> {
+    OpenApiRouter::new().routes(routes!(get_me, logout))
 }
 
 #[cfg(test)]

@@ -9,7 +9,10 @@ use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::{Extension, Json};
 use serde::{Deserialize, Serialize};
-use utoipa::{IntoParams, OpenApi, ToSchema};
+use utoipa::IntoParams;
+use utoipa::ToSchema;
+use utoipa_axum::router::OpenApiRouter;
+use utoipa_axum::routes;
 
 use crate::admin::Admin;
 use crate::error::AdminServiceError;
@@ -145,38 +148,21 @@ pub async fn rotate_widget_access_key(
     Ok(Json(WidgetAccessKeyResponse { widget_access_key }))
 }
 
-#[derive(OpenApi)]
-#[openapi(
-    paths(
-        list_admins,
-        add_admin,
-        remove_admin,
-        get_widget_access_key,
-        rotate_widget_access_key,
-    ),
-    components(schemas(AdminResponse, AddAdminRequest, WidgetAccessKeyResponse,))
-)]
-#[non_exhaustive]
-#[allow(dead_code)]
-pub(crate) struct AdminApiDoc;
-
-pub fn session_router() -> axum::Router<AppState> {
-    use axum::routing::get;
-    axum::Router::new()
-        .route("/admin", get(list_admins))
-        .route("/admin/widget-access-key", get(get_widget_access_key))
+pub fn session_router() -> OpenApiRouter<AppState> {
+    OpenApiRouter::new()
+        .routes(routes!(list_admins))
+        .routes(routes!(get_widget_access_key))
         .merge(actions::session_router())
         .merge(rules::session_router())
         .merge(rewards::session_router())
         .merge(roulette::session_router())
 }
 
-pub fn root_router() -> axum::Router<AppState> {
-    use axum::routing::{delete, post};
-    axum::Router::new()
-        .route("/admin", post(add_admin))
-        .route("/admin/{twitch_id}", delete(remove_admin))
-        .route("/admin/widget-access-key", post(rotate_widget_access_key))
+pub fn root_router() -> OpenApiRouter<AppState> {
+    OpenApiRouter::new()
+        .routes(routes!(add_admin))
+        .routes(routes!(remove_admin))
+        .routes(routes!(rotate_widget_access_key))
         .merge(twitch::root_router())
         .merge(ingress::root_router())
         .merge(actions::root_router())

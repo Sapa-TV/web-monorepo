@@ -2,7 +2,10 @@ use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use serde::{Deserialize, Serialize};
-use utoipa::{IntoParams, OpenApi, ToSchema};
+use utoipa::IntoParams;
+use utoipa::ToSchema;
+use utoipa_axum::router::OpenApiRouter;
+use utoipa_axum::routes;
 
 use crate::actions::action::{Action, ActionId, ActionKind};
 use crate::error::ActionServiceError;
@@ -131,28 +134,14 @@ pub async fn delete_action(
     Ok(StatusCode::NO_CONTENT)
 }
 
-#[derive(OpenApi)]
-#[openapi(
-    paths(list_actions, create_action, update_action, delete_action),
-    components(schemas(ActionResponse, UpsertActionRequest, ActionIdParam, ActionKind,))
-)]
-#[non_exhaustive]
-#[allow(dead_code)]
-pub(crate) struct AdminActionsApiDoc;
-
-pub fn session_router() -> axum::Router<AppState> {
-    use axum::routing::get;
-    axum::Router::new().route("/admin/actions", get(list_actions))
+pub fn session_router() -> OpenApiRouter<AppState> {
+    OpenApiRouter::new().routes(routes!(list_actions))
 }
 
-pub fn root_router() -> axum::Router<AppState> {
-    use axum::routing::{post, put};
-    axum::Router::new()
-        .route("/admin/actions", post(create_action))
-        .route(
-            "/admin/actions/{id}",
-            put(update_action).delete(delete_action),
-        )
+pub fn root_router() -> OpenApiRouter<AppState> {
+    OpenApiRouter::new()
+        .routes(routes!(create_action))
+        .routes(routes!(update_action, delete_action))
 }
 
 #[cfg(test)]
