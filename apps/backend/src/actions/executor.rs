@@ -120,27 +120,27 @@ mod tests {
     use tokio::sync::mpsc;
 
     use crate::actions::action::{Action, ActionId};
-    use crate::db::inmemory_config::InMemoryConfigRepository;
-    use crate::db::inmemory_platform::InMemoryPlatformRepository;
-    use crate::db::inmemory_platform_credential::InMemoryPlatformCredentialRepository;
-    use crate::db::inmemory_queue::InMemoryQueueRepository;
-    use crate::db::inmemory_rarity::InMemoryRarityRepository;
-    use crate::db::inmemory_roulette_slots::InMemoryRouletteSlotRepository;
-    use crate::db::inmemory_user::InMemoryUserRepository;
+    use crate::db::sqlite::platform::SqlitePlatformRepository;
+    use crate::db::sqlite::platform_credential::SqlitePlatformCredentialRepository;
+    use crate::db::sqlite::queue::SqliteQueueRepository;
+    use crate::db::sqlite::rarity::SqliteRarityRepository;
+    use crate::db::sqlite::roulette_slot::SqliteRouletteSlotRepository;
+    use crate::db::sqlite::test_pool;
+    use crate::db::sqlite::user::SqliteUserRepository;
     use crate::ingress::event::PlatformEvent;
     use crate::ingress::twitch_auth::TwitchAuthService;
     use crate::platform::PlatformId;
-    use crate::test_fixtures::test_state_with_data;
+    use crate::test_fixtures::test_state_with;
 
     use super::*;
 
     type TestExecutor = ActionExecutor<
-        InMemoryQueueRepository,
-        InMemoryRarityRepository,
-        InMemoryRouletteSlotRepository,
-        InMemoryUserRepository,
-        InMemoryPlatformRepository,
-        InMemoryPlatformCredentialRepository,
+        SqliteQueueRepository,
+        SqliteRarityRepository,
+        SqliteRouletteSlotRepository,
+        SqliteUserRepository,
+        SqlitePlatformRepository,
+        SqlitePlatformCredentialRepository,
     >;
 
     async fn setup() -> TestExecutor {
@@ -148,9 +148,9 @@ mod tests {
     }
 
     async fn setup_with_twitch() -> TestExecutor {
-        let queue_repo = Arc::new(InMemoryQueueRepository::new());
-        let config_repo = Arc::new(InMemoryConfigRepository::new());
-        let state = test_state_with_data(Arc::clone(&queue_repo), config_repo).await;
+        let (pool, _path) = test_pool().await;
+        let queue_repo = Arc::new(SqliteQueueRepository::new(pool.clone()));
+        let state = test_state_with(pool, Some(Arc::clone(&queue_repo))).await;
         let config = Arc::new(TwitchConfig {
             client_id: "cid".to_string(),
             client_secret: "cs".to_string(),
@@ -172,9 +172,9 @@ mod tests {
     }
 
     async fn setup_without_twitch() -> TestExecutor {
-        let queue_repo = Arc::new(InMemoryQueueRepository::new());
-        let config_repo = Arc::new(InMemoryConfigRepository::new());
-        let state = test_state_with_data(Arc::clone(&queue_repo), config_repo).await;
+        let (pool, _path) = test_pool().await;
+        let queue_repo = Arc::new(SqliteQueueRepository::new(pool.clone()));
+        let state = test_state_with(pool, Some(Arc::clone(&queue_repo))).await;
         ActionExecutor::new(
             Arc::clone(&state.queue_service),
             Arc::clone(&state.user_service),

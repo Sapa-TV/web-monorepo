@@ -5,27 +5,57 @@ use std::sync::Arc;
 use axum::body::Body;
 use axum::http::header;
 use axum::http::{Request, StatusCode};
+use sqlx::SqlitePool;
 use tower::ServiceExt;
 
 use crate::api;
 use crate::api::auth::LOGIN_COOKIE;
 use crate::config::runtime::RuntimeConfig;
 use crate::config::static_config::StaticConfig;
-use crate::config::store::ConfigStore;
-use crate::db::inmemory_config::InMemoryConfigRepository;
-use crate::db::inmemory_platform_credential::InMemoryPlatformCredentialRepository;
-use crate::db::inmemory_queue::InMemoryQueueRepository;
+use crate::db::sqlite::config::SqliteConfigRepository;
+use crate::db::sqlite::platform_credential::SqlitePlatformCredentialRepository;
+use crate::db::sqlite::queue::SqliteQueueRepository;
+use crate::db::sqlite::test_pool;
 use crate::platform::PlatformId;
 use crate::random::StandartRandomProvider;
-use crate::state::{AppState, AppStateBuilder};
+use crate::state::{AppConfigStore, AppState, AppStateBuilder};
 use crate::widget_api;
 
+/// Empty slots/rarities (like pre-sqlite `with_empty_repos`), default queue repo.
 pub async fn test_state() -> AppState {
-    test_state_with_data(
-        Arc::new(InMemoryQueueRepository::new()),
-        Arc::new(InMemoryConfigRepository::new()),
-    )
-    .await
+    let (pool, _path) = test_pool().await;
+    build_state(pool, false, None).await
+}
+
+/// Empty slots/rarities with an explicit pool and optional queue repo override.
+pub async fn test_state_with(
+    pool: SqlitePool,
+    queue_repo: Option<Arc<SqliteQueueRepository>>,
+) -> AppState {
+    build_state(pool, false, queue_repo).await
+}
+
+async fn build_state(
+    pool: SqlitePool,
+    seeded: bool,
+    queue_repo: Option<Arc<SqliteQueueRepository>>,
+) -> AppState {
+    let config_store = Arc::new(AppConfigStore::new(
+        Arc::new(StaticConfig::test_config()),
+        RuntimeConfig::test_runtime("test-key"),
+        Arc::new(SqliteConfigRepository::new(pool.clone())),
+    ));
+    let credentials_repo = Arc::new(SqlitePlatformCredentialRepository::new(pool.clone()));
+
+    let mut builder =
+        AppStateBuilder::new(StandartRandomProvider, config_store, credentials_repo, pool);
+    if !seeded {
+        builder = builder.with_empty_repos();
+    }
+    if let Some(queue_repo) = queue_repo {
+        builder = builder.with_queue_repo(queue_repo);
+    }
+    builder.build().await.expect("failed to build test state")
 }
 
 pub fn test_router(state: AppState) -> axum::Router {
@@ -34,27 +64,6 @@ pub fn test_router(state: AppState) -> axum::Router {
 
 pub fn api_path(path: &str) -> String {
     format!("/api{path}")
-}
-
-pub async fn test_state_with_data(
-    queue_repo: Arc<InMemoryQueueRepository>,
-    config_repo: Arc<InMemoryConfigRepository>,
-) -> AppState {
-    let config_store = Arc::new(ConfigStore::new(
-        Arc::new(StaticConfig::test_config()),
-        RuntimeConfig::test_runtime("test-key"),
-        config_repo,
-    ));
-    AppStateBuilder::new(
-        StandartRandomProvider,
-        config_store,
-        Arc::new(InMemoryPlatformCredentialRepository::new()),
-    )
-    .with_empty_repos()
-    .with_queue_repo(queue_repo)
-    .build()
-    .await
-    .expect("failed to build test state")
 }
 
 pub async fn save_twitch_credentials(state: &AppState, token: &str) {

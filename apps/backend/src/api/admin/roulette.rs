@@ -303,12 +303,26 @@ mod tests {
     use tower::ServiceExt;
 
     use crate::api::auth::SESSION_COOKIE;
+    use crate::roulette::rarity::Rarity;
     use crate::roulette::rarity::RarityId;
     use crate::roulette::slot_service::RouletteSlot;
     use crate::roulette::slot_service::RouletteSlotId;
+    use crate::state::AppState;
     use crate::test_fixtures::{api_path, session_cookie, test_router, test_state};
 
     const COMMON: RarityId = RarityId::new(1);
+
+    /// Slot tests reference rarities 1 and 2 explicitly; the sqlite-backed
+    /// state has no seeded rarities, and FKs reject slots pointing at nothing.
+    async fn seed_common(state: &AppState) {
+        for (id, name) in [(1u32, "common"), (2, "rare")] {
+            state
+                .rarity_service
+                .save(Rarity::new(RarityId::new(id), name, name, "c.png", "#fff"))
+                .await
+                .unwrap();
+        }
+    }
 
     fn slot_body() -> &'static str {
         r#"{"name":"spin","rarity_id":1,"weight":10,"action":"enqueue_roulette"}"#
@@ -337,6 +351,7 @@ mod tests {
     async fn admin_can_list_roulette_slots() {
         let state = test_state().await;
         state.admin_service.add("123", None).await.unwrap();
+        seed_common(&state).await;
         state
             .slot_service
             .add_slot(RouletteSlot::new(
@@ -377,6 +392,7 @@ mod tests {
     async fn admin_can_create_update_and_delete_slot() {
         let state = test_state().await;
         state.admin_service.add("123", None).await.unwrap();
+        seed_common(&state).await;
         let app = test_router(state.clone());
         let cookie = session_cookie(&state, "123").await;
 

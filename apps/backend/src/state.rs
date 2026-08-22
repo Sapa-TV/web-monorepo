@@ -1,3 +1,4 @@
+use sqlx::SqlitePool;
 use std::sync::Arc;
 
 use crate::actions::repository::ActionRepository;
@@ -7,17 +8,17 @@ use crate::admin::repository::AdminRepository;
 use crate::admin::service::AdminService;
 use crate::config::repository::ConfigRepository;
 use crate::config::store::ConfigStore;
-use crate::db::inmemory_actions::InMemoryActionRepository;
-use crate::db::inmemory_admin::InMemoryAdminRepository;
-use crate::db::inmemory_config::InMemoryConfigRepository;
-use crate::db::inmemory_platform::InMemoryPlatformRepository;
-use crate::db::inmemory_platform_credential::InMemoryPlatformCredentialRepository;
-use crate::db::inmemory_queue::InMemoryQueueRepository;
-use crate::db::inmemory_rarity::InMemoryRarityRepository;
-use crate::db::inmemory_roulette_slots::InMemoryRouletteSlotRepository;
-use crate::db::inmemory_rules::InMemoryRuleRepository;
-use crate::db::inmemory_session::InMemorySessionRepository;
-use crate::db::inmemory_user::InMemoryUserRepository;
+use crate::db::sqlite::action::SqliteActionRepository;
+use crate::db::sqlite::admin::SqliteAdminRepository;
+use crate::db::sqlite::config::SqliteConfigRepository;
+use crate::db::sqlite::platform::SqlitePlatformRepository;
+use crate::db::sqlite::platform_credential::SqlitePlatformCredentialRepository;
+use crate::db::sqlite::queue::SqliteQueueRepository;
+use crate::db::sqlite::rarity::SqliteRarityRepository;
+use crate::db::sqlite::roulette_slot::SqliteRouletteSlotRepository;
+use crate::db::sqlite::rule::SqliteRuleRepository;
+use crate::db::sqlite::session::SqliteSessionRepository;
+use crate::db::sqlite::user::SqliteUserRepository;
 use crate::error::RepositoryError;
 use crate::event::BroadcastEventPublisher;
 use crate::ingress::twitch_auth::TwitchAuthService;
@@ -108,41 +109,47 @@ where
     }
 }
 
+pub type AppQueueService =
+    QueueService<SqliteQueueRepository, SqliteRarityRepository, SqliteRouletteSlotRepository>;
+
+pub type AppSessionService = SessionService<SqliteSessionRepository, SqliteAdminRepository>;
+
+pub type AppConfigStore = ConfigStore<SqliteConfigRepository>;
+
 pub type AppState = UniAppState<
-    InMemoryQueueRepository,
-    InMemoryRarityRepository,
-    InMemoryUserRepository,
-    InMemoryPlatformRepository,
-    InMemoryRouletteSlotRepository,
-    InMemoryAdminRepository,
-    InMemorySessionRepository,
-    InMemoryPlatformCredentialRepository,
-    InMemoryConfigRepository,
-    InMemoryRuleRepository,
-    InMemoryActionRepository,
+    SqliteQueueRepository,
+    SqliteRarityRepository,
+    SqliteUserRepository,
+    SqlitePlatformRepository,
+    SqliteRouletteSlotRepository,
+    SqliteAdminRepository,
+    SqliteSessionRepository,
+    SqlitePlatformCredentialRepository,
+    SqliteConfigRepository,
+    SqliteRuleRepository,
+    SqliteActionRepository,
 >;
 
-pub type AppQueueService =
-    QueueService<InMemoryQueueRepository, InMemoryRarityRepository, InMemoryRouletteSlotRepository>;
-
-pub type AppSessionService = SessionService<InMemorySessionRepository, InMemoryAdminRepository>;
-
+#[non_exhaustive]
 pub struct AppStateBuilder {
     random: StandartRandomProvider,
-    config: Arc<ConfigStore<InMemoryConfigRepository>>,
-    credentials_repo: Arc<InMemoryPlatformCredentialRepository>,
+    pool: SqlitePool,
+    config: Arc<AppConfigStore>,
+    credentials_repo: Arc<SqlitePlatformCredentialRepository>,
     seeded: bool,
-    queue_repo: Option<Arc<InMemoryQueueRepository>>,
+    queue_repo: Option<Arc<SqliteQueueRepository>>,
 }
 
 impl AppStateBuilder {
     pub fn new(
         random: StandartRandomProvider,
-        config: Arc<ConfigStore<InMemoryConfigRepository>>,
-        credentials_repo: Arc<InMemoryPlatformCredentialRepository>,
+        config: Arc<AppConfigStore>,
+        credentials_repo: Arc<SqlitePlatformCredentialRepository>,
+        pool: SqlitePool,
     ) -> Self {
         Self {
             random,
+            pool,
             config,
             credentials_repo,
             seeded: true,
@@ -150,6 +157,7 @@ impl AppStateBuilder {
         }
     }
 
+    /// Seeds come from migrations; tests that need an empty slate drop them.
     #[cfg(test)]
     pub fn with_empty_repos(mut self) -> Self {
         self.seeded = false;
@@ -157,31 +165,33 @@ impl AppStateBuilder {
     }
 
     #[cfg(test)]
-    pub fn with_queue_repo(mut self, queue_repo: Arc<InMemoryQueueRepository>) -> Self {
+    pub fn with_queue_repo(mut self, queue_repo: Arc<SqliteQueueRepository>) -> Self {
         self.queue_repo = Some(queue_repo);
         self
     }
 
     pub async fn build(self) -> Result<AppState, RepositoryError> {
-        let slot_repo = Arc::new(if self.seeded {
-            InMemoryRouletteSlotRepository::new_seeded()
-        } else {
-            InMemoryRouletteSlotRepository::seed(vec![])
-        });
-        let rarity_repo = Arc::new(if self.seeded {
-            InMemoryRarityRepository::new_seeded()
-        } else {
-            InMemoryRarityRepository::seed(vec![])
-        });
-        let user_repo = Arc::new(InMemoryUserRepository::new());
-        let platform_repo = Arc::new(InMemoryPlatformRepository::new_seeded());
+        if !self.seeded {
+            sqlx::query("DELETE FROM roulette_slots")
+                .execute(&self.pool)
+                .await?;
+            sqlx::query("DELETE FROM rarities")
+                .execute(&self.pool)
+                .await?;
+        }
+
+        let slot_repo = Arc::new(SqliteRouletteSlotRepository::new(self.pool.clone()));
+        let rarity_repo = Arc::new(SqliteRarityRepository::new(self.pool.clone()));
+        let user_repo = Arc::new(SqliteUserRepository::new(self.pool.clone()));
+        let platform_repo = Arc::new(SqlitePlatformRepository::new(self.pool.clone()));
         let queue_repo = self
             .queue_repo
-            .unwrap_or_else(|| Arc::new(InMemoryQueueRepository::new()));
-        let admin_repo = Arc::new(InMemoryAdminRepository::new());
-        let session_repo = Arc::new(InMemorySessionRepository::new());
-        let rule_repo = Arc::new(InMemoryRuleRepository::new());
-        let action_repo = Arc::new(InMemoryActionRepository::new());
+            .unwrap_or_else(|| Arc::new(SqliteQueueRepository::new(self.pool.clone())));
+        let admin_repo = Arc::new(SqliteAdminRepository::new(self.pool.clone()));
+        let session_repo = Arc::new(SqliteSessionRepository::new(self.pool.clone()));
+        let rule_repo = Arc::new(SqliteRuleRepository::new(self.pool.clone()));
+        let action_repo = Arc::new(SqliteActionRepository::new(self.pool.clone()));
+
         let event_publisher = BroadcastEventPublisher::new();
         let ingress = Arc::new(EventIngress::new());
         spawn_logging_handler(ingress.subscribe());
@@ -191,7 +201,7 @@ impl AppStateBuilder {
         let settings = self.config.source();
         let roulette = RouletteService::new(Arc::clone(&slot_service), self.random);
         let queue_service = Arc::new(QueueService::new(
-            Arc::clone(&queue_repo),
+            queue_repo,
             Arc::clone(&rarity_service),
             roulette,
             event_publisher.clone(),

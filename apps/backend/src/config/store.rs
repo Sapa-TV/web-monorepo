@@ -5,7 +5,6 @@ use crate::config::repository::ConfigRepository;
 use crate::config::runtime::RuntimeConfig;
 use crate::config::static_config::StaticConfig;
 use crate::config::twitch::TwitchConfig;
-use crate::db::inmemory_config::InMemoryConfigRepository;
 use crate::error::ConfigError;
 use crate::random::generate_secret;
 
@@ -118,10 +117,9 @@ impl<R: ConfigRepository> ConfigStore<R> {
     }
 }
 
-impl ConfigStore<InMemoryConfigRepository> {
-    pub async fn load_or_seed() -> Result<Arc<Self>, ConfigError> {
+impl<K: ConfigRepository> ConfigStore<K> {
+    pub async fn load_or_seed(repo: Arc<K>) -> Result<Arc<Self>, ConfigError> {
         let (static_cfg, file_seed) = StaticConfig::load();
-        let repo = Arc::new(InMemoryConfigRepository::new());
         let runtime = match repo.load().await? {
             Some(runtime) => runtime,
             None => {

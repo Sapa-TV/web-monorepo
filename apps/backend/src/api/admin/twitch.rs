@@ -126,8 +126,9 @@ mod tests {
     use crate::config::static_config::StaticConfig;
     use crate::config::store::ConfigStore;
     use crate::config::twitch::TwitchConfig;
-    use crate::db::inmemory_config::InMemoryConfigRepository;
-    use crate::db::inmemory_platform_credential::InMemoryPlatformCredentialRepository;
+    use crate::db::sqlite::config::SqliteConfigRepository;
+    use crate::db::sqlite::platform_credential::SqlitePlatformCredentialRepository;
+    use crate::db::sqlite::test_pool;
     use crate::random::StandartRandomProvider;
     use crate::state::{AppState, AppStateBuilder};
     use crate::test_fixtures::{api_path, session_cookie, test_router, test_state};
@@ -148,15 +149,17 @@ mod tests {
             twitch: Some(twitch_config()),
             ..StaticConfig::default()
         };
+        let (pool, _path) = test_pool().await;
         let config_store = Arc::new(ConfigStore::new(
             Arc::new(static_cfg),
             RuntimeConfig::test_runtime("test-key"),
-            Arc::new(InMemoryConfigRepository::new()),
+            Arc::new(SqliteConfigRepository::new(pool.clone())),
         ));
         AppStateBuilder::new(
             StandartRandomProvider,
             config_store,
-            Arc::new(InMemoryPlatformCredentialRepository::new()),
+            Arc::new(SqlitePlatformCredentialRepository::new(pool.clone())),
+            pool,
         )
         .with_empty_repos()
         .build()

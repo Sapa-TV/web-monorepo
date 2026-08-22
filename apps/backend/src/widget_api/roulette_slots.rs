@@ -58,7 +58,7 @@ mod tests {
     use axum::http::{Request, StatusCode};
     use tower::ServiceExt;
 
-    use crate::roulette::rarity::RarityId;
+    use crate::roulette::rarity::{Rarity, RarityId};
     use crate::roulette::slot_service::{RouletteSlot, RouletteSlotId};
     use crate::test_fixtures::{test_router, test_state};
 
@@ -87,6 +87,17 @@ mod tests {
     #[tokio::test]
     async fn wak_key_can_list_slots() {
         let state = test_state().await;
+        state
+            .rarity_service
+            .save(Rarity::new(
+                RarityId::new(1),
+                "common",
+                "Common",
+                "c.png",
+                "#fff",
+            ))
+            .await
+            .unwrap();
         state
             .slot_service
             .add_slot(RouletteSlot::new(

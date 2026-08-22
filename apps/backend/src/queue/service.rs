@@ -235,14 +235,14 @@ mod tests {
 
     use chrono::Utc;
 
-    use crate::db::inmemory_config::InMemoryConfigRepository;
-    use crate::db::inmemory_queue::InMemoryQueueRepository;
+    use crate::db::sqlite::queue::SqliteQueueRepository;
+    use crate::db::sqlite::test_pool;
     use crate::error::QueueServiceError;
     use crate::queue::entry::QueueStatus;
     use crate::roulette::rarity::{Rarity, RarityId};
     use crate::roulette::slot_service::{RouletteSlot, RouletteSlotId};
     use crate::state::AppState;
-    use crate::test_fixtures::{test_state, test_state_with_data};
+    use crate::test_fixtures::{test_state, test_state_with};
     use crate::user::UserId;
 
     use super::*;
@@ -321,9 +321,9 @@ mod tests {
 
     #[tokio::test]
     async fn dequeue_next_retries_error_entry() {
-        let queue_repo = Arc::new(InMemoryQueueRepository::new());
-        let config_repo = Arc::new(InMemoryConfigRepository::new());
-        let state = test_state_with_data(Arc::clone(&queue_repo), config_repo).await;
+        let (pool, _path) = test_pool().await;
+        let queue_repo = Arc::new(SqliteQueueRepository::new(pool.clone()));
+        let state = test_state_with(pool, Some(Arc::clone(&queue_repo))).await;
         let user_id = setup_slots(&state).await;
         state.queue_service.enqueue(user_id, "user1").await.unwrap();
 

@@ -10,6 +10,7 @@ use sqlx::{Error, SqlitePool};
 #[cfg(test)]
 use tokio::fs;
 
+use crate::consts::sqlite;
 use crate::error::RepositoryError;
 
 pub mod action;
@@ -23,6 +24,16 @@ pub mod roulette_slot;
 pub mod rule;
 pub mod session;
 pub mod user;
+
+pub async fn connect_from_env() -> Result<SqlitePool, RepositoryError> {
+    use std::env;
+
+    let url = match env::var("DATABASE_URL") {
+        Ok(url) => url,
+        Err(_) => sqlite::DEFAULT_DATABASE_URL.into(),
+    };
+    connect_url(&url).await
+}
 
 pub async fn connect_url(url: &str) -> Result<SqlitePool, RepositoryError> {
     let options: SqliteConnectOptions = url

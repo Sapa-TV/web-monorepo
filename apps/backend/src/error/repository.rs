@@ -6,6 +6,11 @@ pub enum RepositoryError {
     #[error("conflict: {0}")]
     Conflict(String),
     #[error("database error: {0}")]
-    #[allow(dead_code)]
     Database(String),
+}
+
+impl From<sqlx::Error> for RepositoryError {
+    fn from(e: sqlx::Error) -> Self {
+        Self::Database(e.to_string())
+    }
 }

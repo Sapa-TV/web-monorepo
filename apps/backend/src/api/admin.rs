@@ -182,10 +182,11 @@ pub(crate) mod tests {
 
     use crate::api::auth::SESSION_COOKIE;
     use crate::config::repository::ConfigRepository;
-    use crate::db::inmemory_config::InMemoryConfigRepository;
-    use crate::db::inmemory_queue::InMemoryQueueRepository;
+    use crate::db::sqlite::config::SqliteConfigRepository;
+    use crate::db::sqlite::queue::SqliteQueueRepository;
+    use crate::db::sqlite::test_pool;
     use crate::test_fixtures::{
-        api_path, session_cookie, test_router, test_state, test_state_with_data,
+        api_path, session_cookie, test_router, test_state, test_state_with,
     };
 
     #[tokio::test]
@@ -442,12 +443,10 @@ pub(crate) mod tests {
 
     #[tokio::test]
     async fn rotate_widget_access_key_is_persisted_to_repo() {
-        let config_repo = Arc::new(InMemoryConfigRepository::new());
-        let state = test_state_with_data(
-            Arc::new(InMemoryQueueRepository::new()),
-            Arc::clone(&config_repo),
-        )
-        .await;
+        let (pool, _path) = test_pool().await;
+        let config_repo = Arc::new(SqliteConfigRepository::new(pool.clone()));
+        let queue_repo = Arc::new(SqliteQueueRepository::new(pool.clone()));
+        let state = test_state_with(pool, Some(queue_repo)).await;
         state.admin_service.add("100", None).await.unwrap();
         state.admin_service.set_root("100", true).await.unwrap();
         let app = test_router(state.clone());

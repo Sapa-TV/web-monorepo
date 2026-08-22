@@ -8,8 +8,9 @@ use std::time::Duration;
 use axum::http::{HeaderValue, Method, header};
 use backend::api;
 use backend::config::store::ConfigStore;
-use backend::db::inmemory_config::InMemoryConfigRepository;
-use backend::db::inmemory_platform_credential::InMemoryPlatformCredentialRepository;
+use backend::db::sqlite::config::SqliteConfigRepository;
+use backend::db::sqlite::connect_from_env;
+use backend::db::sqlite::platform_credential::SqlitePlatformCredentialRepository;
 use backend::ingress::PlatformService;
 use backend::ingress::platform::EventSink;
 use backend::ingress::supervisor::IngressSupervisor;
@@ -18,7 +19,9 @@ use backend::openapi;
 use backend::platform::{PlatformCredentialService, PlatformId};
 use backend::random::StandartRandomProvider;
 use backend::runtime;
-use backend::state::{AppQueueService, AppSessionService, AppState, AppStateBuilder};
+use backend::state::{
+    AppConfigStore, AppQueueService, AppSessionService, AppState, AppStateBuilder,
+};
 use backend::widget_api;
 use tokio::net::TcpListener;
 use tokio::signal::ctrl_c;
@@ -39,14 +42,18 @@ async fn main() {
         )
         .init();
 
-    let credentials_repo = Arc::new(InMemoryPlatformCredentialRepository::new());
-    let config_store = ConfigStore::load_or_seed()
-        .await
-        .expect("failed to load config");
+    dotenvy::dotenv().ok();
+    let pool = connect_from_env().await.expect("failed to open database");
+    let credentials_repo = Arc::new(SqlitePlatformCredentialRepository::new(pool.clone()));
+    let config_store =
+        ConfigStore::load_or_seed(Arc::new(SqliteConfigRepository::new(pool.clone())))
+            .await
+            .expect("failed to load config");
     let state = AppStateBuilder::new(
         StandartRandomProvider::new(),
         Arc::clone(&config_store),
         Arc::clone(&credentials_repo),
+        pool,
     )
     .build()
     .await
@@ -74,7 +81,7 @@ async fn main() {
     let twitch_config = config_store.twitch().map(|t| Arc::new(t.clone()));
     let build_ingress =
         move |platform: PlatformId,
-              credentials: Arc<PlatformCredentialService<InMemoryPlatformCredentialRepository>>,
+              credentials: Arc<PlatformCredentialService<SqlitePlatformCredentialRepository>>,
               sink: EventSink|
               -> Option<JoinHandle<()>> {
             match platform {
@@ -180,10 +187,7 @@ async fn queue_timeout_task(queue_service: Arc<AppQueueService>) {
     }
 }
 
-async fn queue_purge_task(
-    queue_service: Arc<AppQueueService>,
-    config: Arc<ConfigStore<InMemoryConfigRepository>>,
-) {
+async fn queue_purge_task(queue_service: Arc<AppQueueService>, config: Arc<AppConfigStore>) {
     loop {
         let interval = Duration::from_secs(config.queue_cleanup_interval_secs());
         time::sleep(interval).await;
@@ -193,10 +197,7 @@ async fn queue_purge_task(
     }
 }
 
-async fn session_prune_task(
-    session_service: Arc<AppSessionService>,
-    config: Arc<ConfigStore<InMemoryConfigRepository>>,
-) {
+async fn session_prune_task(session_service: Arc<AppSessionService>, config: Arc<AppConfigStore>) {
     loop {
         let interval = Duration::from_secs(config.sessions_cleanup_interval_secs());
         time::sleep(interval).await;

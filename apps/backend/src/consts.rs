@@ -29,6 +29,10 @@ pub mod server {
     pub const PORT: u16 = 3000;
 }
 
+pub mod sqlite {
+    pub const DEFAULT_DATABASE_URL: &str = "sqlite:data/server.db?mode=rwc";
+}
+
 pub mod session {
     use std::time::Duration;
 
