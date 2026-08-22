@@ -37,14 +37,6 @@ export enum MessageMatcher {
  */
 export type ActionId = number;
 
-export interface ActionIdParam {
-  /**
-   * @format int32
-   * @min 0
-   */
-  id: number;
-}
-
 export type ActionKind =
   | {
       type: "no_action";
@@ -186,10 +178,6 @@ export interface QueueStats {
  */
 export type RarityId = number;
 
-export interface RarityIdParam {
-  id: RarityId;
-}
-
 export interface RarityResponse {
   color: string;
   display_name: string;
@@ -253,14 +241,6 @@ export type RuleConditions =
       trigger: "reward_redemption";
     });
 
-export interface RuleIdParam {
-  /**
-   * @format int32
-   * @min 0
-   */
-  id: number;
-}
-
 export interface RuleResponse {
   /**
    * @format int32
@@ -290,10 +270,6 @@ export interface SessionResponse {
 
 export interface SetStreamStatusRequest {
   online: boolean;
-}
-
-export interface SlotIdParam {
-  id: RouletteSlotId;
 }
 
 export interface StreamStatusResponse {

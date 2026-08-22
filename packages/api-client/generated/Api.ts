@@ -385,13 +385,16 @@ export class Api<
    * @request GET:/api/admin/twitch/auth/callback
    */
   twitchAuthCallback = (
-    code: string,
-    state: string,
+    query: {
+      code: string;
+      state: string;
+    },
     params: RequestParams = {},
   ) =>
     this.request<TwitchAuthCallbackResponse, void>({
       path: `/api/admin/twitch/auth/callback`,
       method: "GET",
+      query: query,
       format: "json",
       ...params,
     });
@@ -402,10 +405,16 @@ export class Api<
    * @name FindTwitchUser
    * @request GET:/api/admin/twitch/users
    */
-  findTwitchUser = (login: string, params: RequestParams = {}) =>
+  findTwitchUser = (
+    query: {
+      login: string;
+    },
+    params: RequestParams = {},
+  ) =>
     this.request<TwitchUserResponse, void>({
       path: `/api/admin/twitch/users`,
       method: "GET",
+      query: query,
       format: "json",
       ...params,
     });
@@ -472,14 +481,30 @@ export class Api<
    * @request GET:/api/auth/twitch/callback
    */
   twitchLoginCallback = (
-    code: string,
-    state: string,
+    query: {
+      code: string;
+      state: string;
+    },
     params: RequestParams = {},
   ) =>
     this.request<TwitchLoginCallbackResponse, void>({
       path: `/api/auth/twitch/callback`,
       method: "GET",
+      query: query,
       format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags system
+   * @name Health
+   * @request GET:/api/health
+   */
+  health = (params: RequestParams = {}) =>
+    this.request<string, any>({
+      path: `/api/health`,
+      method: "GET",
       ...params,
     });
   /**
@@ -535,6 +560,20 @@ export class Api<
   getStreamStatus = (params: RequestParams = {}) =>
     this.request<StreamStatusResponse, any>({
       path: `/api/stream/status`,
+      method: "GET",
+      format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags system
+   * @name Version
+   * @request GET:/api/version
+   */
+  version = (params: RequestParams = {}) =>
+    this.request<object, any>({
+      path: `/api/version`,
       method: "GET",
       format: "json",
       ...params,

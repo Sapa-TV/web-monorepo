@@ -647,7 +647,7 @@
         "parameters": [
           {
             "name": "code",
-            "in": "path",
+            "in": "query",
             "required": true,
             "schema": {
               "type": "string"
@@ -655,7 +655,7 @@
           },
           {
             "name": "state",
-            "in": "path",
+            "in": "query",
             "required": true,
             "schema": {
               "type": "string"
@@ -691,7 +691,7 @@
         "parameters": [
           {
             "name": "login",
-            "in": "path",
+            "in": "query",
             "required": true,
             "schema": {
               "type": "string"
@@ -820,7 +820,7 @@
         "parameters": [
           {
             "name": "code",
-            "in": "path",
+            "in": "query",
             "required": true,
             "schema": {
               "type": "string"
@@ -828,7 +828,7 @@
           },
           {
             "name": "state",
-            "in": "path",
+            "in": "query",
             "required": true,
             "schema": {
               "type": "string"
@@ -851,6 +851,26 @@
           },
           "403": {
             "description": "CSRF state mismatch or flow never started"
+          }
+        }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "operationId": "health",
+        "responses": {
+          "200": {
+            "description": "Service is up",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }
@@ -945,6 +965,26 @@
         }
       }
     },
+    "/api/version": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "operationId": "version",
+        "responses": {
+          "200": {
+            "description": "Build version info",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/wapi/platforms": {
       "get": {
         "tags": [
@@ -977,8 +1017,8 @@
         "parameters": [
           {
             "name": "status",
-            "in": "path",
-            "required": true,
+            "in": "query",
+            "required": false,
             "schema": {
               "oneOf": [
                 {
@@ -992,8 +1032,8 @@
           },
           {
             "name": "limit",
-            "in": "path",
-            "required": true,
+            "in": "query",
+            "required": false,
             "schema": {
               "type": [
                 "integer",
@@ -1004,8 +1044,8 @@
           },
           {
             "name": "cursor",
-            "in": "path",
-            "required": true,
+            "in": "query",
+            "required": false,
             "schema": {
               "oneOf": [
                 {
@@ -1336,7 +1376,7 @@
         "parameters": [
           {
             "name": "platform",
-            "in": "path",
+            "in": "query",
             "required": true,
             "schema": {
               "type": "string"
@@ -1344,7 +1384,7 @@
           },
           {
             "name": "platform_user_id",
-            "in": "path",
+            "in": "query",
             "required": true,
             "schema": {
               "type": "string"
@@ -1649,19 +1689,6 @@
         "type": "integer",
         "format": "int32",
         "minimum": 0
-      },
-      "ActionIdParam": {
-        "type": "object",
-        "required": [
-          "id"
-        ],
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int32",
-            "minimum": 0
-          }
-        }
       },
       "ActionKind": {
         "oneOf": [
@@ -2055,17 +2082,6 @@
         "format": "int32",
         "minimum": 0
       },
-      "RarityIdParam": {
-        "type": "object",
-        "required": [
-          "id"
-        ],
-        "properties": {
-          "id": {
-            "$ref": "#/components/schemas/RarityId"
-          }
-        }
-      },
       "RarityResponse": {
         "type": "object",
         "required": [
@@ -2246,19 +2262,6 @@
           }
         ]
       },
-      "RuleIdParam": {
-        "type": "object",
-        "required": [
-          "id"
-        ],
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int32",
-            "minimum": 0
-          }
-        }
-      },
       "RuleResponse": {
         "type": "object",
         "required": [
@@ -2343,17 +2346,6 @@
         "properties": {
           "online": {
             "type": "boolean"
-          }
-        }
-      },
-      "SlotIdParam": {
-        "type": "object",
-        "required": [
-          "id"
-        ],
-        "properties": {
-          "id": {
-            "$ref": "#/components/schemas/RouletteSlotId"
           }
         }
       },
@@ -2671,6 +2663,10 @@
     {
       "name": "admin",
       "description": "Administrative endpoints"
+    },
+    {
+      "name": "system",
+      "description": "Service health and version"
     }
   ]
 }

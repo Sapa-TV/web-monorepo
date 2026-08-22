@@ -58,14 +58,18 @@ export class Wapi<
    * @request GET:/wapi/queue
    */
   list = (
-    status: null | QueueStatus,
-    limit: number | null,
-    cursor: null | QueueEntryId,
+    query?: {
+      status?: null | QueueStatus;
+      /** @min 0 */
+      limit?: number | null;
+      cursor?: null | QueueEntryId;
+    },
     params: RequestParams = {},
   ) =>
     this.request<QueueListResponse, any>({
       path: `/wapi/queue`,
       method: "GET",
+      query: query,
       format: "json",
       ...params,
     });
@@ -241,13 +245,16 @@ export class Wapi<
    * @request GET:/wapi/users
    */
   findUser = (
-    platform: string,
-    platformUserId: string,
+    query: {
+      platform: string;
+      platform_user_id: string;
+    },
     params: RequestParams = {},
   ) =>
     this.request<UserResponse, void>({
       path: `/wapi/users`,
       method: "GET",
+      query: query,
       format: "json",
       ...params,
     });
