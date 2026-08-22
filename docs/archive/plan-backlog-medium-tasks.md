@@ -3,6 +3,7 @@
 Статус: **выполнен** (все 5 задач, 2026-08-22). Архив.
 
 Решения:
+
 - M2 — делаем доменное разделение `RuntimeConfig`.
 - M3 — линтер на **ast-grep** (не dylint).
 - M4 — включаем в этот заход.
@@ -21,20 +22,22 @@
 ### M3. Линтер: максимальная длина api-хендлеров
 
 ✅ Готово (2026-08-21). Правило `max-handler-lines` в `.sg/rules/` (ast-grep, `function_item` после атрибута `utoipa::path`) + скрипт-обёртка `tools/check-handler-lines.mjs`: порог **20 строк тела функции** (сигнатура с экстракторами не считается). Попутно ужаты хендлеры-нарушители:
+
 - `rewards.rs::list_rewards` — поход в Twitch API вынесен в `TwitchAuthService::custom_rewards`, ссылки правил — в `RuleService::referenced_reward_ids`;
 - `session.rs::twitch_login_callback/create_session/get_me/logout` — переход на `CookieJar` (axum-extra) + `auth_cookie`, маппинг DTO через `From`, обмен кода и выпуск тикета объединены в `SessionService::exchange_login`; `SessionService` теперь сам держит `AdminService` (`login()` без внешнего аргумента);
 - `widget_api/users.rs::link_platform/update_platform_username/delete_platform` — общий хвост `user_json`.
-Проверки: скрипт OK, ast-grep test 3/3, clippy/fmt чисто, nextest 269/269.
+  Проверки: скрипт OK, ast-grep test 3/3, clippy/fmt чисто, nextest 269/269.
 
 ### M4. Поиск администратора по username
 
 ✅ Готово (2026-08-22). Цель: при добавлении админа вводишь username — twitch_id и display_name подставляются сами.
 
 Реализовано:
+
 - Бекенд: `TwitchAuthService::find_user_by_login()` (helix `get_users` по логину) + эндпоинт `GET /api/admin/twitch/users?login=` (root-guard), DTO `TwitchUserResponse {id, login, display_name}`; тесты: root-guard, 400 без twitch-config, 401 без credentials.
 - Клиент перегенерирован (`findTwitchUser`, `TwitchUserResponse`).
 - Фронт `AdminsCard.svelte`: поле «Поиск по Twitch username» с дебаунсом 400 мс ($effect), найденный пользователь показывается строкой с кнопкой «Подставить» (заполняет twitch_id + display_name); ручной ввод ID остался fallback'ом. 404 = кандидат просто не показывается.
-Проверки: nextest 272/272, clippy/fmt чисто, frontend check/lint OK, vitest 21/21.
+  Проверки: nextest 272/272, clippy/fmt чисто, frontend check/lint OK, vitest 21/21.
 
 ### M5. Админка: страницы и навигация — уже сделано
 
