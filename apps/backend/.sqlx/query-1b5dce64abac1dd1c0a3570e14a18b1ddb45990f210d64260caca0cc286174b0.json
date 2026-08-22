@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM admins WHERE twitch_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "1b5dce64abac1dd1c0a3570e14a18b1ddb45990f210d64260caca0cc286174b0"
+}

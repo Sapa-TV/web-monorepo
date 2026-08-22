@@ -1,14 +1,18 @@
-use std::env;
-use std::path::{Path, PathBuf};
 use std::time::Duration;
+
+#[cfg(test)]
+use std::path::{Path, PathBuf};
 
 use sqlx::migrate::{MigrateError, Migrator};
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
 use sqlx::{Error, SqlitePool};
+
+#[cfg(test)]
 use tokio::fs;
 
 use crate::error::RepositoryError;
 
+pub mod admin;
 pub mod config;
 
 pub async fn connect_url(url: &str) -> Result<SqlitePool, RepositoryError> {
@@ -18,6 +22,7 @@ pub async fn connect_url(url: &str) -> Result<SqlitePool, RepositoryError> {
     open(with_pragmas(options)).await
 }
 
+#[cfg(test)]
 pub(crate) async fn connect_path(path: &Path) -> Result<SqlitePool, RepositoryError> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)
@@ -68,7 +73,10 @@ pub(crate) fn conflict_on_unique(e: Error, message: &str) -> RepositoryError {
 }
 
 #[cfg(test)]
+#[cfg(test)]
 pub(crate) async fn test_pool() -> (SqlitePool, PathBuf) {
+    use std::env;
+
     let path = env::temp_dir().join(format!("sapa-test-{}.db", uuid::Uuid::now_v7().simple()));
     let pool = connect_path(&path)
         .await

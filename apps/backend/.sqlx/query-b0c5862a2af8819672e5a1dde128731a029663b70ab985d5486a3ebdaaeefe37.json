@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO admins (twitch_id, display_name, is_root, created_at) VALUES (?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "b0c5862a2af8819672e5a1dde128731a029663b70ab985d5486a3ebdaaeefe37"
+}
