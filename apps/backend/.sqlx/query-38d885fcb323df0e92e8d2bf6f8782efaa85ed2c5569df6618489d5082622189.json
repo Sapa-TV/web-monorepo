@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM queue_entries\n             WHERE status IN ('completed', 'cancelled') AND updated_at < ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "38d885fcb323df0e92e8d2bf6f8782efaa85ed2c5569df6618489d5082622189"
+}

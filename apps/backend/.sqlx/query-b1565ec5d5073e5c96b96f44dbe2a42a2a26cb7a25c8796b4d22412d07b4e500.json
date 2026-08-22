@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO queue_entries (user_id, user_name, status, created_at, updated_at)\n             VALUES (?, ?, 'pending', ?, ?)\n             RETURNING id AS \"id!: i64\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: i64",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "queue_entries",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "b1565ec5d5073e5c96b96f44dbe2a42a2a26cb7a25c8796b4d22412d07b4e500"
+}

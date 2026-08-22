@@ -1,0 +1,33 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT status, COUNT(*) AS \"count!: i64\" FROM queue_entries GROUP BY status",
+  "describe": {
+    "columns": [
+      {
+        "name": "status",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "queue_entries",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "name": "count!: i64",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "d1cbe46a0df9319658f00ce4dfc260acb069c5423de4f5446f0bd092c5f2c8f2"
+}

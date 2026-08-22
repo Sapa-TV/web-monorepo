@@ -17,6 +17,7 @@ pub mod admin;
 pub mod config;
 pub mod platform;
 pub mod platform_credential;
+pub mod queue;
 pub mod rarity;
 pub mod roulette_slot;
 pub mod rule;
