@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO rules (name, enabled, trigger_kind, conditions, action_id, created_at, updated_at)\n             VALUES (?, ?, ?, ?, ?, ?, ?)\n             RETURNING id AS \"id!: i64\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: i64",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "rules",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 7
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "9c8aeba5a10b1563c2998faf49e56f95fe11c552172d69df043400eca47bf69f"
+}

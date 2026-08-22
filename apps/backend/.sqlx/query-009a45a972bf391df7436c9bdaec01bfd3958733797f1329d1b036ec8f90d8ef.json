@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE actions SET name = ?1, kind = ?2, enabled = ?3, updated_at = ?4 WHERE id = ?5\n               RETURNING created_at AS \"created_at: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "created_at: DateTime<Utc>",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "actions",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "009a45a972bf391df7436c9bdaec01bfd3958733797f1329d1b036ec8f90d8ef"
+}

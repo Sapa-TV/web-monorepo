@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE rules SET name = ?1, enabled = ?2, trigger_kind = ?3, conditions = ?4, action_id = ?5, updated_at = ?6\n               WHERE id = ?7\n               RETURNING created_at AS \"created_at: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "created_at: DateTime<Utc>",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "rules",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 7
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "14a1f5101f7f02fad41e9f2492b755e011335d911981cab9748085cd1e51bfd7"
+}

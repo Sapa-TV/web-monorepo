@@ -12,12 +12,14 @@ use tokio::fs;
 
 use crate::error::RepositoryError;
 
+pub mod action;
 pub mod admin;
 pub mod config;
 pub mod platform;
 pub mod platform_credential;
 pub mod rarity;
 pub mod roulette_slot;
+pub mod rule;
 pub mod session;
 pub mod user;
 
