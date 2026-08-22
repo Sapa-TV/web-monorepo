@@ -1,0 +1,74 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE rarities SET name = ?1, display_name = ?2, image = ?3, color = ?4\n             WHERE id = ?5\n             RETURNING id, name, display_name, image, color",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "rarities",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "rarities",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "name": "display_name",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "rarities",
+            "name": "display_name"
+          }
+        }
+      },
+      {
+        "name": "image",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "rarities",
+            "name": "image"
+          }
+        }
+      },
+      {
+        "name": "color",
+        "ordinal": 4,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "rarities",
+            "name": "color"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "3c913a5f9ddd3cdefaee6d6aa15a074d88b8f44c1e59bff3a015eb8df80bf462"
+}

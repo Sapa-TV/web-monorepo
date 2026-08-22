@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE roulette_slots SET name = ?1, rarity_id = ?2, weight = ?3, action = ?4\n             WHERE id = ?5\n             RETURNING id AS \"id!: i64\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: i64",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "roulette_slots",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "3eba9bb14c69a2b26d378b51b81ca09b07e59b99c0ae7643cdd122a5a07f491d"
+}

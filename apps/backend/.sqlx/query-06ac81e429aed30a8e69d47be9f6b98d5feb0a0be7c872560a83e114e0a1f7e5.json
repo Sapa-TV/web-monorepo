@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM roulette_slots WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "06ac81e429aed30a8e69d47be9f6b98d5feb0a0be7c872560a83e114e0a1f7e5"
+}

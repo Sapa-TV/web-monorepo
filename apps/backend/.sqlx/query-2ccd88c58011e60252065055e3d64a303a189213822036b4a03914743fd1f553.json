@@ -1,0 +1,74 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id, name, rarity_id, weight, action FROM roulette_slots ORDER BY id",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "roulette_slots",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "roulette_slots",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "name": "rarity_id",
+        "ordinal": 2,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "roulette_slots",
+            "name": "rarity_id"
+          }
+        }
+      },
+      {
+        "name": "weight",
+        "ordinal": 3,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "roulette_slots",
+            "name": "weight"
+          }
+        }
+      },
+      {
+        "name": "action",
+        "ordinal": 4,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "roulette_slots",
+            "name": "action"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "2ccd88c58011e60252065055e3d64a303a189213822036b4a03914743fd1f553"
+}

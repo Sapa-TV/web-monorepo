@@ -15,6 +15,10 @@ impl RouletteSlotId {
     pub(crate) fn new(id: u32) -> Self {
         Self(id)
     }
+
+    pub const fn get(self) -> u32 {
+        self.0
+    }
 }
 
 impl Display for RouletteSlotId {

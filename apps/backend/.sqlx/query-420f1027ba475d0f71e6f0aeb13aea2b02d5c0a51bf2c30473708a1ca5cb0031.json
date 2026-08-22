@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM rarities WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "420f1027ba475d0f71e6f0aeb13aea2b02d5c0a51bf2c30473708a1ca5cb0031"
+}
