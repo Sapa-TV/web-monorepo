@@ -81,6 +81,8 @@ impl RarityRepository for InMemoryRarityRepository {
         }
     }
 
+    /// Unlike the sqlite implementation, deletion does not cascade:
+    /// roulette_slots referencing this rarity are left as-is.
     async fn delete(&self, id: RarityId) -> Result<bool, RepositoryError> {
         let mut rarities = self.rarities.lock();
         let len_before = rarities.len();

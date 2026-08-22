@@ -63,6 +63,12 @@ pub trait RarityRepository: Send + Sync {
         &self,
         rarity: Rarity,
     ) -> impl Future<Output = Result<Option<Rarity>, RepositoryError>> + Send;
+
+    /// Referential semantics differ between implementations:
+    /// the sqlite implementation enforces FKs and cascades deletion to
+    /// roulette_slots referencing this rarity, while the in-memory
+    /// implementation does not track references and leaves orphan slots.
+    /// Tests must not rely on orphan behavior.
     fn delete(&self, id: RarityId) -> impl Future<Output = Result<bool, RepositoryError>> + Send;
 }
 

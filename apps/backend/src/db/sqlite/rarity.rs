@@ -4,6 +4,7 @@ use crate::db::sqlite::map_err;
 use crate::error::RepositoryError;
 use crate::roulette::rarity::{Rarity, RarityId, RarityRepository};
 
+/// FK-enforced: deleting a rarity cascades to its roulette slots.
 #[non_exhaustive]
 pub struct SqliteRarityRepository {
     pool: SqlitePool,
