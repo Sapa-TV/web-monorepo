@@ -877,7 +877,6 @@ version = "0.1.0"
 dependencies = [
  "backend",
  "serde_json",
- "utoipa",
 ]
 
 [[package]]

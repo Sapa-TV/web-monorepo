@@ -6,7 +6,6 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use axum::http::{HeaderValue, Method, header};
-use backend::ApiDoc;
 use backend::api;
 use backend::config::store::ConfigStore;
 use backend::db::inmemory_config::InMemoryConfigRepository;
@@ -15,6 +14,7 @@ use backend::ingress::PlatformService;
 use backend::ingress::platform::EventSink;
 use backend::ingress::supervisor::IngressSupervisor;
 use backend::ingress::twitch::TwitchPlatformService;
+use backend::openapi;
 use backend::platform::{PlatformCredentialService, PlatformId};
 use backend::random::StandartRandomProvider;
 use backend::runtime;
@@ -27,7 +27,6 @@ use tokio::time;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 use tracing::info;
-use utoipa::OpenApi;
 use utoipa_redoc::{Redoc, Servable};
 use utoipa_swagger_ui::SwaggerUi;
 
@@ -114,12 +113,13 @@ async fn main() {
         None => CorsLayer::permissive(),
     };
 
+    let spec = openapi();
     let app = api::router(state.clone())
         .merge(widget_api::router(state.clone()))
         .layer(cors)
         .layer(TraceLayer::new_for_http())
-        .merge(SwaggerUi::new("/docs").url("/api-doc/openapi.json", ApiDoc::openapi()))
-        .merge(Redoc::with_url("/redoc", ApiDoc::openapi()));
+        .merge(SwaggerUi::new("/docs").url("/api-doc/openapi.json", spec.clone()))
+        .merge(Redoc::with_url("/redoc", spec));
 
     let addr = format!("0.0.0.0:{}", config_store.port());
     let listener = TcpListener::bind(&addr).await.expect("failed to bind");

@@ -3,15 +3,14 @@ use std::fs;
 use std::path::Path;
 use std::process::ExitCode;
 
-use backend::ApiDoc;
-use utoipa::OpenApi;
+use backend::openapi;
 
 fn main() -> ExitCode {
     let path = env::args()
         .nth(1)
         .unwrap_or_else(|| "generated/openapi.json".to_string());
 
-    match ApiDoc::openapi().to_pretty_json() {
+    match openapi().to_pretty_json() {
         Ok(json) => {
             let parent = Path::new(&path).parent();
             if let Some(parent) = parent {

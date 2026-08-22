@@ -28,6 +28,8 @@ pub mod user;
 pub mod widget_api;
 
 use utoipa::OpenApi;
+use utoipa::openapi::OpenApi as OpenApiSpec;
+use utoipa_axum::router::OpenApiRouter;
 
 #[derive(OpenApi)]
 #[openapi(
@@ -48,3 +50,11 @@ use utoipa::OpenApi;
 )]
 #[non_exhaustive]
 pub struct ApiDoc;
+
+/// Full spec assembled from the router tree; builds without an AppState instance.
+pub fn openapi() -> OpenApiSpec {
+    OpenApiRouter::<state::AppState>::with_openapi(ApiDoc::openapi())
+        .merge(widget_api::openapi_router())
+        .merge(api::openapi_router())
+        .into_openapi()
+}
