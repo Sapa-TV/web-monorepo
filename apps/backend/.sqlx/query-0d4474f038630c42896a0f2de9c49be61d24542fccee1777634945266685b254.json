@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM user_platforms WHERE user_id = ? AND platform_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "0d4474f038630c42896a0f2de9c49be61d24542fccee1777634945266685b254"
+}

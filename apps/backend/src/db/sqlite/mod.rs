@@ -19,6 +19,7 @@ pub mod platform_credential;
 pub mod rarity;
 pub mod roulette_slot;
 pub mod session;
+pub mod user;
 
 pub async fn connect_url(url: &str) -> Result<SqlitePool, RepositoryError> {
     let options: SqliteConnectOptions = url
