@@ -10,3 +10,6 @@ pub mod inmemory_rules;
 pub mod inmemory_session;
 pub mod inmemory_user;
 pub mod sqlite;
+
+#[cfg(test)]
+mod parity;
