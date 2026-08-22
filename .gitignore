@@ -4,3 +4,4 @@
 .env
 .env.dev
 /.VSCodeCounter/
+/data/

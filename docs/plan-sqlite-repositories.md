@@ -44,11 +44,11 @@
   скриптом. Динамический SQL (queue `list` с опциональными фильтрами статуса/курсора) — runtime API,
   остальное — макросы. Корректность SQL дополнительно дублируется паритет-тестами.
 - Воркфлоу метаданных:
-  - запуск: **`just sqlx-prepare`** (рецепт в корневом justfile → `apps/backend/scripts/sqlx-prepare.ps1`);
-  - версия sqlx-cli должна совпадать с версией крейса sqlx (сейчас 0.9.0) — иначе prepare
-    может выдать метаданные несовместимого формата;
-  - dev/check-БД: `apps/backend/data/query-check.db` (уже gitignored через `data/*.db`);
-    скрипт: `DATABASE_URL=sqlite:data/query-check.db` → `sqlx database create` → `sqlx migrate run`
+  - **одна БД для всего**: `data/server.db` из `.env` (`DATABASE_URL=sqlite:data/server.db?mode=rwc`)
+    — и рантайм, и компиляция макросов, и prepare. Макросы sqlx сами читают dotenv и ходят
+    в живую БД; свежий клон без `.env` автоматически уходит в офлайн на закоммиченном `.sqlx`;
+  - запуск: **`just sqlx-prepare`** (рецепт в корневом justfile → `apps/backend/scripts/sqlx-prepare.ps1`):
+    absolute-path `data/server.db` → `sqlx database create` → `sqlx migrate run`
     → `cargo sqlx prepare -- --all-targets`;
   - правило: поменял запрос или миграцию → запусти рецепт → закоммить обновлённый `.sqlx`;
   - обычная сборка без `DATABASE_URL` сама падает обратно на `.sqlx` (offline mode), CI ничего
@@ -224,6 +224,11 @@ Generic-сьюты (одни и те же `async fn suite_*<R: XxxRepository>`),
   конфиг / креденшеллы сохраняются.
 
 ## Риски / заметки
+
+- sqlx-cli 0.9.0 == крейс 0.9.0 (мисматч версий даёт несовместимые метаданные);
+- cwd при разворачивании `query!` — корень воркспейса: относительные пути БД в макросах
+  не работают, скрипт передаёт абсолютный путь;
+- `.env`/`.env.dev` gitignored → на CI и свежих клонах макросы идут офлайн через `.sqlx`;
 
 - weight u64 ↔ i64: никаких `unwrap`/паник — конвертация через
   `i64::try_from(weight)` с ошибкой `RepositoryError::Conflict("weight out of range")`.

@@ -1,10 +1,15 @@
-use std::path::Path;
+use std::env;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
+use sqlx::migrate::{MigrateError, Migrator};
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
 use sqlx::{Error, SqlitePool};
+use tokio::fs;
 
 use crate::error::RepositoryError;
+
+pub mod config;
 
 pub async fn connect_url(url: &str) -> Result<SqlitePool, RepositoryError> {
     let options: SqliteConnectOptions = url
@@ -15,11 +20,13 @@ pub async fn connect_url(url: &str) -> Result<SqlitePool, RepositoryError> {
 
 pub(crate) async fn connect_path(path: &Path) -> Result<SqlitePool, RepositoryError> {
     if let Some(parent) = path.parent() {
-        tokio::fs::create_dir_all(parent)
+        fs::create_dir_all(parent)
             .await
             .map_err(|e| RepositoryError::Database(format!("failed to create db dir: {e}")))?;
     }
-    let options = SqliteConnectOptions::new().filename(path).create_if_missing(true);
+    let options = SqliteConnectOptions::new()
+        .filename(path)
+        .create_if_missing(true);
     open(with_pragmas(options)).await
 }
 
@@ -40,9 +47,9 @@ async fn open(options: SqliteConnectOptions) -> Result<SqlitePool, RepositoryErr
 }
 
 async fn run_migrations(pool: &SqlitePool) -> Result<(), RepositoryError> {
-    static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!();
+    static MIGRATOR: Migrator = sqlx::migrate!();
     MIGRATOR.run(pool).await.map_err(|e| match e {
-        sqlx::migrate::MigrateError::Execute(inner) => map_err(inner),
+        MigrateError::Execute(inner) => map_err(inner),
         other => RepositoryError::Database(other.to_string()),
     })
 }
@@ -61,9 +68,8 @@ pub(crate) fn conflict_on_unique(e: Error, message: &str) -> RepositoryError {
 }
 
 #[cfg(test)]
-pub(crate) async fn test_pool() -> (SqlitePool, std::path::PathBuf) {
-    let path =
-        std::env::temp_dir().join(format!("sapa-test-{}.db", uuid::Uuid::now_v7().simple()));
+pub(crate) async fn test_pool() -> (SqlitePool, PathBuf) {
+    let path = env::temp_dir().join(format!("sapa-test-{}.db", uuid::Uuid::now_v7().simple()));
     let pool = connect_path(&path)
         .await
         .unwrap_or_else(|e| panic!("failed to open test db: {e}"));

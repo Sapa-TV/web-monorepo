@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT payload FROM runtime_config WHERE id = 1",
+  "describe": {
+    "columns": [
+      {
+        "name": "payload",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "runtime_config",
+            "name": "payload"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "47faa8cf2ae383ad5a8445ce0432346ab832329a6817c8c93247bc5fc73d9ba2"
+}

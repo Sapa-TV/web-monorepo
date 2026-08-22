@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO runtime_config (id, payload) VALUES (1, ?)\n             ON CONFLICT(id) DO UPDATE SET payload = excluded.payload",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "300762b42c650c42235fbbf812352b4035094e1a39dedb65412654490189495f"
+}
