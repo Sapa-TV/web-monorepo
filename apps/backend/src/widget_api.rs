@@ -21,7 +21,7 @@ use utoipa_axum::router::OpenApiRouter;
 use crate::state::AppState;
 use crate::widget_api::auth::require_key;
 
-fn key_protected_routes() -> OpenApiRouter<AppState> {
+fn base_routes() -> OpenApiRouter<AppState> {
     queue::router()
         .merge(rarities::router())
         .merge(roulette_slots::router())
@@ -29,17 +29,23 @@ fn key_protected_routes() -> OpenApiRouter<AppState> {
         .merge(stream::router())
 }
 
+fn assemble(inner: OpenApiRouter<AppState>) -> OpenApiRouter<AppState> {
+    OpenApiRouter::<AppState>::new().nest("/wapi", inner)
+}
+
+pub fn openapi_router() -> OpenApiRouter<AppState> {
+    assemble(
+        OpenApiRouter::<AppState>::new()
+            .merge(ws::public_router().into())
+            .merge(base_routes()),
+    )
+}
+
 pub fn router(state: AppState) -> Router {
     let key = from_fn_with_state(state.clone(), require_key);
-    let key_protected = key_protected_routes().route_layer(key);
+    let inner = OpenApiRouter::<AppState>::new()
+        .merge(ws::public_router().into())
+        .merge(base_routes().route_layer(key));
 
-    OpenApiRouter::new()
-        .nest(
-            "/wapi",
-            OpenApiRouter::<AppState>::new()
-                .merge(ws::public_router().into())
-                .merge(key_protected),
-        )
-        .with_state(state)
-        .into()
+    assemble(inner).with_state(state).into()
 }
