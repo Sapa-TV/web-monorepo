@@ -12,8 +12,8 @@ pub mod stream;
 
 use axum::Router;
 use axum::middleware::from_fn_with_state;
-use axum::routing::get;
 use utoipa_axum::router::OpenApiRouter;
+use utoipa_axum::routes;
 
 use crate::api::auth::require_admin;
 use crate::api::auth::require_root;
@@ -22,16 +22,28 @@ use crate::state::AppState;
 
 fn public_router() -> OpenApiRouter<AppState> {
     OpenApiRouter::<AppState>::new()
-        .route("/health", get(health))
-        .route("/version", get(version))
+        .routes(routes!(health))
+        .routes(routes!(version))
         .merge(stream::public_router())
         .merge(session::public_router())
 }
 
+#[utoipa::path(
+    get,
+    path = "/health",
+    tag = "system",
+    responses((status = 200, description = "Service is up", body = str))
+)]
 async fn health() -> &'static str {
     "ok"
 }
 
+#[utoipa::path(
+    get,
+    path = "/version",
+    tag = "system",
+    responses((status = 200, description = "Build version info", body = Object))
+)]
 async fn version() -> axum::Json<serde_json::Value> {
     axum::Json(serde_json::json!({
         "version": env!("CARGO_PKG_VERSION"),

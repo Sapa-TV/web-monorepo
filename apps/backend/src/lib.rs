@@ -45,7 +45,8 @@ use utoipa_axum::router::OpenApiRouter;
         (name = "queue", description = "Spin queue"),
         (name = "stream", description = "Stream status"),
         (name = "auth", description = "Sessions and login"),
-        (name = "admin", description = "Administrative endpoints")
+        (name = "admin", description = "Administrative endpoints"),
+        (name = "system", description = "Service health and version")
     )
 )]
 #[non_exhaustive]
