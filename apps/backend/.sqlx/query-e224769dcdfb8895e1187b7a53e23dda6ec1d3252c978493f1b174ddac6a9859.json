@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO sessions (token, twitch_user_id, twitch_user_name, created_at, expires_at)\n             VALUES (?, ?, ?, ?, ?)\n             ON CONFLICT(token) DO UPDATE SET\n                twitch_user_id = excluded.twitch_user_id,\n                twitch_user_name = excluded.twitch_user_name,\n                created_at = excluded.created_at,\n                expires_at = excluded.expires_at",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "e224769dcdfb8895e1187b7a53e23dda6ec1d3252c978493f1b174ddac6a9859"
+}

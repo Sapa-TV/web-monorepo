@@ -1,0 +1,74 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM login_tickets WHERE ticket = ?\n               RETURNING ticket, twitch_user_id, twitch_user_name,\n                         created_at AS \"created_at: DateTime<Utc>\",\n                         expires_at AS \"expires_at: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "ticket",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "login_tickets",
+            "name": "ticket"
+          }
+        }
+      },
+      {
+        "name": "twitch_user_id",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "login_tickets",
+            "name": "twitch_user_id"
+          }
+        }
+      },
+      {
+        "name": "twitch_user_name",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "login_tickets",
+            "name": "twitch_user_name"
+          }
+        }
+      },
+      {
+        "name": "created_at: DateTime<Utc>",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "login_tickets",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "name": "expires_at: DateTime<Utc>",
+        "ordinal": 4,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "login_tickets",
+            "name": "expires_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "cdbdd2db2770f5b03480041dcb499443391d2a52feb0bed668d13821ef4089a2"
+}
