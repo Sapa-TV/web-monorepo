@@ -1,8 +1,9 @@
 use axum::Json;
 use axum::extract::State;
 use serde::Serialize;
-use utoipa::OpenApi;
 use utoipa::ToSchema;
+use utoipa_axum::router::OpenApiRouter;
+use utoipa_axum::routes;
 
 use crate::error::api::ApiError;
 use crate::roulette::rarity::{Rarity, RarityId};
@@ -47,15 +48,8 @@ pub async fn list_rarities(
     ))
 }
 
-#[derive(OpenApi)]
-#[openapi(paths(list_rarities), components(schemas(RarityResponse,)))]
-#[non_exhaustive]
-#[allow(dead_code)]
-pub(crate) struct RaritiesApiDoc;
-
-pub fn router() -> axum::Router<AppState> {
-    use axum::routing::get;
-    axum::Router::new().route("/rarities", get(list_rarities))
+pub fn router() -> OpenApiRouter<AppState> {
+    OpenApiRouter::new().routes(routes!(list_rarities))
 }
 
 #[cfg(test)]

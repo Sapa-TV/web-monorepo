@@ -1,8 +1,9 @@
 use axum::Json;
 use axum::extract::State;
 use serde::Serialize;
-use utoipa::OpenApi;
 use utoipa::ToSchema;
+use utoipa_axum::router::OpenApiRouter;
+use utoipa_axum::routes;
 
 use crate::error::api::ApiError;
 use crate::roulette::rarity::RarityId;
@@ -46,15 +47,8 @@ pub async fn list_slots(
     Ok(Json(slots.into_iter().map(Into::into).collect()))
 }
 
-#[derive(OpenApi)]
-#[openapi(paths(list_slots), components(schemas(RouletteSlotResponse,)))]
-#[non_exhaustive]
-#[allow(dead_code)]
-pub(crate) struct SlotsApiDoc;
-
-pub fn router() -> axum::Router<AppState> {
-    use axum::routing::get;
-    axum::Router::new().route("/slots", get(list_slots))
+pub fn router() -> OpenApiRouter<AppState> {
+    OpenApiRouter::new().routes(routes!(list_slots))
 }
 
 #[cfg(test)]

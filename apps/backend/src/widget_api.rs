@@ -16,13 +16,13 @@ pub mod ws;
 
 use axum::Router;
 use axum::middleware::from_fn_with_state;
+use utoipa_axum::router::OpenApiRouter;
 
 use crate::state::AppState;
 use crate::widget_api::auth::require_key;
 
-fn key_protected_routes() -> Router<AppState> {
-    Router::new()
-        .merge(queue::router())
+fn key_protected_routes() -> OpenApiRouter<AppState> {
+    queue::router()
         .merge(rarities::router())
         .merge(roulette_slots::router())
         .merge(users::router())
@@ -33,12 +33,13 @@ pub fn router(state: AppState) -> Router {
     let key = from_fn_with_state(state.clone(), require_key);
     let key_protected = key_protected_routes().route_layer(key);
 
-    Router::new()
+    OpenApiRouter::new()
         .nest(
             "/wapi",
-            Router::new()
-                .merge(ws::public_router())
+            OpenApiRouter::<AppState>::new()
+                .merge(ws::public_router().into())
                 .merge(key_protected),
         )
         .with_state(state)
+        .into()
 }

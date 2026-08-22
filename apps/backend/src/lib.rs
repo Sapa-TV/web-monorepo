@@ -35,14 +35,6 @@ struct MergeSubdocs;
 
 impl Modify for MergeSubdocs {
     fn modify(&self, openapi: &mut OpenApiSchema) {
-        let mut widget = OpenApiSchema::default();
-        widget.merge(widget_api::rarities::RaritiesApiDoc::openapi());
-        widget.merge(widget_api::roulette_slots::SlotsApiDoc::openapi());
-        widget.merge(widget_api::users::UsersApiDoc::openapi());
-        widget.merge(widget_api::queue::QueueApiDoc::openapi());
-        widget.merge(widget_api::stream::StreamApiDoc::openapi());
-        *openapi = openapi.clone().nest("/wapi", widget);
-
         let mut main = OpenApiSchema::default();
         main.merge(api::stream::StreamApiDoc::openapi());
         main.merge(api::admin::twitch::AdminTwitchApiDoc::openapi());

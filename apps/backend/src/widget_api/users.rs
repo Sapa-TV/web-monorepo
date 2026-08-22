@@ -2,7 +2,10 @@ use axum::Json;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use serde::{Deserialize, Serialize};
-use utoipa::{IntoParams, OpenApi, ToSchema};
+use utoipa::IntoParams;
+use utoipa::ToSchema;
+use utoipa_axum::router::OpenApiRouter;
+use utoipa_axum::routes;
 
 use crate::error::api::ApiError;
 use crate::platform::PlatformId;
@@ -332,46 +335,11 @@ pub async fn list_platforms(
     ))
 }
 
-#[derive(OpenApi)]
-#[openapi(
-    paths(
-        create_user,
-        find_user,
-        get_user,
-        update_user,
-        delete_user,
-        link_platform,
-        update_platform_username,
-        delete_platform,
-        list_platforms,
-    ),
-    components(schemas(
-        UserResponse,
-        UserPlatformResponse,
-        PlatformResponse,
-        CreateUserRequest,
-        LinkPlatformRequest,
-        UpdateUserRequest,
-        UpdatePlatformRequest,
-    ))
-)]
-#[non_exhaustive]
-#[allow(dead_code)]
-pub(crate) struct UsersApiDoc;
-
-pub fn router() -> axum::Router<AppState> {
-    use axum::routing::{delete, get, patch, post};
-    axum::Router::new()
-        .route("/users", post(create_user))
-        .route("/users", get(find_user))
-        .route("/users/{id}", get(get_user))
-        .route("/users/{id}", patch(update_user))
-        .route("/users/{id}", delete(delete_user))
-        .route("/users/{id}/platforms", post(link_platform))
-        .route(
-            "/users/{id}/platforms/{platform}",
-            patch(update_platform_username),
-        )
-        .route("/users/{id}/platforms/{platform}", delete(delete_platform))
-        .route("/platforms", get(list_platforms))
+pub fn router() -> OpenApiRouter<AppState> {
+    OpenApiRouter::new()
+        .routes(routes!(create_user, find_user))
+        .routes(routes!(get_user, update_user, delete_user))
+        .routes(routes!(link_platform))
+        .routes(routes!(update_platform_username, delete_platform))
+        .routes(routes!(list_platforms))
 }

@@ -2,7 +2,10 @@ use axum::Json;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use serde::{Deserialize, Serialize};
-use utoipa::{IntoParams, OpenApi, ToSchema};
+use utoipa::IntoParams;
+use utoipa::ToSchema;
+use utoipa_axum::router::OpenApiRouter;
+use utoipa_axum::routes;
 
 use crate::error::QueueServiceError;
 use crate::error::api::ApiError;
@@ -276,46 +279,13 @@ pub async fn stats(State(state): State<AppState>) -> Result<Json<QueueStats>, Ap
     Ok(Json(stats))
 }
 
-#[derive(OpenApi)]
-#[openapi(
-    paths(
-        enqueue,
-        enqueue_anonymous,
-        list,
-        get_by_id,
-        peek_next,
-        dequeue_next,
-        complete,
-        cancel,
-        stats,
-    ),
-    components(schemas(
-        QueueEntryResponse,
-        QueueListResponse,
-        QueueStats,
-        QueueEntryId,
-        QueueStatus,
-        EnqueueRequest,
-        AnonymousEnqueueRequest,
-        NextResponse,
-        UserId,
-        RouletteSlotId,
-    ))
-)]
-#[non_exhaustive]
-#[allow(dead_code)]
-pub(crate) struct QueueApiDoc;
-
-pub fn router() -> axum::Router<AppState> {
-    use axum::routing::{get, post};
-    axum::Router::new()
-        .route("/queue", post(enqueue))
-        .route("/queue/anonymous", post(enqueue_anonymous))
-        .route("/queue", get(list))
-        .route("/queue/{id}", get(get_by_id))
-        .route("/queue/next", get(peek_next))
-        .route("/queue/next", post(dequeue_next))
-        .route("/queue/{id}/complete", post(complete))
-        .route("/queue/{id}/cancel", post(cancel))
-        .route("/queue/stats", get(stats))
+pub fn router() -> OpenApiRouter<AppState> {
+    OpenApiRouter::new()
+        .routes(routes!(enqueue, list))
+        .routes(routes!(enqueue_anonymous))
+        .routes(routes!(get_by_id))
+        .routes(routes!(peek_next, dequeue_next))
+        .routes(routes!(complete))
+        .routes(routes!(cancel))
+        .routes(routes!(stats))
 }

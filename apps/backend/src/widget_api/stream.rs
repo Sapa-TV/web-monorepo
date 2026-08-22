@@ -1,8 +1,9 @@
 use axum::Json;
 use axum::extract::State;
 use serde::Deserialize;
-use utoipa::OpenApi;
 use utoipa::ToSchema;
+use utoipa_axum::router::OpenApiRouter;
+use utoipa_axum::routes;
 
 use crate::state::AppState;
 
@@ -37,16 +38,6 @@ pub async fn set_stream_status(
     })
 }
 
-#[derive(OpenApi)]
-#[openapi(
-    paths(set_stream_status),
-    components(schemas(SetStreamStatusRequest, StreamStatusResponse,))
-)]
-#[non_exhaustive]
-#[allow(dead_code)]
-pub(crate) struct StreamApiDoc;
-
-pub fn router() -> axum::Router<AppState> {
-    use axum::routing::post;
-    axum::Router::new().route("/stream/status", post(set_stream_status))
+pub fn router() -> OpenApiRouter<AppState> {
+    OpenApiRouter::new().routes(routes!(set_stream_status))
 }
