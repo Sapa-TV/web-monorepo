@@ -38,9 +38,7 @@ export async function completeLogin(
 	code: string,
 	state: string,
 ): Promise<SessionResponse> {
-	const cbRes = await api.twitchLoginCallback("", "", {
-		query: { code, state },
-	});
+	const cbRes = await api.twitchLoginCallback({ code, state });
 	if (cbRes.isErr()) {
 		const err = cbRes.error;
 		if (err instanceof HttpError) {

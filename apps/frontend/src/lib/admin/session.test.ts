@@ -75,8 +75,9 @@ describe("admin session helpers", () => {
 
 			const result = await completeLogin("abc", "cafe");
 
-			expect(api.twitchLoginCallback).toHaveBeenCalledWith("", "", {
-				query: { code: "abc", state: "cafe" },
+			expect(api.twitchLoginCallback).toHaveBeenCalledWith({
+				code: "abc",
+				state: "cafe",
 			});
 			expect(api.createSession).toHaveBeenCalledWith({ ticket: "ticket-1" });
 			expect(result).toEqual(session);

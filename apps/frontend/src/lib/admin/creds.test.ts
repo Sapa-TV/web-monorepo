@@ -28,8 +28,9 @@ describe("completeCredsAuth", () => {
 
 		const result = await completeCredsAuth("abc", "cafe");
 
-		expect(api.twitchAuthCallback).toHaveBeenCalledWith("", "", {
-			query: { code: "abc", state: "cafe" },
+		expect(api.twitchAuthCallback).toHaveBeenCalledWith({
+			code: "abc",
+			state: "cafe",
 		});
 		expect(result).toEqual(credsResult);
 	});
@@ -39,8 +40,9 @@ describe("completeCredsAuth", () => {
 
 		await completeCredsAuth("a b", "c/d");
 
-		expect(api.twitchAuthCallback).toHaveBeenCalledWith("", "", {
-			query: { code: "a b", state: "c/d" },
+		expect(api.twitchAuthCallback).toHaveBeenCalledWith({
+			code: "a b",
+			state: "c/d",
 		});
 	});
 

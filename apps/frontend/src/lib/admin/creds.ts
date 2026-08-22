@@ -12,9 +12,7 @@ export async function completeCredsAuth(
 	code: string,
 	state: string,
 ): Promise<TwitchAuthCallbackResponse> {
-	const res = await api.twitchAuthCallback("", "", {
-		query: { code, state },
-	});
+	const res = await api.twitchAuthCallback({ code, state });
 	if (res.isErr()) {
 		const err = res.error;
 		if (err instanceof HttpError) {

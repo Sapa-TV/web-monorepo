@@ -1,15 +1,15 @@
 <script lang="ts">
-	import { onMount } from "svelte";
 	import { WS_URL, wapi, type QueueEntry } from "#lib/api";
 	import { HttpError, TimeoutError } from "@sapa-tv-ru/api-client";
 	import { Badge, Button, Input, Section, TableWrap } from "@sapa-tv-ru/ui-kit";
+	import { onMount } from "svelte";
+	import IconCheck from "~icons/lucide/check";
 	import IconKeyRound from "~icons/lucide/key-round";
-	import IconRefreshCw from "~icons/lucide/refresh-cw";
+	import IconList from "~icons/lucide/list";
 	import IconPlay from "~icons/lucide/play";
 	import IconPlus from "~icons/lucide/plus";
-	import IconList from "~icons/lucide/list";
+	import IconRefreshCw from "~icons/lucide/refresh-cw";
 	import IconX from "~icons/lucide/x";
-	import IconCheck from "~icons/lucide/check";
 
 	const widgetAccessKey =
 		typeof window !== "undefined"
@@ -89,7 +89,7 @@
 
 	async function loadAll() {
 		const [listRes, statsRes] = await Promise.all([
-			wapi.list(null, null, null, wapiAuth),
+			wapi.list(undefined, wapiAuth),
 			wapi.stats(wapiAuth),
 		]);
 

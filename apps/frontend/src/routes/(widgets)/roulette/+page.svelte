@@ -194,7 +194,7 @@
 		}
 
 		setIdle();
-		wapi.list(null, null, null, wapiAuth).then((res) =>
+		wapi.list(undefined, wapiAuth).then((res) =>
 			res.match(
 				() => {
 					keyOk = true;

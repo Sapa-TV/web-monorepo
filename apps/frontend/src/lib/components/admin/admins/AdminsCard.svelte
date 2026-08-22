@@ -50,7 +50,7 @@
 	async function lookupUser(login: string) {
 		searchBusy = true;
 		try {
-			const res = await api.findTwitchUser(login);
+			const res = await api.findTwitchUser({ login });
 			foundUser = res.isErr() ? null : res.value;
 			if (
 				res.isErr() &&
