@@ -1,10 +1,12 @@
 import noColorLiterals from "./rules/no-color-literals.js";
+import noExceptionsRule from "./rules/no-exceptions.js";
 import propsInlineTypeRule from "./rules/props-inline-type.js";
 
 export const svelteRulesPlugin = {
 	meta: { name: "eslint-plugin-sapa", version: "0.1.0" },
 	rules: {
 		"no-color-literals": noColorLiterals,
+		"no-exceptions": noExceptionsRule,
 		"props-inline-type": propsInlineTypeRule,
 	},
 };
@@ -21,5 +23,12 @@ export const propsInlineType = {
 	plugins: { sapa: svelteRulesPlugin },
 	rules: {
 		"sapa/props-inline-type": "error",
+	},
+};
+
+export const noExceptions = {
+	plugins: { sapa: svelteRulesPlugin },
+	rules: {
+		"sapa/no-exceptions": "error",
 	},
 };

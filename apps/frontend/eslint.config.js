@@ -10,6 +10,7 @@ import path from "node:path";
 import ts from "typescript-eslint";
 import {
 	colorLiterals,
+	noExceptions,
 	propsInlineType,
 } from "@sapa-tv-ru/custom-eslint-rules";
 
@@ -108,6 +109,16 @@ export default defineConfig(
 		...playwright.configs["flat/recommended"],
 		rules: {
 			"playwright/require-hook": "warn",
+		},
+	},
+	{
+		files: ["src/**"],
+		...noExceptions,
+	},
+	{
+		files: ["src/lib/internal/**", "tests/**"],
+		rules: {
+			"sapa/no-exceptions": "off",
 		},
 	},
 );
