@@ -14,6 +14,7 @@ pub mod error;
 pub mod event;
 pub mod ingress;
 pub mod platform;
+pub mod presence;
 pub mod queue;
 pub mod random;
 pub mod roulette;
