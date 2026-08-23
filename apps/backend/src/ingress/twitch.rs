@@ -270,9 +270,48 @@ fn redemption_status_to_str(status: &RedemptionStatus) -> &'static str {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use std::sync::Arc;
+    use std::time::Duration;
 
+    use tokio::sync::mpsc;
+    use tokio::time::timeout;
+    use tokio_util::sync::CancellationToken;
+
+    use super::*;
+    use crate::db::inmemory_platform_credential::InMemoryPlatformCredentialRepository;
     use crate::ingress::event::PlatformEventPayload;
+    use crate::platform::PlatformCredentialService;
+
+    fn test_service() -> TwitchPlatformService<InMemoryPlatformCredentialRepository> {
+        let config = Arc::new(TwitchConfig {
+            client_id: "cid".to_string(),
+            client_secret: "cs".to_string(),
+            broadcaster_id: "bc".to_string(),
+            redirect_uri: "https://localhost/cb".to_string(),
+            credentials_redirect_uri: "https://localhost/creds/cb".to_string(),
+            csrf_ttl_secs: 600,
+        });
+        TwitchPlatformService::new(
+            config,
+            Arc::new(PlatformCredentialService::new(Arc::new(
+                InMemoryPlatformCredentialRepository::new(),
+            ))),
+        )
+    }
+
+    #[tokio::test]
+    async fn run_returns_ok_immediately_when_shutdown_pre_cancelled() {
+        let service = test_service();
+        let (sink, _rx) = mpsc::channel::<PlatformEvent>(16);
+        let shutdown = CancellationToken::new();
+        shutdown.cancel();
+
+        let result = timeout(Duration::from_secs(2), service.run(sink, shutdown))
+            .await
+            .expect("run must not hang on pre-cancelled shutdown");
+
+        assert!(result.is_ok(), "cancelled run must be Ok, not an error");
+    }
 
     #[test]
     fn maps_chat_message_fields() {
