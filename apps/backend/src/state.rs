@@ -131,6 +131,127 @@ pub type AppState = UniAppState<
 >;
 
 #[non_exhaustive]
+pub struct UniStateParams<Q, R, U, P, S, A, Se, C, K, L, M>
+where
+    Q: QueueRepository,
+    R: RarityRepository,
+    U: UserRepository,
+    P: PlatformRepository,
+    S: RouletteSlotRepository,
+    A: AdminRepository,
+    Se: SessionRepository,
+    C: PlatformCredentialRepository,
+    K: ConfigRepository,
+    L: RuleRepository,
+    M: ActionRepository,
+{
+    pub random: StandartRandomProvider,
+    pub config: Arc<ConfigStore<K>>,
+    pub credentials_repo: Arc<C>,
+    pub slot_repo: Arc<S>,
+    pub rarity_repo: Arc<R>,
+    pub user_repo: Arc<U>,
+    pub platform_repo: Arc<P>,
+    pub queue_repo: Arc<Q>,
+    pub admin_repo: Arc<A>,
+    pub session_repo: Arc<Se>,
+    pub rule_repo: Arc<L>,
+    pub action_repo: Arc<M>,
+}
+
+pub async fn assemble_uni_state<Q, R, U, P, S, A, Se, C, K, L, M>(
+    params: UniStateParams<Q, R, U, P, S, A, Se, C, K, L, M>,
+) -> Result<UniAppState<Q, R, U, P, S, A, Se, C, K, L, M>, RepositoryError>
+where
+    Q: QueueRepository,
+    R: RarityRepository,
+    U: UserRepository,
+    P: PlatformRepository,
+    S: RouletteSlotRepository,
+    A: AdminRepository,
+    Se: SessionRepository,
+    C: PlatformCredentialRepository,
+    K: ConfigRepository,
+    L: RuleRepository,
+    M: ActionRepository,
+{
+    let UniStateParams {
+        random,
+        config,
+        credentials_repo,
+        slot_repo,
+        rarity_repo,
+        user_repo,
+        platform_repo,
+        queue_repo,
+        admin_repo,
+        session_repo,
+        rule_repo,
+        action_repo,
+    } = params;
+
+    let event_publisher = BroadcastEventPublisher::new();
+    let ingress = Arc::new(EventIngress::new());
+    spawn_logging_handler(ingress.subscribe());
+
+    let slot_service = Arc::new(RouletteSlotService::build(slot_repo).await?);
+    let rarity_service = Arc::new(RarityService::build(rarity_repo).await?);
+    let settings = config.source();
+    let roulette = RouletteService::new(Arc::clone(&slot_service), random);
+    let queue_service = Arc::new(QueueService::new(
+        queue_repo,
+        Arc::clone(&rarity_service),
+        roulette,
+        event_publisher.clone(),
+        settings.clone(),
+    ));
+    let user_service = Arc::new(UserService::new(user_repo, platform_repo));
+    let admin_service = Arc::new(AdminService::new(admin_repo));
+    if let Some(admin_id) = config.admin_twitch_id() {
+        tracing::info!("seeding root admin: twitch_user_id={admin_id}");
+        admin_service.seed(admin_id).await?;
+    }
+    let session_service = Arc::new(SessionService::new(
+        session_repo,
+        Arc::clone(&admin_service),
+        settings,
+    ));
+    let credentials = Arc::new(PlatformCredentialService::new(credentials_repo));
+    let admin_auth = Arc::new(AdminAuthService::new(
+        config.twitch().map(|twitch| Arc::new(twitch.clone())),
+        Arc::clone(&credentials),
+    ));
+
+    let action_service = Arc::new(ActionService::new(action_repo));
+    let rule_service = Arc::new(RuleService::new(rule_repo, Arc::clone(&action_service)));
+
+    let twitch_api = config.twitch().map(|twitch| {
+        Arc::new(TwitchAuthService::new(
+            Arc::new(twitch.clone()),
+            Arc::clone(&credentials),
+        ))
+    });
+
+    Ok(UniAppState {
+        slot_service,
+        rarity_service,
+        user_service,
+        admin_service,
+        session_service,
+        queue_service,
+        config,
+        event_publisher,
+        stream_status: Arc::new(StreamStatus::new()),
+        ingress,
+        admin_auth,
+        credentials,
+        rule_service,
+        action_service,
+        twitch_api,
+    })
+}
+
+#[non_exhaustive]
 pub struct AppStateBuilder {
     random: StandartRandomProvider,
     pool: SqlitePool,
@@ -180,78 +301,22 @@ impl AppStateBuilder {
                 .await?;
         }
 
-        let slot_repo = Arc::new(SqliteRouletteSlotRepository::new(self.pool.clone()));
-        let rarity_repo = Arc::new(SqliteRarityRepository::new(self.pool.clone()));
-        let user_repo = Arc::new(SqliteUserRepository::new(self.pool.clone()));
-        let platform_repo = Arc::new(SqlitePlatformRepository::new(self.pool.clone()));
-        let queue_repo = self
-            .queue_repo
-            .unwrap_or_else(|| Arc::new(SqliteQueueRepository::new(self.pool.clone())));
-        let admin_repo = Arc::new(SqliteAdminRepository::new(self.pool.clone()));
-        let session_repo = Arc::new(SqliteSessionRepository::new(self.pool.clone()));
-        let rule_repo = Arc::new(SqliteRuleRepository::new(self.pool.clone()));
-        let action_repo = Arc::new(SqliteActionRepository::new(self.pool.clone()));
-
-        let event_publisher = BroadcastEventPublisher::new();
-        let ingress = Arc::new(EventIngress::new());
-        spawn_logging_handler(ingress.subscribe());
-
-        let slot_service = Arc::new(RouletteSlotService::build(Arc::clone(&slot_repo)).await?);
-        let rarity_service = Arc::new(RarityService::build(Arc::clone(&rarity_repo)).await?);
-        let settings = self.config.source();
-        let roulette = RouletteService::new(Arc::clone(&slot_service), self.random);
-        let queue_service = Arc::new(QueueService::new(
-            queue_repo,
-            Arc::clone(&rarity_service),
-            roulette,
-            event_publisher.clone(),
-            settings.clone(),
-        ));
-        let user_service = Arc::new(UserService::new(user_repo, platform_repo));
-        let admin_service = Arc::new(AdminService::new(admin_repo));
-        if let Some(admin_id) = self.config.admin_twitch_id() {
-            tracing::info!("seeding root admin: twitch_user_id={admin_id}");
-            admin_service.seed(admin_id).await?;
-        }
-        let session_service = Arc::new(SessionService::new(
-            session_repo,
-            Arc::clone(&admin_service),
-            settings,
-        ));
-        let credentials = Arc::new(PlatformCredentialService::new(Arc::clone(
-            &self.credentials_repo,
-        )));
-        let admin_auth = Arc::new(AdminAuthService::new(
-            self.config.twitch().map(|twitch| Arc::new(twitch.clone())),
-            Arc::clone(&credentials),
-        ));
-
-        let action_service = Arc::new(ActionService::new(action_repo));
-        let rule_service = Arc::new(RuleService::new(rule_repo, Arc::clone(&action_service)));
-
-        let twitch_api = self.config.twitch().map(|twitch| {
-            Arc::new(TwitchAuthService::new(
-                Arc::new(twitch.clone()),
-                Arc::clone(&credentials),
-            ))
-        });
-
-        Ok(AppState {
-            slot_service,
-            rarity_service,
-            user_service,
-            admin_service,
-            session_service,
-            queue_service,
+        assemble_uni_state(UniStateParams {
+            random: self.random,
             config: self.config,
-            event_publisher,
-            stream_status: Arc::new(StreamStatus::new()),
-            ingress,
-            admin_auth,
-            credentials,
-            rule_service,
-            action_service,
-            twitch_api,
+            credentials_repo: self.credentials_repo,
+            slot_repo: Arc::new(SqliteRouletteSlotRepository::new(self.pool.clone())),
+            rarity_repo: Arc::new(SqliteRarityRepository::new(self.pool.clone())),
+            user_repo: Arc::new(SqliteUserRepository::new(self.pool.clone())),
+            platform_repo: Arc::new(SqlitePlatformRepository::new(self.pool.clone())),
+            queue_repo: self
+                .queue_repo
+                .unwrap_or_else(|| Arc::new(SqliteQueueRepository::new(self.pool.clone()))),
+            admin_repo: Arc::new(SqliteAdminRepository::new(self.pool.clone())),
+            session_repo: Arc::new(SqliteSessionRepository::new(self.pool.clone())),
+            rule_repo: Arc::new(SqliteRuleRepository::new(self.pool.clone())),
+            action_repo: Arc::new(SqliteActionRepository::new(self.pool.clone())),
         })
+        .await
     }
 }
