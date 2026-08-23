@@ -1,6 +1,6 @@
 # Graceful shutdown через CancellationToken (бэклог #4)
 
-Статус: **план на согласование**. Пункт бэклога #4: «Supervisor - running platforms останавливаются
+Статус: **выполнен** (2026-08-23). Пункт бэклога #4: «Supervisor - running platforms останавливаются
 через handle.abort(), исследовать возможность их остановки через CancelationToken».
 
 Дата: 2026-08-23
@@ -142,3 +142,34 @@ cargo clippy --all-targets && cargo fmt --check
 
 3–5 ч: шаги 1–2 ~0.5 ч, шаг 3 ~1 ч, шаг 4 ~1–1.5 ч, шаг 5 ~0.5–1 ч,
 шаги 6–7 ~0.5–1 ч.
+
+## Итог (отличия от плана)
+
+Выполнены все шаги; nextest 355 passed, clippy/fmt чисто. Отклонения:
+
+- Сигнал отмены из `consume_loop` передаётся через новый вариант
+  `PlatformError::Cancelled` (error/ingress.rs), а не через отдельный
+  enum-outcome: `?` в функции с кастомным типом возврата недоступен
+  (`FromResidual` только у `Result`/`Option`), отдельный enum заставил бы
+  расписывать каждый выход вручную.
+- `PlatformService::run(sink, shutdown)` — токен в трейте, фабрика в main.rs
+  просто прокидывает его в `service.run`; промежуточный select на уровне
+  фабрики (планировался как переходный) не понадобился после шага 4 и был убран.
+- Отмена rule pipeline сделана в композиционной точке `runtime.rs`
+  (select! вокруг спавна engine/executor), сами `RuleEngine::run` /
+  `ActionExecutor::run` не менялись: их внутренние select'ы и естественное
+  завершение по закрытию каналов сохранены, executor-тесты не затронуты.
+- В supervisor'е child-токены ингрессов создаются от root прямо в `reconcile`,
+  состояние — структура `RunningIngress { join, token }`; логика остановки
+  вынесена в свободную функцию `stop_ingress(platform, ingress, grace)` с
+  параметром грейса — это позволило тестировать abort-fallback с грейсом 50мс,
+  не ждя продовые 5 секунд.
+- Close-frame отправляется inherent-методом `WebSocketStream::close(None)`
+  (tokio-tungstenite), а не `SinkExt::close()` — приоритет inherent-метода.
+- Воркспейс-линт `absolute_paths = "deny"` потребовал use-импорты вместо
+  полных путей (`timeout`, `select!`, alias `WsStream`).
+- Тесты: supervisor-stub наблюдает токен (`token.cancelled().await`), run-loop
+  тесты завершаются graceful-отменой вместо `task.abort()`; добавлены
+  `stop_ingress_aborts_task_that_ignores_cancellation` и
+  `run_returns_ok_immediately_when_shutdown_pre_cancelled`.
+- Ручной smoke `docker stop` остаётся за эксплуатацией (в плане шаг 7).
