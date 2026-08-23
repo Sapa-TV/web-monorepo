@@ -1,6 +1,6 @@
 # In-memory репозитории в юнит-тестах executor и queue service
 
-Статус: **план на согласование**. Пункт бэклога #13: «Проверить executor и queue service - можно ли переделать так,
+Статус: **выполнен** (2026-08-23). Пункт бэклога #13: «Проверить executor и queue service - можно ли переделать так,
 чтобы юнит тесты использовали in-memory реализации (сейчас они на sqlite через test_state_with)».
 
 Дата: 2026-08-23
@@ -124,3 +124,22 @@ cargo fmt --check
 ## Оценка
 
 1.5–3 ч: шаг 1 ~1 ч, шаги 2–4 ~0.5–1 ч, шаг 5 ~0.5 ч.
+
+## Итог (отличия от плана)
+
+Выполнено по всем 5 шагам; nextest 353 passed, clippy/fmt чисто. Отклонения:
+
+- Вместо `UniStateRepos` + отдельных аргументов — один параметр-структура
+  `UniStateParams` (репозитории + `random` + `config` + `credentials_repo`),
+  у ассемблера единственный аргумент. Суть та же, точек сборки по-прежнему одна.
+- Понадобились пустые конструкторы `new()` (+ `Default`) для
+  `InMemoryRarityRepository` и `InMemoryRouletteSlotRepository` — до этого был
+  только `new_seeded()`. В фикстуре они пустые (аналог `with_empty_repos` в sqlite).
+- Platforms в фикстуре сидированы (`InMemoryPlatformRepository::new_seeded()`):
+  миграция 0003 всегда сидирует платформы, а `UserService::resolve_platform("twitch")`
+  иначе падает в executor-тестах.
+- Фикстура возвращает `(state, Arc<InMemoryQueueRepository>)` — хэндл нужен
+  тесту `dequeue_next_retries_error_entry` вместо прежнего ручного
+  `SqliteQueueRepository::new(pool)`.
+- Тестов в скоупе оказалось 6 (executor) и 9 (queue service), не 7/10 как
+  оценивалось.
