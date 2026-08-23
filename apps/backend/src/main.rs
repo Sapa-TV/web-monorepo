@@ -93,18 +93,11 @@ async fn main() {
                         let config = Arc::clone(config);
                         Some(tokio::spawn(async move {
                             let service = TwitchPlatformService::new(config, credentials);
-                            tokio::select! {
-                                _ = token.cancelled() => {
-                                    tracing::info!("twitch ingress cancelled");
-                                }
-                                result = service.run(sink) => {
-                                    if let Err(e) = result {
-                                        tracing::error!(
-                                            "{} ingress stopped: {e}",
-                                            service.platform().as_name()
-                                        );
-                                    }
-                                }
+                            if let Err(e) = service.run(sink, token).await {
+                                tracing::error!(
+                                    "{} ingress stopped: {e}",
+                                    service.platform().as_name()
+                                );
                             }
                         }))
                     }

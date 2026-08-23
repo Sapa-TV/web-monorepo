@@ -1,9 +1,13 @@
 use std::sync::Arc;
 
 use futures_util::StreamExt;
+use tokio::net::TcpStream;
+use tokio::select;
 use tokio::time::sleep;
 use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::Message as WsMessage;
+use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
+use tokio_util::sync::CancellationToken;
 use twitch_api::eventsub::channel::channel_points_custom_reward_redemption::RedemptionStatus;
 use twitch_api::eventsub::channel::{
     ChannelChatMessageV1, ChannelPointsCustomRewardRedemptionAddV1,
@@ -35,6 +39,14 @@ where
     platform: PlatformId,
 }
 
+type WsStream = WebSocketStream<MaybeTlsStream<TcpStream>>;
+
+async fn close_ws(ws: &mut WsStream) {
+    if let Err(e) = ws.close(None).await {
+        tracing::warn!("failed to send twitch eventsub close frame: {e}");
+    }
+}
+
 impl<R> TwitchPlatformService<R>
 where
     R: PlatformCredentialRepository,
@@ -53,15 +65,22 @@ where
         token: &UserToken,
         sink: EventSink,
         platform: PlatformId,
+        shutdown: &CancellationToken,
     ) -> Result<(), PlatformError> {
         let (mut ws, _) = connect_async(TWITCH_EVENTSUB_WS_URL)
             .await
             .map_err(|e| PlatformError::WebSocket(e.to_string()))?;
 
         let session_id = loop {
-            let msg = ws
-                .next()
-                .await
+            let msg = select! {
+                biased;
+                _ = shutdown.cancelled() => {
+                    close_ws(&mut ws).await;
+                    return Err(PlatformError::Cancelled);
+                }
+                next = ws.next() => next,
+            };
+            let msg = msg
                 .ok_or(PlatformError::Disconnected)?
                 .map_err(|e| PlatformError::WebSocket(e.to_string()))?;
             let text = match msg {
@@ -99,7 +118,18 @@ where
             "twitch eventsub subscribed to channel.channel_points_custom_reward_redemption.add"
         );
 
-        while let Some(msg) = ws.next().await {
+        loop {
+            let msg = select! {
+                biased;
+                _ = shutdown.cancelled() => {
+                    close_ws(&mut ws).await;
+                    return Err(PlatformError::Cancelled);
+                }
+                next = ws.next() => next,
+            };
+            let Some(msg) = msg else {
+                return Err(PlatformError::Disconnected);
+            };
             let msg = msg.map_err(|e| PlatformError::WebSocket(e.to_string()))?;
             let text = match msg {
                 WsMessage::Text(text) => text,
@@ -151,7 +181,6 @@ where
                 _ => {}
             }
         }
-        Err(PlatformError::Disconnected)
     }
 }
 
@@ -163,21 +192,34 @@ where
         Platform::from_id(self.platform)
     }
 
-    async fn run(&self, sink: EventSink) -> Result<(), PlatformError> {
+    async fn run(&self, sink: EventSink, shutdown: CancellationToken) -> Result<(), PlatformError> {
         let helix = self.auth.helix();
 
         let mut delay = TWITCH_RECONNECT_INITIAL_DELAY;
         loop {
+            if shutdown.is_cancelled() {
+                return Ok(());
+            }
             let token = self.auth.user_token().await?;
-            match self
-                .consume_loop(&helix, &token, sink.clone(), self.platform)
-                .await
-            {
-                Ok(()) => return Ok(()),
-                Err(e) => {
-                    tracing::warn!("twitch eventsub stopped: {e}; reconnecting in {delay:?}");
-                    sleep(delay).await;
-                    delay = (delay * 2).min(TWITCH_RECONNECT_MAX_DELAY);
+            select! {
+                biased;
+                _ = shutdown.cancelled() => return Ok(()),
+                outcome = self.consume_loop(&helix, &token, sink.clone(), self.platform, &shutdown) => {
+                    match outcome {
+                        Err(PlatformError::Cancelled) => return Ok(()),
+                        Ok(()) => return Ok(()),
+                        Err(e) => {
+                            tracing::warn!(
+                                "twitch eventsub stopped: {e}; reconnecting in {delay:?}"
+                            );
+                            select! {
+                                biased;
+                                _ = shutdown.cancelled() => return Ok(()),
+                                _ = sleep(delay) => {},
+                            }
+                            delay = (delay * 2).min(TWITCH_RECONNECT_MAX_DELAY);
+                        }
+                    }
                 }
             }
         }

@@ -20,6 +20,8 @@ pub enum PlatformError {
     Publish(String),
     #[error("twitch api request failed: {0}")]
     TwitchApi(String),
+    #[error("cancelled by shutdown")]
+    Cancelled,
 }
 
 impl From<PlatformError> for StatusCode {
@@ -32,7 +34,8 @@ impl From<PlatformError> for StatusCode {
             | PlatformError::Disconnected
             | PlatformError::SinkClosed
             | PlatformError::Publish(_)
-            | PlatformError::TwitchApi(_) => StatusCode::BAD_GATEWAY,
+            | PlatformError::TwitchApi(_)
+            | PlatformError::Cancelled => StatusCode::BAD_GATEWAY,
         }
     }
 }
