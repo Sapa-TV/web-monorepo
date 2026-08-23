@@ -27,6 +27,7 @@ use tokio::net::TcpListener;
 use tokio::signal::ctrl_c;
 use tokio::task::JoinHandle;
 use tokio::time;
+use tokio_util::sync::CancellationToken;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 use tracing::info;
@@ -134,8 +135,11 @@ async fn main() {
 
     start_background_tasks(&state);
 
+    let shutdown = CancellationToken::new();
+    tokio::spawn(signal_listener(shutdown.clone()));
+
     axum::serve(listener, app)
-        .with_graceful_shutdown(shutdown_signal())
+        .with_graceful_shutdown(shutdown.cancelled_owned())
         .await
         .expect("server failed");
 }
@@ -154,7 +158,7 @@ fn start_background_tasks(state: &AppState) {
     runtime::start_rule_pipeline(state);
 }
 
-async fn shutdown_signal() {
+async fn signal_listener(token: CancellationToken) {
     let ctrl_c = async {
         ctrl_c().await.expect("failed to install ctrl-c handler");
     };
@@ -175,7 +179,8 @@ async fn shutdown_signal() {
         _ = terminate => {},
     }
 
-    info!("shutdown signal received, draining connections");
+    info!("shutdown signal received, cancelling root token");
+    token.cancel();
 }
 
 async fn queue_timeout_task(queue_service: Arc<AppQueueService>) {
