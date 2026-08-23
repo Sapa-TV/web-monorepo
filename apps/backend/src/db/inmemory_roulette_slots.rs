@@ -19,7 +19,20 @@ const SEEDED_SLOTS: &[(&str, u32, u64, &str)] = &[
     ("Джекпот", 4, 1, "jackpot"),
 ];
 
+impl Default for InMemoryRouletteSlotRepository {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl InMemoryRouletteSlotRepository {
+    pub fn new() -> Self {
+        Self {
+            slots: Mutex::new(Vec::new()),
+            next_id: AtomicU32::new(1),
+        }
+    }
+
     pub fn new_seeded() -> Self {
         let slots: Vec<RouletteSlot> = SEEDED_SLOTS
             .iter()

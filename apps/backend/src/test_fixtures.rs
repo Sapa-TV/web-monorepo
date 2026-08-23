@@ -12,13 +12,27 @@ use crate::api;
 use crate::api::auth::LOGIN_COOKIE;
 use crate::config::runtime::RuntimeConfig;
 use crate::config::static_config::StaticConfig;
+use crate::config::store::ConfigStore;
+use crate::db::inmemory_actions::InMemoryActionRepository;
+use crate::db::inmemory_admin::InMemoryAdminRepository;
+use crate::db::inmemory_config::InMemoryConfigRepository;
+use crate::db::inmemory_platform::InMemoryPlatformRepository;
+use crate::db::inmemory_platform_credential::InMemoryPlatformCredentialRepository;
+use crate::db::inmemory_queue::InMemoryQueueRepository;
+use crate::db::inmemory_rarity::InMemoryRarityRepository;
+use crate::db::inmemory_roulette_slots::InMemoryRouletteSlotRepository;
+use crate::db::inmemory_rules::InMemoryRuleRepository;
+use crate::db::inmemory_session::InMemorySessionRepository;
+use crate::db::inmemory_user::InMemoryUserRepository;
 use crate::db::sqlite::config::SqliteConfigRepository;
 use crate::db::sqlite::platform_credential::SqlitePlatformCredentialRepository;
 use crate::db::sqlite::queue::SqliteQueueRepository;
 use crate::db::sqlite::test_pool;
 use crate::platform::PlatformId;
 use crate::random::StandartRandomProvider;
-use crate::state::{AppConfigStore, AppState, AppStateBuilder};
+use crate::state::{
+    AppConfigStore, AppState, AppStateBuilder, UniAppState, UniStateParams, assemble_uni_state,
+};
 use crate::widget_api;
 
 /// Empty slots/rarities (like pre-sqlite `with_empty_repos`), default queue repo.
@@ -33,6 +47,48 @@ pub async fn test_state_with(
     queue_repo: Option<Arc<SqliteQueueRepository>>,
 ) -> AppState {
     build_state(pool, false, queue_repo).await
+}
+
+pub type InMemoryAppState = UniAppState<
+    InMemoryQueueRepository,
+    InMemoryRarityRepository,
+    InMemoryUserRepository,
+    InMemoryPlatformRepository,
+    InMemoryRouletteSlotRepository,
+    InMemoryAdminRepository,
+    InMemorySessionRepository,
+    InMemoryPlatformCredentialRepository,
+    InMemoryConfigRepository,
+    InMemoryRuleRepository,
+    InMemoryActionRepository,
+>;
+
+/// No sqlite at all. Platforms are seeded (like migrations do); slots/rarities
+/// start empty. Returns the queue repo for tests that need a direct handle.
+pub async fn test_state_inmemory() -> (InMemoryAppState, Arc<InMemoryQueueRepository>) {
+    let queue_repo = Arc::new(InMemoryQueueRepository::new());
+    let config_store = Arc::new(ConfigStore::new(
+        Arc::new(StaticConfig::test_config()),
+        RuntimeConfig::test_runtime("test-key"),
+        Arc::new(InMemoryConfigRepository::new()),
+    ));
+    let state = assemble_uni_state(UniStateParams {
+        random: StandartRandomProvider,
+        config: config_store,
+        credentials_repo: Arc::new(InMemoryPlatformCredentialRepository::new()),
+        slot_repo: Arc::new(InMemoryRouletteSlotRepository::new()),
+        rarity_repo: Arc::new(InMemoryRarityRepository::new()),
+        user_repo: Arc::new(InMemoryUserRepository::new()),
+        platform_repo: Arc::new(InMemoryPlatformRepository::new_seeded()),
+        queue_repo: Arc::clone(&queue_repo),
+        admin_repo: Arc::new(InMemoryAdminRepository::new()),
+        session_repo: Arc::new(InMemorySessionRepository::new()),
+        rule_repo: Arc::new(InMemoryRuleRepository::new()),
+        action_repo: Arc::new(InMemoryActionRepository::new()),
+    })
+    .await
+    .expect("failed to build in-memory test state");
+    (state, queue_repo)
 }
 
 async fn build_state(
