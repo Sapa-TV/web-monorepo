@@ -24,6 +24,7 @@
 		Select,
 		TableWrap,
 	} from "@sapa-tv-ru/ui-kit";
+	import { describeApiError } from "#lib/api-error-text";
 
 	let rules = $state<RuleResponse[]>([]);
 	let actions = $state<ActionResponse[]>([]);
@@ -46,34 +47,34 @@
 	let removeId = $state<number | null>(null);
 
 	function setError(err: unknown) {
-		error = err instanceof Error ? err.message : String(err);
+		error = describeApiError(err);
 	}
 
 	async function load() {
 		error = "";
 		hint = "";
 		const res = await api.listRules();
-		if (res.isErr()) throw res.error;
+		if (res.isErr()) {
+			setError(res.error);
+			return;
+		}
 		rules = res.value;
 		loaded = true;
 	}
 
 	async function loadOptions() {
-		try {
-			const res = await api.listActions();
-			if (res.isErr()) throw res.error;
-			actions = res.value;
-		} catch {
-			// actions list stays as-is if it fails to refresh
+		const actionsRes = await api.listActions();
+		if (actionsRes.isOk()) {
+			actions = actionsRes.value;
 		}
-		try {
-			const res = await api.listRewards();
-			if (res.isErr()) throw res.error;
-			rewardsError = "";
-			rewards = res.value;
-		} catch (err) {
-			rewardsError = err instanceof Error ? err.message : String(err);
+
+		const rewardsRes = await api.listRewards();
+		if (rewardsRes.isErr()) {
+			rewardsError = describeApiError(rewardsRes.error);
+			return;
 		}
+		rewardsError = "";
+		rewards = rewardsRes.value;
 	}
 
 	function openNew() {
@@ -134,43 +135,39 @@
 		}
 		busy = true;
 		error = "";
-		try {
-			const payload: UpsertRuleRequest = {
-				name: name.trim(),
-				enabled,
-				trigger,
-				conditions: buildConditions(),
-				action_id: actionId,
-			};
-			const res =
-				editId === null
-					? await api.createRule(payload)
-					: await api.updateRule(editId, payload);
-			if (res.isErr()) throw res.error;
+		const payload: UpsertRuleRequest = {
+			name: name.trim(),
+			enabled,
+			trigger,
+			conditions: buildConditions(),
+			action_id: actionId,
+		};
+		const res =
+			editId === null
+				? await api.createRule(payload)
+				: await api.updateRule(editId, payload);
+		if (res.isErr()) {
+			setError(res.error);
+		} else {
 			hint = editId === null ? "Правило создано." : "Правило обновлено.";
 			formOpen = false;
 			await load();
-		} catch (err) {
-			setError(err);
-		} finally {
-			busy = false;
 		}
+		busy = false;
 	}
 
 	async function remove(id: number) {
 		if (!confirm("Удалить правило?")) return;
 		removeId = id;
 		error = "";
-		try {
-			const res = await api.deleteRule(id);
-			if (res.isErr()) throw res.error;
+		const res = await api.deleteRule(id);
+		if (res.isErr()) {
+			setError(res.error);
+		} else {
 			hint = "Правило удалено.";
 			await load();
-		} catch (err) {
-			setError(err);
-		} finally {
-			removeId = null;
 		}
+		removeId = null;
 	}
 
 	function actionName(id: number): string {
@@ -202,7 +199,7 @@
 	}
 
 	onMount(() => {
-		load().catch(setError);
+		void load();
 		void loadOptions();
 	});
 </script>

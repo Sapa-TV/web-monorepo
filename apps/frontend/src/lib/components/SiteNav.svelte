@@ -5,6 +5,7 @@
 	import IconSun from "~icons/lucide/sun";
 	import DonateToggle from "./DonateToggle.svelte";
 	import { GIT_SHA } from "#lib/build-info";
+	import { setLocalStorage } from "#lib/internal/storage";
 
 	let isStream = $derived(page.url.pathname === "/stream");
 
@@ -18,12 +19,9 @@
 
 	$effect(() => {
 		if (typeof document === "undefined") return;
-		document.documentElement.dataset.theme = dark === "dark" ? "dark" : "light";
-		try {
-			localStorage.setItem("theme", dark === "dark" ? "dark" : "light");
-		} catch {
-			/* приватный режим — игнорируем */
-		}
+		const theme = dark === "dark" ? "dark" : "light";
+		document.documentElement.dataset.theme = theme;
+		setLocalStorage("theme", theme);
 	});
 </script>
 

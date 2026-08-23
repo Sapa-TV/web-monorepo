@@ -4,7 +4,6 @@
 		AdminResponse,
 		TwitchUserResponse,
 	} from "@sapa-tv-ru/api-client";
-	import { HttpError } from "@sapa-tv-ru/api-client";
 	import {
 		Alert,
 		Badge,
@@ -17,8 +16,9 @@
 	import { onMount } from "svelte";
 	import IconTrash2 from "~icons/lucide/trash-2";
 	import IconUserPlus from "~icons/lucide/user-plus";
+	import { describeApiError } from "#lib/api-error-text";
+	import { ApiErrorKind, normalizeApiError } from "#lib/internal/api-error";
 
-	const NOT_FOUND = 404;
 	const SEARCH_DEBOUNCE_MS = 400;
 
 	let admins = $state<AdminResponse[]>([]);
@@ -36,7 +36,7 @@
 	let foundUser = $state<TwitchUserResponse | null>(null);
 
 	function setError(err: unknown) {
-		error = err instanceof Error ? err.message : String(err);
+		error = describeApiError(err);
 	}
 
 	$effect(() => {
@@ -49,18 +49,15 @@
 
 	async function lookupUser(login: string) {
 		searchBusy = true;
-		try {
-			const res = await api.findTwitchUser({ login });
-			foundUser = res.isErr() ? null : res.value;
-			if (
-				res.isErr() &&
-				!(res.error instanceof HttpError && res.error.status === NOT_FOUND)
-			) {
-				setError(res.error);
-			}
-		} finally {
-			searchBusy = false;
+		const res = await api.findTwitchUser({ login });
+		if (res.isErr()) {
+			foundUser = null;
+			const err = normalizeApiError(res.error);
+			if (err.kind !== ApiErrorKind.NotFound) setError(err);
+		} else {
+			foundUser = res.value;
 		}
+		searchBusy = false;
 	}
 
 	function applyFoundUser() {
@@ -71,7 +68,10 @@
 
 	async function loadAdmins() {
 		const res = await api.listAdmins();
-		if (res.isErr()) throw res.error;
+		if (res.isErr()) {
+			setError(res.error);
+			return;
+		}
 		admins = res.value;
 	}
 
@@ -80,42 +80,36 @@
 		if (!twitchId) return;
 		addBusy = true;
 		error = "";
-		try {
-			const res = await api.addAdmin({
-				twitch_id: twitchId,
-				display_name: newDisplayName.trim() || null,
-			});
-			if (res.isErr()) throw res.error;
+		const res = await api.addAdmin({
+			twitch_id: twitchId,
+			display_name: newDisplayName.trim() || null,
+		});
+		if (res.isErr()) {
+			setError(res.error);
+		} else {
 			newTwitchId = "";
 			newDisplayName = "";
 			await loadAdmins();
 			hint = `Админ ${res.value.display_name ?? res.value.twitch_id} добавлен.`;
-		} catch (err) {
-			setError(err);
-		} finally {
-			addBusy = false;
 		}
+		addBusy = false;
 	}
 
 	async function removeAdmin(twitchId: string) {
 		removeBusyId = twitchId;
 		error = "";
-		try {
-			const res = await api.removeAdmin(twitchId);
-			if (res.isErr()) throw res.error;
+		const res = await api.removeAdmin(twitchId);
+		if (res.isErr()) {
+			setError(res.error);
+		} else {
 			await loadAdmins();
 			hint = "Админ удалён.";
-		} catch (err) {
-			setError(err);
-		} finally {
-			removeBusyId = null;
 		}
+		removeBusyId = null;
 	}
 
 	onMount(() => {
-		loadAdmins()
-			.catch(setError)
-			.finally(() => (loaded = true));
+		void loadAdmins().finally(() => (loaded = true));
 	});
 </script>
 

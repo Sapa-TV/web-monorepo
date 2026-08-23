@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from "svelte";
 	import IconMessageCircle from "~icons/lucide/message-circle";
+	import { tryAutoplay } from "#lib/internal/media";
 
 	let video: HTMLVideoElement | undefined = $state();
 	let status = $state("");
@@ -29,7 +30,11 @@
 
 				instance.attachMediaElement(video);
 				instance.load();
-				instance.play().catch((err) => console.warn("Autoplay blocked:", err));
+				void tryAutoplay(instance).then((outcome) => {
+					if (outcome === "blocked") {
+						console.warn("Autoplay blocked: требуется клик по видео.");
+					}
+				});
 				player = instance;
 			} else if (retries < MAX_RETRIES) {
 				retries += 1;

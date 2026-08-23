@@ -10,6 +10,7 @@
 	import IconPlus from "~icons/lucide/plus";
 	import IconTrash2 from "~icons/lucide/trash-2";
 	import { Alert, Button, Field, Input, TableWrap } from "@sapa-tv-ru/ui-kit";
+	import { describeApiError } from "#lib/api-error-text";
 
 	const DEFAULT_COLOR = "#9d9d9d";
 
@@ -29,14 +30,17 @@
 	let color = $state(DEFAULT_COLOR);
 
 	function setError(err: unknown) {
-		error = err instanceof Error ? err.message : String(err);
+		error = describeApiError(err);
 	}
 
 	async function load() {
 		error = "";
 		hint = "";
 		const res = await api.listRarities();
-		if (res.isErr()) throw res.error;
+		if (res.isErr()) {
+			setError(res.error);
+			return;
+		}
 		rarities = res.value;
 		loaded = true;
 	}
@@ -68,48 +72,48 @@
 		if (!name.trim() || !displayName.trim()) return;
 		busy = true;
 		error = "";
-		try {
-			const payload: UpsertRarityRequest = {
-				name: name.trim(),
-				display_name: displayName.trim(),
-				image: image.trim(),
-				color: color.trim(),
-			};
-			const res =
-				editId === null
-					? await api.createRarity(payload)
-					: await api.updateRarity(editId, payload);
-			if (res.isErr()) throw res.error;
+		const payload: UpsertRarityRequest = {
+			name: name.trim(),
+			display_name: displayName.trim(),
+			image: image.trim(),
+			color: color.trim(),
+		};
+		const res =
+			editId === null
+				? await api.createRarity(payload)
+				: await api.updateRarity(editId, payload);
+		if (res.isErr()) {
+			setError(res.error);
+		} else {
 			hint = editId === null ? "Редкость создана." : "Редкость обновлена.";
 			formOpen = false;
 			editId = null;
 			await load();
-		} catch (err) {
-			setError(err);
-		} finally {
-			busy = false;
 		}
+		busy = false;
 	}
 
 	async function remove(id: number) {
-		if (!confirm("Удалить редкость? Слоты с этой редкостью останутся без неё."))
+		if (
+			!confirm(
+				"Удалить редкость? Слоты с этой редкостью будут удалены вместе с ней.",
+			)
+		)
 			return;
 		removeId = id;
 		error = "";
-		try {
-			const res = await api.deleteRarity(id);
-			if (res.isErr()) throw res.error;
+		const res = await api.deleteRarity(id);
+		if (res.isErr()) {
+			setError(res.error);
+		} else {
 			hint = "Редкость удалена.";
 			await load();
-		} catch (err) {
-			setError(err);
-		} finally {
-			removeId = null;
 		}
+		removeId = null;
 	}
 
 	onMount(() => {
-		load().catch(setError);
+		void load();
 	});
 </script>
 

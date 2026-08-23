@@ -4,25 +4,27 @@
 	import AccessKeyCard from "#lib/components/admin/widgets/AccessKeyCard.svelte";
 	import WidgetLinksCard from "#lib/components/admin/widgets/WidgetLinksCard.svelte";
 	import { onMount } from "svelte";
+	import { describeApiError } from "#lib/api-error-text";
 
 	let accessKey = $state("");
 	let loaded = $state(false);
 	let error = $state("");
 
 	function setError(err: unknown) {
-		error = err instanceof Error ? err.message : String(err);
+		error = describeApiError(err);
 	}
 
 	async function loadWak() {
 		const res = await api.getWidgetAccessKey();
-		if (res.isErr()) throw res.error;
+		if (res.isErr()) {
+			setError(res.error);
+			return;
+		}
 		accessKey = res.value.widget_access_key;
 	}
 
 	onMount(() => {
-		loadWak()
-			.catch(setError)
-			.finally(() => (loaded = true));
+		void loadWak().finally(() => (loaded = true));
 	});
 </script>
 

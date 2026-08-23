@@ -11,6 +11,7 @@
 	import IconTrash2 from "~icons/lucide/trash-2";
 	import { Alert, Button, Card, Section, TableWrap } from "@sapa-tv-ru/ui-kit";
 	import RouletteSlotForm from "#lib/components/admin/roulette/RouletteSlotForm.svelte";
+	import { describeApiError } from "#lib/api-error-text";
 
 	let slots = $state<RouletteSlotResponse[]>([]);
 	let rarities = $state<RarityResponse[]>([]);
@@ -34,18 +35,22 @@
 	const PERCENT = 100;
 
 	function setError(err: unknown) {
-		error = err instanceof Error ? err.message : String(err);
+		error = describeApiError(err);
 	}
 
 	async function load() {
 		error = "";
 		hint = "";
-		const [slotsRes, raritiesRes] = await Promise.all([
-			api.listSlots(),
-			api.listRarities(),
-		]);
-		if (slotsRes.isErr()) throw slotsRes.error;
-		if (raritiesRes.isErr()) throw raritiesRes.error;
+		const slotsRes = await api.listSlots();
+		if (slotsRes.isErr()) {
+			setError(slotsRes.error);
+			return;
+		}
+		const raritiesRes = await api.listRarities();
+		if (raritiesRes.isErr()) {
+			setError(raritiesRes.error);
+			return;
+		}
 		slots = slotsRes.value;
 		rarities = raritiesRes.value;
 		loaded = true;
@@ -78,43 +83,39 @@
 		if (!name.trim()) return;
 		busy = true;
 		error = "";
-		try {
-			const payload: UpsertRouletteSlotRequest = {
-				name: name.trim(),
-				rarity_id: rarityId,
-				weight: Math.max(0, Number.parseInt(weight, 10) || 0),
-				action: action.trim(),
-			};
-			const res =
-				editId === null
-					? await api.createSlot(payload)
-					: await api.updateSlot(editId, payload);
-			if (res.isErr()) throw res.error;
+		const payload: UpsertRouletteSlotRequest = {
+			name: name.trim(),
+			rarity_id: rarityId,
+			weight: Math.max(0, Number.parseInt(weight, 10) || 0),
+			action: action.trim(),
+		};
+		const res =
+			editId === null
+				? await api.createSlot(payload)
+				: await api.updateSlot(editId, payload);
+		if (res.isErr()) {
+			setError(res.error);
+		} else {
 			hint = editId === null ? "Слот создан." : "Слот обновлён.";
 			formOpen = false;
 			editId = null;
 			await load();
-		} catch (err) {
-			setError(err);
-		} finally {
-			busy = false;
 		}
+		busy = false;
 	}
 
 	async function remove(id: number) {
 		if (!confirm("Удалить слот рулетки?")) return;
 		removeId = id;
 		error = "";
-		try {
-			const res = await api.deleteSlot(id);
-			if (res.isErr()) throw res.error;
+		const res = await api.deleteSlot(id);
+		if (res.isErr()) {
+			setError(res.error);
+		} else {
 			hint = "Слот удалён.";
 			await load();
-		} catch (err) {
-			setError(err);
-		} finally {
-			removeId = null;
 		}
+		removeId = null;
 	}
 
 	function rarityOf(id: number): RarityResponse | undefined {
@@ -127,7 +128,7 @@
 	}
 
 	onMount(() => {
-		load().catch(setError);
+		void load();
 	});
 </script>
 

@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { WS_URL, wapi, type QueueEntry } from "#lib/api";
-	import { HttpError, TimeoutError } from "@sapa-tv-ru/api-client";
 	import { Badge, Button, Input, Section, TableWrap } from "@sapa-tv-ru/ui-kit";
 	import { onMount } from "svelte";
 	import IconCheck from "~icons/lucide/check";
@@ -10,6 +9,8 @@
 	import IconPlus from "~icons/lucide/plus";
 	import IconRefreshCw from "~icons/lucide/refresh-cw";
 	import IconX from "~icons/lucide/x";
+	import { describeApiError } from "#lib/api-error-text";
+	import { ApiErrorKind, normalizeApiError } from "#lib/internal/api-error";
 
 	const widgetAccessKey =
 		typeof window !== "undefined"
@@ -18,7 +19,6 @@
 			: "";
 
 	const LOG_LIMIT = 50;
-	const UNAUTHORIZED = 401;
 	const WS_RETRY_BASE_MS = 1_000;
 	const WS_RETRY_MAX_MS = 15_000;
 	const REFRESH_INTERVAL_MS = 10_000;
@@ -78,13 +78,11 @@
 	}
 
 	function isUnauthorized(err: unknown): boolean {
-		return err instanceof HttpError && err.status === UNAUTHORIZED;
+		return normalizeApiError(err).kind === ApiErrorKind.Unauthorized;
 	}
 
 	function describeError(err: unknown): string {
-		if (err instanceof HttpError) return `HTTP ${err.status}`;
-		if (err instanceof TimeoutError) return "timeout";
-		return "network error";
+		return describeApiError(err);
 	}
 
 	async function loadAll() {
@@ -121,20 +119,17 @@
 
 	async function dequeueNext() {
 		nextBusy = true;
-		try {
-			const res = await wapi.dequeueNext(wapiAuth);
-			res.match(
-				(data) =>
-					addEvent(
-						`🎰 ${data.slot?.name} → #${data.entry.id} (${data.entry.user_name})`,
-						"start",
-					),
-				(err) => addEvent(`❌ Dequeue: ${describeError(err)}`, "error"),
-			);
-			await loadAll();
-		} finally {
-			nextBusy = false;
-		}
+		const res = await wapi.dequeueNext(wapiAuth);
+		res.match(
+			(data) =>
+				addEvent(
+					`🎰 ${data.slot?.name} → #${data.entry.id} (${data.entry.user_name})`,
+					"start",
+				),
+			(err) => addEvent(`❌ Dequeue: ${describeError(err)}`, "error"),
+		);
+		await loadAll();
+		nextBusy = false;
 	}
 
 	async function completeEntry(id: number) {
@@ -159,19 +154,16 @@
 		const name = enqName.trim();
 		if (!name) return;
 		enqBusy = true;
-		try {
-			const res = await wapi.enqueueAnonymous({ name }, wapiAuth);
-			res.match(
-				() => {
-					enqName = "";
-					addEvent(`➕ ${name} добавлен`, "complete");
-				},
-				(err) => addEvent(`❌ Ошибка ${describeError(err)}`, "error"),
-			);
-			await loadAll();
-		} finally {
-			enqBusy = false;
-		}
+		const res = await wapi.enqueueAnonymous({ name }, wapiAuth);
+		res.match(
+			() => {
+				enqName = "";
+				addEvent(`➕ ${name} добавлен`, "complete");
+			},
+			(err) => addEvent(`❌ Ошибка ${describeError(err)}`, "error"),
+		);
+		await loadAll();
+		enqBusy = false;
 	}
 
 	let ws: WebSocket | null = null;

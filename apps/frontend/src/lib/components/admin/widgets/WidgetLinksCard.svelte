@@ -4,6 +4,7 @@
 	import { onDestroy } from "svelte";
 	import IconCheck from "~icons/lucide/check";
 	import IconCopy from "~icons/lucide/copy";
+	import { copyText } from "#lib/internal/clipboard";
 
 	interface Props {
 		accessKey: string;
@@ -23,14 +24,10 @@
 	}
 
 	async function copyLink(target: LinkTarget, path: string) {
-		try {
-			await navigator.clipboard.writeText(linkFor(path));
-			copied = target;
-			if (copyTimer) clearTimeout(copyTimer);
-			copyTimer = setTimeout(() => (copied = null), COPY_FEEDBACK_MS);
-		} catch {
-			// clipboard unavailable
-		}
+		if (!(await copyText(linkFor(path)))) return;
+		copied = target;
+		if (copyTimer) clearTimeout(copyTimer);
+		copyTimer = setTimeout(() => (copied = null), COPY_FEEDBACK_MS);
 	}
 
 	onDestroy(() => {

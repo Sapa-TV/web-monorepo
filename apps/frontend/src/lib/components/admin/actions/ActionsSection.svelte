@@ -20,6 +20,7 @@
 		Select,
 		TableWrap,
 	} from "@sapa-tv-ru/ui-kit";
+	import { describeApiError } from "#lib/api-error-text";
 
 	type KindType = ActionKind["type"];
 
@@ -38,14 +39,17 @@
 	let removeId = $state<number | null>(null);
 
 	function setError(err: unknown) {
-		error = err instanceof Error ? err.message : String(err);
+		error = describeApiError(err);
 	}
 
 	async function load() {
 		error = "";
 		hint = "";
 		const res = await api.listActions();
-		if (res.isErr()) throw res.error;
+		if (res.isErr()) {
+			setError(res.error);
+			return;
+		}
 		actions = res.value;
 		loaded = true;
 	}
@@ -87,41 +91,37 @@
 		if (!name.trim()) return;
 		busy = true;
 		error = "";
-		try {
-			const payload: UpsertActionRequest = {
-				name: name.trim(),
-				kind: buildKind(),
-				enabled,
-			};
-			const res =
-				editId === null
-					? await api.createAction(payload)
-					: await api.updateAction(editId, payload);
-			if (res.isErr()) throw res.error;
+		const payload: UpsertActionRequest = {
+			name: name.trim(),
+			kind: buildKind(),
+			enabled,
+		};
+		const res =
+			editId === null
+				? await api.createAction(payload)
+				: await api.updateAction(editId, payload);
+		if (res.isErr()) {
+			setError(res.error);
+		} else {
 			hint = editId === null ? "Действие создано." : "Действие обновлено.";
 			formOpen = false;
 			await load();
-		} catch (err) {
-			setError(err);
-		} finally {
-			busy = false;
 		}
+		busy = false;
 	}
 
 	async function remove(id: number) {
 		if (!confirm("Удалить действие?")) return;
 		removeId = id;
 		error = "";
-		try {
-			const res = await api.deleteAction(id);
-			if (res.isErr()) throw res.error;
+		const res = await api.deleteAction(id);
+		if (res.isErr()) {
+			setError(res.error);
+		} else {
 			hint = "Действие удалено.";
 			await load();
-		} catch (err) {
-			setError(err);
-		} finally {
-			removeId = null;
 		}
+		removeId = null;
 	}
 
 	function kindLabel(action: ActionResponse): string {
@@ -137,7 +137,7 @@
 	}
 
 	onMount(() => {
-		load().catch(setError);
+		void load();
 	});
 </script>
 

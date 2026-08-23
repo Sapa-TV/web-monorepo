@@ -12,6 +12,8 @@
 	import IconCheck from "~icons/lucide/check";
 	import IconCopy from "~icons/lucide/copy";
 	import IconRefreshCw from "~icons/lucide/refresh-cw";
+	import { copyText } from "#lib/internal/clipboard";
+	import { describeApiError } from "#lib/api-error-text";
 
 	interface Props {
 		accessKey: string;
@@ -30,34 +32,29 @@
 	const COPY_FEEDBACK_MS = 1500;
 
 	function setError(err: unknown) {
-		error = err instanceof Error ? err.message : String(err);
+		error = describeApiError(err);
 	}
 
 	async function copyWak() {
-		try {
-			await navigator.clipboard.writeText(accessKey);
-			copied = true;
+		copied = await copyText(accessKey);
+		if (copied) {
 			if (copyTimer) clearTimeout(copyTimer);
 			copyTimer = setTimeout(() => (copied = false), COPY_FEEDBACK_MS);
-		} catch {
-			// clipboard unavailable
 		}
 	}
 
 	async function rotateWak() {
 		wakBusy = true;
 		error = "";
-		try {
-			const res = await api.rotateWidgetAccessKey();
-			if (res.isErr()) throw res.error;
+		const res = await api.rotateWidgetAccessKey();
+		if (res.isErr()) {
+			setError(res.error);
+		} else {
 			rotateOpen = false;
 			onrotated();
 			hint = "Access key обновлён.";
-		} catch (err) {
-			setError(err);
-		} finally {
-			wakBusy = false;
 		}
+		wakBusy = false;
 	}
 
 	onDestroy(() => {
