@@ -38,7 +38,9 @@ describe("normalizeApiError", () => {
 
 	it("maps unknown statuses to HttpOther while preserving them", () => {
 		for (const status of [302, 418, 451]) {
-			const normalized = normalizeApiError(new HttpError(status, "text", "payload"));
+			const normalized = normalizeApiError(
+				new HttpError(status, "text", "payload"),
+			);
 			expect(normalized.kind).toBe(ApiErrorKind.HttpOther);
 			expect(normalized.status).toBe(status);
 		}
@@ -60,6 +62,12 @@ describe("normalizeApiError", () => {
 
 		const parse = normalizeApiError(new ParseError(new Error("bad json")));
 		expect(parse.kind).toBe(ApiErrorKind.Parse);
+	});
+
+	it("degrades unknown inputs to the Unknown kind", () => {
+		const normalized = normalizeApiError(new Error("something local"));
+		expect(normalized.kind).toBe(ApiErrorKind.Unknown);
+		expect(normalized.status).toBeUndefined();
 	});
 
 	it("produces an ApiError instance whose message names the kind", () => {

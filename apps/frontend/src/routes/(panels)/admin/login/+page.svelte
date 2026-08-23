@@ -11,12 +11,27 @@
 		GuardStatus,
 		startLogin,
 	} from "#lib/admin/session";
+	import { ApiError, ApiErrorKind } from "#lib/internal/api-error";
 
 	let busy = $state(true);
 	let error = $state("");
 
+	function loginErrorText(err: ApiError): string {
+		switch (err.kind) {
+			case ApiErrorKind.BadRequest:
+				return "Ошибка запуска авторизации: отсутствует twitch config.";
+			default:
+				return "Не удалось завершить вход через Twitch. Попробуй ещё раз.";
+		}
+	}
+
 	async function decideWhereToGo(): Promise<"panel" | "home" | null> {
-		const guard = await guardAdmin();
+		const guardRes = await guardAdmin();
+		if (guardRes.isErr()) {
+			error = loginErrorText(guardRes.error);
+			return null;
+		}
+		const guard = guardRes.value;
 		if (guard.status === GuardStatus.Admin) return "panel";
 		if (guard.status === GuardStatus.NotAdmin) return "home";
 		return null;
@@ -31,13 +46,13 @@
 	async function handleTwitchLogin() {
 		busy = true;
 		error = "";
-		try {
-			const authUrl = await startLogin();
-			location.assign(authUrl);
-		} catch (err) {
-			error = err instanceof Error ? err.message : String(err);
+		const res = await startLogin();
+		if (res.isErr()) {
+			error = loginErrorText(res.error);
 			busy = false;
+			return;
 		}
+		location.assign(res.value);
 	}
 
 	onMount(async () => {
@@ -53,21 +68,25 @@
 		}
 		const code = params.get("code");
 		const state = params.get("state");
-		try {
-			if (code && state) {
-				await completeLogin(code, state);
-				const where = await decideWhereToGo();
-				if (!where) throw new Error("Нет доступа к панели.");
-				await go(where);
-			} else if (await getSession()) {
-				const where = await decideWhereToGo();
-				if (where) await go(where);
+		if (code && state) {
+			const res = await completeLogin(code, state);
+			if (res.isErr()) {
+				error = loginErrorText(res.error);
+				busy = false;
+				return;
 			}
-		} catch (err) {
-			error = err instanceof Error ? err.message : String(err);
-		} finally {
-			busy = false;
+			const where = await decideWhereToGo();
+			if (!where) {
+				error = "Не удалось определить, куда перенаправить.";
+				busy = false;
+				return;
+			}
+			await go(where);
+		} else if (await getSession()) {
+			const where = await decideWhereToGo();
+			if (where) await go(where);
 		}
+		busy = false;
 	});
 </script>
 

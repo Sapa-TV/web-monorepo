@@ -21,21 +21,22 @@
 	}
 
 	onMount(async () => {
-		try {
-			const guard = await guardAdmin();
-			if (guard.status === GuardStatus.NotLoggedIn) {
-				await goto(resolve("admin/login"), { replaceState: true });
-				return;
-			}
-			if (guard.status === GuardStatus.NotAdmin) {
-				await goto(resolve(""), { replaceState: true });
-				return;
-			}
-			panelState.isRoot = guard.isRoot;
-			panelState.loaded = true;
-		} catch (err) {
-			setError(err);
+		const guardRes = await guardAdmin();
+		if (guardRes.isErr()) {
+			setError(guardRes.error);
+			return;
 		}
+		const guard = guardRes.value;
+		if (guard.status === GuardStatus.NotLoggedIn) {
+			await goto(resolve("admin/login"), { replaceState: true });
+			return;
+		}
+		if (guard.status === GuardStatus.NotAdmin) {
+			await goto(resolve(""), { replaceState: true });
+			return;
+		}
+		panelState.isRoot = guard.isRoot;
+		panelState.loaded = true;
 	});
 </script>
 

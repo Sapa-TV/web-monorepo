@@ -1,34 +1,17 @@
 import { api } from "#lib/api";
-import {
-	HttpError,
-	type TwitchAuthCallbackResponse,
-} from "@sapa-tv-ru/api-client";
+import type { TwitchAuthCallbackResponse } from "@sapa-tv-ru/api-client";
+import type { Result } from "neverthrow";
 
-const UNAUTHORIZED = 401;
-const FORBIDDEN = 403;
-const BAD_REQUEST = 400;
+import { ApiError, normalizeApiError } from "#lib/internal/api-error";
 
+/**
+ * Exchanges the OAuth code/state for bot credentials.
+ * Human-readable messages live in the calling route, keyed by `error.kind`.
+ */
 export async function completeCredsAuth(
 	code: string,
 	state: string,
-): Promise<TwitchAuthCallbackResponse> {
+): Promise<Result<TwitchAuthCallbackResponse, ApiError>> {
 	const res = await api.twitchAuthCallback({ code, state });
-	if (res.isErr()) {
-		const err = res.error;
-		if (err instanceof HttpError) {
-			if (err.status === UNAUTHORIZED || err.status === FORBIDDEN) {
-				throw new Error(
-					"Нет доступа: сессия истекла или у аккаунта нет прав root. Вернись на панель, перелогинься и попробуй снова.",
-				);
-			}
-			if (err.status === BAD_REQUEST) {
-				throw new Error(
-					"Не удалось завершить авторизацию: попробуй на панели «Авторизовать» ещё раз.",
-				);
-			}
-			throw new Error(`Twitch callback failed: HTTP ${err.status}`);
-		}
-		throw err;
-	}
-	return res.value;
+	return res.mapErr(normalizeApiError);
 }

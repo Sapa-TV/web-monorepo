@@ -22,6 +22,7 @@ import {
 	logout,
 	startLogin,
 } from "./session";
+import { ApiErrorKind } from "#lib/internal/api-error";
 
 const apiMock = api as unknown as Record<string, Mock>;
 
@@ -42,23 +43,33 @@ describe("admin session helpers", () => {
 			apiMock.startTwitchLogin.mockResolvedValue(
 				okAsync({ auth_url: "https://id.twitch.tv/oauth2/authorize" }),
 			);
-			await expect(startLogin()).resolves.toBe(
+
+			const result = await startLogin();
+
+			expect(result.isOk()).toBe(true);
+			expect(result._unsafeUnwrap()).toBe(
 				"https://id.twitch.tv/oauth2/authorize",
 			);
 		});
 
-		it("throws when the start call fails", async () => {
+		it("maps a 500 failure to Server kind", async () => {
 			apiMock.startTwitchLogin.mockResolvedValue(
 				errAsync(new HttpError(500, "Internal Server Error", null)),
 			);
-			await expect(startLogin()).rejects.toThrow();
+
+			const result = await startLogin();
+
+			expect(result._unsafeUnwrapErr().kind).toBe(ApiErrorKind.Server);
 		});
 
-		it("throws a user-facing error on 400 (missing twitch config)", async () => {
+		it("maps 400 to BadRequest kind (missing twitch config)", async () => {
 			apiMock.startTwitchLogin.mockResolvedValue(
 				errAsync(new HttpError(400, "Bad Request", null)),
 			);
-			await expect(startLogin()).rejects.toThrow();
+
+			const result = await startLogin();
+
+			expect(result._unsafeUnwrapErr().kind).toBe(ApiErrorKind.BadRequest);
 		});
 	});
 
@@ -80,19 +91,21 @@ describe("admin session helpers", () => {
 				state: "cafe",
 			});
 			expect(api.createSession).toHaveBeenCalledWith({ ticket: "ticket-1" });
-			expect(result).toEqual(session);
+			expect(result._unsafeUnwrap()).toEqual(session);
 		});
 
-		it("throws when the twitch callback returns an error", async () => {
+		it("fails with BadRequest when the twitch callback errors", async () => {
 			apiMock.twitchLoginCallback.mockResolvedValue(
 				errAsync(new HttpError(400, "Bad Request", null)),
 			);
 
-			await expect(completeLogin("abc", "cafe")).rejects.toThrow(/HTTP 400/);
+			const result = await completeLogin("abc", "cafe");
+
+			expect(result._unsafeUnwrapErr().kind).toBe(ApiErrorKind.BadRequest);
 			expect(api.createSession).not.toHaveBeenCalled();
 		});
 
-		it("throws when the ticket exchange fails", async () => {
+		it("propagates the ticket exchange failure", async () => {
 			apiMock.twitchLoginCallback.mockResolvedValue(
 				okAsync({
 					ticket: "ticket-1",
@@ -104,7 +117,9 @@ describe("admin session helpers", () => {
 				errAsync(new HttpError(400, "Bad Request", null)),
 			);
 
-			await expect(completeLogin("abc", "cafe")).rejects.toThrow();
+			const result = await completeLogin("abc", "cafe");
+
+			expect(result._unsafeUnwrapErr().kind).toBe(ApiErrorKind.BadRequest);
 		});
 	});
 
@@ -127,7 +142,10 @@ describe("admin session helpers", () => {
 			apiMock.getMe.mockResolvedValue(
 				errAsync(new HttpError(401, "Unauthorized", null)),
 			);
-			await expect(guardAdmin()).resolves.toEqual({
+
+			const result = await guardAdmin();
+
+			expect(result._unsafeUnwrap()).toEqual({
 				status: "not-logged-in",
 				isRoot: false,
 			});
@@ -138,7 +156,10 @@ describe("admin session helpers", () => {
 			apiMock.listAdmins.mockResolvedValue(
 				errAsync(new HttpError(403, "Forbidden", null)),
 			);
-			await expect(guardAdmin()).resolves.toEqual({
+
+			const result = await guardAdmin();
+
+			expect(result._unsafeUnwrap()).toEqual({
 				status: "not-admin",
 				isRoot: false,
 			});
@@ -156,16 +177,25 @@ describe("admin session helpers", () => {
 					},
 				]),
 			);
-			await expect(guardAdmin()).resolves.toEqual({
+
+			const result = await guardAdmin();
+
+			expect(result._unsafeUnwrap()).toEqual({
 				status: "admin",
 				isRoot: true,
 			});
 		});
 
-		it("rethrows non-http errors", async () => {
+		it("errs with Server kind on unexpected http failures", async () => {
 			apiMock.getMe.mockResolvedValue(okAsync(session));
-			apiMock.listAdmins.mockResolvedValue(errAsync(new Error("boom")));
-			await expect(guardAdmin()).rejects.toThrow("boom");
+			apiMock.listAdmins.mockResolvedValue(
+				errAsync(new HttpError(503, "Service Unavailable", null)),
+			);
+
+			const result = await guardAdmin();
+
+			expect(result.isErr()).toBe(true);
+			expect(result._unsafeUnwrapErr().kind).toBe(ApiErrorKind.Server);
 		});
 	});
 
@@ -189,16 +219,22 @@ describe("admin session helpers", () => {
 					},
 				]),
 			);
-			const admins = await listAdmins();
+
+			const result = await listAdmins();
+
+			const admins = result._unsafeUnwrap();
 			expect(admins).toHaveLength(1);
 			expect(admins[0].twitch_id).toBe("1000");
 		});
 
-		it("throws when the request fails", async () => {
+		it("maps failures to Server kind", async () => {
 			apiMock.listAdmins.mockResolvedValue(
 				errAsync(new HttpError(503, "Service Unavailable", null)),
 			);
-			await expect(listAdmins()).rejects.toThrow();
+
+			const result = await listAdmins();
+
+			expect(result._unsafeUnwrapErr().kind).toBe(ApiErrorKind.Server);
 		});
 	});
 });

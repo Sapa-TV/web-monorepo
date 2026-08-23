@@ -2,6 +2,7 @@
 	import { onMount } from "svelte";
 	import { AuthCard } from "@sapa-tv-ru/ui-kit";
 	import { completeCredsAuth } from "#lib/admin/creds";
+	import { ApiError, ApiErrorKind } from "#lib/internal/api-error";
 
 	let busy = $state(true);
 	let status = $state("");
@@ -31,12 +32,24 @@
 				return;
 			}
 			status = "Авторизация...";
-			try {
-				await completeCredsAuth(code, state);
-				status = "Twitch credentials авторизованы.";
-				await closeIfPopup();
-			} catch (err) {
-				error = err instanceof Error ? err.message : String(err);
+			const res = await completeCredsAuth(code, state);
+			if (res.isErr()) {
+				error = describeCredsError(res.error);
+				return;
+			}
+			status = "Twitch credentials авторизованы.";
+			await closeIfPopup();
+		}
+
+		function describeCredsError(err: ApiError): string {
+			switch (err.kind) {
+				case ApiErrorKind.Unauthorized:
+				case ApiErrorKind.Forbidden:
+					return "Нет доступа: сессия истекла или у аккаунта нет прав root. Вернись на панель, перелогинься и попробуй снова.";
+				case ApiErrorKind.BadRequest:
+					return "Не удалось завершить авторизацию: попробуй на панели «Авторизовать» ещё раз.";
+				default:
+					return "Не удалось сохранить Twitch credentials. Попробуй ещё раз.";
 			}
 		}
 

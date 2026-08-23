@@ -22,6 +22,7 @@ export const ApiErrorKind = {
 	Timeout: "timeout",
 	Network: "network",
 	Parse: "parse",
+	Unknown: "unknown",
 } as const;
 
 export type ApiErrorKind = (typeof ApiErrorKind)[keyof typeof ApiErrorKind];
@@ -40,9 +41,6 @@ export class ApiError extends Error {
 		this.body = body;
 	}
 }
-
-type ApiClientFailure =
-	HttpError<unknown> | TimeoutError | NetworkError | ParseError;
 
 const HTTP_BAD_REQUEST = 400;
 const HTTP_UNAUTHORIZED = 401;
@@ -76,7 +74,12 @@ function kindFromStatus(status: number): ApiErrorKind {
 	return ApiErrorKind.HttpOther;
 }
 
-export function normalizeApiError(err: ApiClientFailure): ApiError {
+/**
+ * Normalizes anything the generated client (or an unexpected runtime path)
+ * can surface into a stable ApiError. Unknown inputs degrade to the
+ * `Unknown` kind instead of being rethrown.
+ */
+export function normalizeApiError(err: unknown): ApiError {
 	if (err instanceof HttpError) {
 		return new ApiError(kindFromStatus(err.status), err.status, err.data);
 	}
@@ -88,5 +91,8 @@ export function normalizeApiError(err: ApiClientFailure): ApiError {
 	if (err instanceof NetworkError) {
 		return new ApiError(ApiErrorKind.Network, undefined, { cause: err.cause });
 	}
-	return new ApiError(ApiErrorKind.Parse, undefined, { cause: err.cause });
+	if (err instanceof ParseError) {
+		return new ApiError(ApiErrorKind.Parse, undefined, { cause: err.cause });
+	}
+	return new ApiError(ApiErrorKind.Unknown, undefined, { cause: err });
 }

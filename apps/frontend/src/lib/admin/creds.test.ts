@@ -10,6 +10,7 @@ vi.mock("#lib/api", () => ({
 
 import { api } from "#lib/api";
 import { completeCredsAuth } from "./creds";
+import { ApiErrorKind } from "#lib/internal/api-error";
 
 const apiMock = api as unknown as Record<string, Mock>;
 
@@ -32,7 +33,8 @@ describe("completeCredsAuth", () => {
 			code: "abc",
 			state: "cafe",
 		});
-		expect(result).toEqual(credsResult);
+		expect(result.isOk()).toBe(true);
+		expect(result._unsafeUnwrap()).toEqual(credsResult);
 	});
 
 	it("passes code/state into the query as-is", async () => {
@@ -46,33 +48,46 @@ describe("completeCredsAuth", () => {
 		});
 	});
 
-	it("throws a user-facing message on 401 without a root session", async () => {
+	it("maps 401 to Unauthorized kind", async () => {
 		apiMock.twitchAuthCallback.mockResolvedValue(
 			errAsync(new HttpError(401, "Unauthorized", null)),
 		);
-		await expect(completeCredsAuth("abc", "cafe")).rejects.toThrow(
-			/сессия истекла/,
-		);
+
+		const result = await completeCredsAuth("abc", "cafe");
+
+		expect(result.isErr()).toBe(true);
+		expect(result._unsafeUnwrapErr().kind).toBe(ApiErrorKind.Unauthorized);
 	});
 
-	it("throws a user-facing message on 403 without root rights", async () => {
+	it("maps 403 to Forbidden kind", async () => {
 		apiMock.twitchAuthCallback.mockResolvedValue(
 			errAsync(new HttpError(403, "Forbidden", null)),
 		);
-		await expect(completeCredsAuth("abc", "cafe")).rejects.toThrow(/root/);
+
+		const result = await completeCredsAuth("abc", "cafe");
+
+		expect(result._unsafeUnwrapErr().kind).toBe(ApiErrorKind.Forbidden);
 	});
 
-	it("throws a user-facing message on 400 (flow never started / retry)", async () => {
+	it("maps 400 to BadRequest kind", async () => {
 		apiMock.twitchAuthCallback.mockResolvedValue(
 			errAsync(new HttpError(400, "Bad Request", null)),
 		);
-		await expect(completeCredsAuth("abc", "cafe")).rejects.toThrow(/ещё раз/);
+
+		const result = await completeCredsAuth("abc", "cafe");
+
+		expect(result._unsafeUnwrapErr().kind).toBe(ApiErrorKind.BadRequest);
 	});
 
-	it("throws a generic message on unexpected status", async () => {
+	it("maps 500 to Server kind while keeping the status", async () => {
 		apiMock.twitchAuthCallback.mockResolvedValue(
 			errAsync(new HttpError(500, "Internal Server Error", null)),
 		);
-		await expect(completeCredsAuth("abc", "cafe")).rejects.toThrow(/HTTP 500/);
+
+		const result = await completeCredsAuth("abc", "cafe");
+
+		const err = result._unsafeUnwrapErr();
+		expect(err.kind).toBe(ApiErrorKind.Server);
+		expect(err.status).toBe(500);
 	});
 });

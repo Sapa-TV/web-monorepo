@@ -1,13 +1,12 @@
 import { api } from "#lib/api";
-import {
-	HttpError,
-	type AdminResponse,
-	type SessionResponse,
-} from "@sapa-tv-ru/api-client";
+import type { AdminResponse, SessionResponse } from "@sapa-tv-ru/api-client";
+import { type Result, err, errAsync, okAsync } from "neverthrow";
 
-const UNAUTHORIZED = 401;
-const FORBIDDEN = 403;
-const BAD_REQUEST = 400;
+import {
+	ApiError,
+	ApiErrorKind,
+	normalizeApiError,
+} from "#lib/internal/api-error";
 
 export const GuardStatus = {
 	Admin: "admin",
@@ -22,33 +21,24 @@ export interface AdminGuard {
 	isRoot: boolean;
 }
 
-export async function startLogin(): Promise<string> {
+export async function startLogin(): Promise<Result<string, ApiError>> {
 	const res = await api.startTwitchLogin();
-	if (res.isErr()) {
-		const err = res.error;
-		if (err instanceof HttpError && err.status === BAD_REQUEST) {
-			throw new Error("Ошибка сервера: отсутствует twitch config");
-		}
-		throw err;
-	}
-	return res.value.auth_url;
+	return res.map((r) => r.auth_url).mapErr(normalizeApiError);
 }
 
 export async function completeLogin(
 	code: string,
 	state: string,
-): Promise<SessionResponse> {
-	const cbRes = await api.twitchLoginCallback({ code, state });
-	if (cbRes.isErr()) {
-		const err = cbRes.error;
-		if (err instanceof HttpError) {
-			throw new Error(`Twitch callback failed: HTTP ${err.status}`);
-		}
-		throw err;
+): Promise<Result<SessionResponse, ApiError>> {
+	const cb = await api.twitchLoginCallback({ code, state });
+	const normalized = cb.mapErr(normalizeApiError);
+	if (normalized.isErr()) {
+		return err(normalized.error);
 	}
-	const sessionRes = await api.createSession({ ticket: cbRes.value.ticket });
-	if (sessionRes.isErr()) throw sessionRes.error;
-	return sessionRes.value;
+	const session = await api.createSession({
+		ticket: normalized.value.ticket,
+	});
+	return session.mapErr(normalizeApiError);
 }
 
 export async function getSession(): Promise<SessionResponse | null> {
@@ -61,27 +51,32 @@ export async function logout(): Promise<void> {
 	await api.logout();
 }
 
-export async function guardAdmin(): Promise<AdminGuard> {
+/**
+ * Classifies the admin session. Returns Err only for unexpected failures
+ * (network problems, 5xx); 401/403 are expressed as guard statuses.
+ */
+export async function guardAdmin(): Promise<Result<AdminGuard, ApiError>> {
 	const session = await getSession();
-	if (!session) return { status: GuardStatus.NotLoggedIn, isRoot: false };
+	if (!session)
+		return okAsync({ status: GuardStatus.NotLoggedIn, isRoot: false });
+
 	const res = await api.listAdmins();
-	if (res.isErr()) {
-		const err = res.error;
-		if (err instanceof HttpError) {
-			if (err.status === UNAUTHORIZED) {
-				return { status: GuardStatus.NotLoggedIn, isRoot: false };
-			}
-			if (err.status === FORBIDDEN) {
-				return { status: GuardStatus.NotAdmin, isRoot: false };
-			}
-		}
-		throw err;
+	if (res.isOk()) {
+		return okAsync({ status: GuardStatus.Admin, isRoot: session.is_root });
 	}
-	return { status: GuardStatus.Admin, isRoot: session.is_root };
+
+	const err = normalizeApiError(res.error);
+	switch (err.kind) {
+		case ApiErrorKind.Unauthorized:
+			return okAsync({ status: GuardStatus.NotLoggedIn, isRoot: false });
+		case ApiErrorKind.Forbidden:
+			return okAsync({ status: GuardStatus.NotAdmin, isRoot: false });
+		default:
+			return errAsync(err);
+	}
 }
 
-export async function listAdmins(): Promise<AdminResponse[]> {
+export async function listAdmins(): Promise<Result<AdminResponse[], ApiError>> {
 	const res = await api.listAdmins();
-	if (res.isErr()) throw res.error;
-	return res.value;
+	return res.mapErr(normalizeApiError);
 }
