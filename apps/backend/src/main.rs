@@ -24,6 +24,7 @@ use backend::state::{
 };
 use backend::widget_api;
 use tokio::net::TcpListener;
+use tokio::select;
 use tokio::signal::ctrl_c;
 use tokio::task::JoinHandle;
 use tokio::time;
@@ -135,7 +136,7 @@ async fn main() {
     let listener = TcpListener::bind(&addr).await.expect("failed to bind");
     info!("listening on http://{}", addr);
 
-    start_background_tasks(&state);
+    start_background_tasks(&state, &shutdown);
 
     tokio::spawn(signal_listener(shutdown.clone()));
 
@@ -145,18 +146,23 @@ async fn main() {
         .expect("server failed");
 }
 
-fn start_background_tasks(state: &AppState) {
-    tokio::spawn(queue_timeout_task(Arc::clone(&state.queue_service)));
+fn start_background_tasks(state: &AppState, shutdown: &CancellationToken) {
+    tokio::spawn(queue_timeout_task(
+        Arc::clone(&state.queue_service),
+        shutdown.child_token(),
+    ));
     tokio::spawn(queue_purge_task(
         Arc::clone(&state.queue_service),
         Arc::clone(&state.config),
+        shutdown.child_token(),
     ));
     tokio::spawn(session_prune_task(
         Arc::clone(&state.session_service),
         Arc::clone(&state.config),
+        shutdown.child_token(),
     ));
 
-    runtime::start_rule_pipeline(state);
+    runtime::start_rule_pipeline(state, shutdown);
 }
 
 async fn signal_listener(token: CancellationToken) {
@@ -184,29 +190,49 @@ async fn signal_listener(token: CancellationToken) {
     token.cancel();
 }
 
-async fn queue_timeout_task(queue_service: Arc<AppQueueService>) {
+async fn queue_timeout_task(queue_service: Arc<AppQueueService>, shutdown: CancellationToken) {
     loop {
-        time::sleep(queue_service.timeout()).await;
+        select! {
+            biased;
+            _ = shutdown.cancelled() => break,
+            _ = time::sleep(queue_service.timeout()) => {},
+        }
         if let Err(e) = queue_service.mark_timed_out().await {
             tracing::error!("mark_timed_out failed: {e}");
         }
     }
 }
 
-async fn queue_purge_task(queue_service: Arc<AppQueueService>, config: Arc<AppConfigStore>) {
+async fn queue_purge_task(
+    queue_service: Arc<AppQueueService>,
+    config: Arc<AppConfigStore>,
+    shutdown: CancellationToken,
+) {
     loop {
         let interval = Duration::from_secs(config.queue_cleanup_interval_secs());
-        time::sleep(interval).await;
+        select! {
+            biased;
+            _ = shutdown.cancelled() => break,
+            _ = time::sleep(interval) => {},
+        }
         if let Err(e) = queue_service.purge_expired().await {
             tracing::error!("queue purge_expired failed: {e}");
         }
     }
 }
 
-async fn session_prune_task(session_service: Arc<AppSessionService>, config: Arc<AppConfigStore>) {
+async fn session_prune_task(
+    session_service: Arc<AppSessionService>,
+    config: Arc<AppConfigStore>,
+    shutdown: CancellationToken,
+) {
     loop {
         let interval = Duration::from_secs(config.sessions_cleanup_interval_secs());
-        time::sleep(interval).await;
+        select! {
+            biased;
+            _ = shutdown.cancelled() => break,
+            _ = time::sleep(interval) => {},
+        }
         if let Err(e) = session_service.prune_expired().await {
             tracing::error!("session prune_expired failed: {e}");
         }
