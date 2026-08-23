@@ -231,23 +231,18 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use chrono::Utc;
 
-    use crate::db::sqlite::queue::SqliteQueueRepository;
-    use crate::db::sqlite::test_pool;
     use crate::error::QueueServiceError;
     use crate::queue::entry::QueueStatus;
     use crate::roulette::rarity::{Rarity, RarityId};
     use crate::roulette::slot_service::{RouletteSlot, RouletteSlotId};
-    use crate::state::AppState;
-    use crate::test_fixtures::{test_state, test_state_with};
+    use crate::test_fixtures::{InMemoryAppState, test_state_inmemory};
     use crate::user::UserId;
 
     use super::*;
 
-    async fn setup_slots(state: &AppState) -> UserId {
+    async fn setup_slots(state: &InMemoryAppState) -> UserId {
         state
             .rarity_service
             .save(Rarity::new(
@@ -275,7 +270,7 @@ mod tests {
 
     #[tokio::test]
     async fn dequeue_next_returns_200() {
-        let state = test_state().await;
+        let (state, _queue_repo) = test_state_inmemory().await;
         let user_id = setup_slots(&state).await;
         state.queue_service.enqueue(user_id, "user1").await.unwrap();
 
@@ -287,7 +282,7 @@ mod tests {
 
     #[tokio::test]
     async fn dequeue_next_returns_409_when_already_active() {
-        let state = test_state().await;
+        let (state, _queue_repo) = test_state_inmemory().await;
         let user_id = setup_slots(&state).await;
         state.queue_service.enqueue(user_id, "user1").await.unwrap();
         state.queue_service.dequeue_next().await.unwrap();
@@ -298,7 +293,7 @@ mod tests {
 
     #[tokio::test]
     async fn dequeue_next_parallel_only_one_spin() {
-        let state = test_state().await;
+        let (state, _queue_repo) = test_state_inmemory().await;
         let user_1 = setup_slots(&state).await;
         let user_2 = state.user_service.create("user2").await.unwrap().id;
         state.queue_service.enqueue(user_1, "user1").await.unwrap();
@@ -321,9 +316,7 @@ mod tests {
 
     #[tokio::test]
     async fn dequeue_next_retries_error_entry() {
-        let (pool, _path) = test_pool().await;
-        let queue_repo = Arc::new(SqliteQueueRepository::new(pool.clone()));
-        let state = test_state_with(pool, Some(Arc::clone(&queue_repo))).await;
+        let (state, queue_repo) = test_state_inmemory().await;
         let user_id = setup_slots(&state).await;
         state.queue_service.enqueue(user_id, "user1").await.unwrap();
 
@@ -336,7 +329,7 @@ mod tests {
 
     #[tokio::test]
     async fn dequeue_next_no_slots_no_orphan() {
-        let state = test_state().await;
+        let (state, _queue_repo) = test_state_inmemory().await;
         let user_id = state.user_service.create("user1").await.unwrap().id;
         state.queue_service.enqueue(user_id, "user1").await.unwrap();
 
@@ -353,7 +346,7 @@ mod tests {
 
     #[tokio::test]
     async fn complete_parallel_only_one_success() {
-        let state = test_state().await;
+        let (state, _queue_repo) = test_state_inmemory().await;
         let user_id = setup_slots(&state).await;
         state.queue_service.enqueue(user_id, "user1").await.unwrap();
         let (entry, _) = state.queue_service.dequeue_next().await.unwrap();
@@ -377,7 +370,7 @@ mod tests {
 
     #[tokio::test]
     async fn list_status_query_is_case_insensitive() {
-        let state = test_state().await;
+        let (state, _queue_repo) = test_state_inmemory().await;
         let user_id = setup_slots(&state).await;
         state.queue_service.enqueue(user_id, "user1").await.unwrap();
 
@@ -393,7 +386,7 @@ mod tests {
 
     #[tokio::test]
     async fn list_is_paginated_with_cursor() {
-        let state = test_state().await;
+        let (state, _queue_repo) = test_state_inmemory().await;
         let user_id = state.user_service.create("user1").await.unwrap().id;
         for _ in 0..3 {
             state.queue_service.enqueue(user_id, "user1").await.unwrap();
@@ -414,7 +407,7 @@ mod tests {
 
     #[tokio::test]
     async fn enqueue_anonymous_reuses_single_guest() {
-        let state = test_state().await;
+        let (state, _queue_repo) = test_state_inmemory().await;
 
         let guest_1 = state.user_service.guest_user_id().await.unwrap();
         let first = state
