@@ -1,10 +1,28 @@
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Duration;
 
-use tokio::task::{AbortHandle, JoinHandle};
+use tokio::task::JoinHandle;
+use tokio::time::timeout;
+use tokio_util::sync::CancellationToken;
 
 use crate::ingress::platform::EventSink;
 use crate::platform::{PlatformCredentialRepository, PlatformCredentialService, PlatformId};
+
+const INGRESS_STOP_GRACE: Duration = Duration::from_secs(5);
+
+struct RunningIngress {
+    join: JoinHandle<()>,
+    token: CancellationToken,
+}
+
+async fn stop_ingress(platform: PlatformId, mut ingress: RunningIngress, grace: Duration) {
+    ingress.token.cancel();
+    if timeout(grace, &mut ingress.join).await.is_err() {
+        tracing::warn!(?platform, "ingress graceful stop timed out; aborting");
+        ingress.join.abort();
+    }
+}
 
 #[non_exhaustive]
 pub struct IngressSupervisor<C>
@@ -33,29 +51,53 @@ where
     }
 
     /// Reconciles once at startup, then on every lifecycle signal.
-    pub async fn run<F>(self, spawn: F)
+    /// Cancelling `shutdown` stops the supervisor and every managed ingress.
+    pub async fn run<F>(self, spawn: F, shutdown: CancellationToken)
     where
-        F: Fn(PlatformId, Arc<PlatformCredentialService<C>>, EventSink) -> Option<JoinHandle<()>>
+        F: Fn(
+                PlatformId,
+                Arc<PlatformCredentialService<C>>,
+                EventSink,
+                CancellationToken,
+            ) -> Option<JoinHandle<()>>
             + Send
             + Sync
             + 'static,
     {
-        let mut running: HashMap<PlatformId, AbortHandle> = HashMap::new();
+        let mut running: HashMap<PlatformId, RunningIngress> = HashMap::new();
         let mut lifecycle = self.credentials.subscribe_lifecycle();
 
-        self.reconcile(&spawn, &mut running).await;
+        self.reconcile(&spawn, &shutdown, &mut running).await;
 
         loop {
-            if lifecycle.changed().await.is_err() {
-                break;
+            tokio::select! {
+                _ = shutdown.cancelled() => break,
+                changed = lifecycle.changed() => {
+                    if changed.is_err() {
+                        break;
+                    }
+                }
             }
-            self.reconcile(&spawn, &mut running).await;
+            self.reconcile(&spawn, &shutdown, &mut running).await;
+        }
+
+        for (platform, ingress) in running {
+            stop_ingress(platform, ingress, INGRESS_STOP_GRACE).await;
         }
     }
 
-    async fn reconcile<F>(&self, spawn: &F, running: &mut HashMap<PlatformId, AbortHandle>)
-    where
-        F: Fn(PlatformId, Arc<PlatformCredentialService<C>>, EventSink) -> Option<JoinHandle<()>>
+    async fn reconcile<F>(
+        &self,
+        spawn: &F,
+        shutdown: &CancellationToken,
+        running: &mut HashMap<PlatformId, RunningIngress>,
+    ) where
+        F: Fn(
+                PlatformId,
+                Arc<PlatformCredentialService<C>>,
+                EventSink,
+                CancellationToken,
+            ) -> Option<JoinHandle<()>>
             + Send
             + Sync,
     {
@@ -71,15 +113,19 @@ where
             match (configured, is_running) {
                 (false, false) => {}
                 (false, true) => {
-                    let handle = running.remove(&platform).expect("running platform");
-                    handle.abort();
+                    let ingress = running.remove(&platform).expect("running platform");
+                    stop_ingress(platform, ingress, INGRESS_STOP_GRACE).await;
                     tracing::info!(?platform, "ingress supervisor: stopped");
                 }
                 (true, false) => {
-                    if let Some(handle) =
-                        spawn(platform, Arc::clone(&self.credentials), self.sink.clone())
-                    {
-                        running.insert(platform, handle.abort_handle());
+                    let token = shutdown.child_token();
+                    if let Some(join) = spawn(
+                        platform,
+                        Arc::clone(&self.credentials),
+                        self.sink.clone(),
+                        token.clone(),
+                    ) {
+                        running.insert(platform, RunningIngress { join, token });
                         tracing::info!(?platform, "ingress supervisor: started");
                     } else {
                         tracing::warn!(
@@ -89,12 +135,16 @@ where
                     }
                 }
                 (true, true) => {
-                    let handle = running.remove(&platform).expect("running platform");
-                    handle.abort();
-                    if let Some(handle) =
-                        spawn(platform, Arc::clone(&self.credentials), self.sink.clone())
-                    {
-                        running.insert(platform, handle.abort_handle());
+                    let ingress = running.remove(&platform).expect("running platform");
+                    stop_ingress(platform, ingress, INGRESS_STOP_GRACE).await;
+                    let token = shutdown.child_token();
+                    if let Some(join) = spawn(
+                        platform,
+                        Arc::clone(&self.credentials),
+                        self.sink.clone(),
+                        token.clone(),
+                    ) {
+                        running.insert(platform, RunningIngress { join, token });
                         tracing::info!(?platform, "ingress supervisor: restarted");
                     } else {
                         tracing::warn!(
@@ -114,11 +164,12 @@ mod tests {
     use std::future::pending;
     use std::sync::Arc;
     use std::sync::Mutex;
-    use std::time::Duration;
+    use std::time::{Duration, Instant};
 
     use tokio::sync::mpsc;
     use tokio::task::{AbortHandle, JoinHandle};
-    use tokio::time::sleep;
+    use tokio::time::{sleep, timeout};
+    use tokio_util::sync::CancellationToken;
 
     use crate::db::inmemory_platform_credential::InMemoryPlatformCredentialRepository;
     use crate::ingress::event::PlatformEvent;
@@ -158,6 +209,7 @@ mod tests {
             PlatformId,
             Arc<PlatformCredentialService<C>>,
             EventSink,
+            CancellationToken,
         ) -> Option<JoinHandle<()>>
         + Send
         + Sync
@@ -167,10 +219,10 @@ mod tests {
         {
             let spawns = Arc::clone(&self.spawns);
             let handles = Arc::clone(&self.handles);
-            move |platform, _credentials, _sink| {
+            move |platform, _credentials, _sink, token| {
                 spawns.lock().unwrap().push(platform);
-                let handle = tokio::spawn(async {
-                    pending::<()>().await;
+                let handle = tokio::spawn(async move {
+                    token.cancelled().await;
                 });
                 let abort = handle.abort_handle();
                 handles.lock().unwrap().push(abort);
@@ -227,14 +279,18 @@ mod tests {
         let factory = stub.factory();
         let mut running = HashMap::new();
 
-        supervisor.reconcile(&factory, &mut running).await;
+        supervisor
+            .reconcile(&factory, &CancellationToken::new(), &mut running)
+            .await;
         assert!(running.is_empty());
 
         credentials
             .save_credential(PlatformId::TWITCH, "tok-1")
             .await
             .unwrap();
-        supervisor.reconcile(&factory, &mut running).await;
+        supervisor
+            .reconcile(&factory, &CancellationToken::new(), &mut running)
+            .await;
 
         assert_eq!(
             stub.spawns.lock().unwrap().as_slice(),
@@ -256,14 +312,18 @@ mod tests {
             .save_credential(PlatformId::TWITCH, "tok-1")
             .await
             .unwrap();
-        supervisor.reconcile(&factory, &mut running).await;
+        supervisor
+            .reconcile(&factory, &CancellationToken::new(), &mut running)
+            .await;
         assert_eq!(stub.handles.lock().unwrap().len(), 1);
 
         credentials
             .save_credential(PlatformId::TWITCH, "tok-2")
             .await
             .unwrap();
-        supervisor.reconcile(&factory, &mut running).await;
+        supervisor
+            .reconcile(&factory, &CancellationToken::new(), &mut running)
+            .await;
 
         assert_eq!(
             stub.spawns.lock().unwrap().len(),
@@ -287,14 +347,18 @@ mod tests {
             .save_credential(PlatformId::TWITCH, "tok-1")
             .await
             .unwrap();
-        supervisor.reconcile(&factory, &mut running).await;
+        supervisor
+            .reconcile(&factory, &CancellationToken::new(), &mut running)
+            .await;
         assert_eq!(stub.handles.lock().unwrap().len(), 1);
 
         credentials
             .clear_credential(PlatformId::TWITCH)
             .await
             .unwrap();
-        supervisor.reconcile(&factory, &mut running).await;
+        supervisor
+            .reconcile(&factory, &CancellationToken::new(), &mut running)
+            .await;
 
         assert!(
             running.is_empty(),
@@ -330,8 +394,12 @@ mod tests {
             .save_credential(PlatformId::TWITCH, "tok-1")
             .await
             .unwrap();
-        supervisor.reconcile(&factory, &mut running).await;
-        supervisor2.reconcile(&factory2, &mut running2).await;
+        supervisor
+            .reconcile(&factory, &CancellationToken::new(), &mut running)
+            .await;
+        supervisor2
+            .reconcile(&factory2, &CancellationToken::new(), &mut running2)
+            .await;
 
         assert!(
             running.is_empty(),
@@ -354,7 +422,8 @@ mod tests {
         let spawns = Arc::clone(&stub.spawns);
         let handles = Arc::clone(&stub.handles);
 
-        let task = tokio::spawn(supervisor.run(stub.factory()));
+        let shutdown = CancellationToken::new();
+        let task = tokio::spawn(supervisor.run(stub.factory(), shutdown));
 
         credentials
             .save_credential(PlatformId::TWITCH, "tok-1")
@@ -395,7 +464,8 @@ mod tests {
         let spawns = Arc::clone(&stub.spawns);
         let handles = Arc::clone(&stub.handles);
 
-        let task = tokio::spawn(supervisor.run(stub.factory()));
+        let shutdown = CancellationToken::new();
+        let task = tokio::spawn(supervisor.run(stub.factory(), shutdown.clone()));
 
         wait_for_spawns(1, &spawns).await;
 
@@ -405,6 +475,29 @@ mod tests {
             .unwrap();
         wait_for_finished(1, &handles).await;
 
-        task.abort();
+        shutdown.cancel();
+        timeout(Duration::from_secs(2), task)
+            .await
+            .unwrap()
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn stop_ingress_aborts_task_that_ignores_cancellation() {
+        let join = tokio::spawn(async {
+            pending::<()>().await;
+        });
+        let ingress = super::RunningIngress {
+            join,
+            token: CancellationToken::new(),
+        };
+
+        let start = Instant::now();
+        super::stop_ingress(PlatformId::TWITCH, ingress, Duration::from_millis(50)).await;
+
+        assert!(
+            start.elapsed() >= Duration::from_millis(50),
+            "stop must wait out the grace period before aborting"
+        );
     }
 }

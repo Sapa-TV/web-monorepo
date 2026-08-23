@@ -80,10 +80,12 @@ async fn main() {
         None => &[],
     };
     let twitch_config = config_store.twitch().map(|t| Arc::new(t.clone()));
+    let shutdown = CancellationToken::new();
     let build_ingress =
         move |platform: PlatformId,
               credentials: Arc<PlatformCredentialService<SqlitePlatformCredentialRepository>>,
-              sink: EventSink|
+              sink: EventSink,
+              token: CancellationToken|
               -> Option<JoinHandle<()>> {
             match platform {
                 PlatformId::TWITCH => match &twitch_config {
@@ -91,11 +93,18 @@ async fn main() {
                         let config = Arc::clone(config);
                         Some(tokio::spawn(async move {
                             let service = TwitchPlatformService::new(config, credentials);
-                            if let Err(e) = service.run(sink).await {
-                                tracing::error!(
-                                    "{} ingress stopped: {e}",
-                                    service.platform().as_name()
-                                );
+                            tokio::select! {
+                                _ = token.cancelled() => {
+                                    tracing::info!("twitch ingress cancelled");
+                                }
+                                result = service.run(sink) => {
+                                    if let Err(e) = result {
+                                        tracing::error!(
+                                            "{} ingress stopped: {e}",
+                                            service.platform().as_name()
+                                        );
+                                    }
+                                }
                             }
                         }))
                     }
@@ -109,7 +118,7 @@ async fn main() {
         state.ingress.sink(),
         platforms,
     );
-    tokio::spawn(supervisor.run(build_ingress));
+    tokio::spawn(supervisor.run(build_ingress, shutdown.clone()));
     let cors = match config_store.cors_origins() {
         Some(origins) => {
             let origins: Vec<HeaderValue> = origins.iter().filter_map(|o| o.parse().ok()).collect();
@@ -135,7 +144,6 @@ async fn main() {
 
     start_background_tasks(&state);
 
-    let shutdown = CancellationToken::new();
     tokio::spawn(signal_listener(shutdown.clone()));
 
     axum::serve(listener, app)
