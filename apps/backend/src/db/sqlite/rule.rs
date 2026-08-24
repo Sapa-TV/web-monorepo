@@ -20,10 +20,12 @@ impl SqliteRuleRepository {
 }
 
 fn trigger_to_str(trigger: RuleTrigger) -> &'static str {
-    match trigger {
-        RuleTrigger::ChatMessage => "chat_message",
-        RuleTrigger::RewardRedemption => "reward_redemption",
-    }
+    <&'static str>::from(&trigger)
+}
+
+fn trigger_from_str(trigger: &str) -> Result<RuleTrigger, RepositoryError> {
+    RuleTrigger::try_from(trigger)
+        .map_err(|_| RepositoryError::Database(format!("invalid rule trigger: {trigger}")))
 }
 
 fn parse_conditions(conditions: &str) -> Result<RuleConditions, RepositoryError> {
@@ -44,15 +46,7 @@ struct RuleRow {
 
 impl RuleRow {
     fn into_rule(self) -> Result<Rule, RepositoryError> {
-        let trigger = match self.trigger_kind.as_str() {
-            "chat_message" => RuleTrigger::ChatMessage,
-            "reward_redemption" => RuleTrigger::RewardRedemption,
-            other => {
-                return Err(RepositoryError::Database(format!(
-                    "invalid rule trigger: {other}"
-                )));
-            }
-        };
+        let trigger = trigger_from_str(&self.trigger_kind)?;
         Ok(Rule {
             id: RuleId::new(self.id as u32),
             name: self.name,

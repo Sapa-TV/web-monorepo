@@ -28,7 +28,10 @@ impl Display for QueueEntryId {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, ToSchema)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Serialize, ToSchema, strum::EnumString, strum::IntoStaticStr,
+)]
+#[strum(serialize_all = "snake_case")]
 #[non_exhaustive]
 pub enum QueueStatus {
     Pending,

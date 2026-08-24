@@ -21,26 +21,12 @@ impl SqliteQueueRepository {
 }
 
 fn status_to_db(status: QueueStatus) -> &'static str {
-    match status {
-        QueueStatus::Pending => "pending",
-        QueueStatus::Spinning => "spinning",
-        QueueStatus::Completed => "completed",
-        QueueStatus::Error => "error",
-        QueueStatus::Cancelled => "cancelled",
-    }
+    <&'static str>::from(&status)
 }
 
 fn status_from_db(status: &str) -> Result<QueueStatus, RepositoryError> {
-    match status {
-        "pending" => Ok(QueueStatus::Pending),
-        "spinning" => Ok(QueueStatus::Spinning),
-        "completed" => Ok(QueueStatus::Completed),
-        "error" => Ok(QueueStatus::Error),
-        "cancelled" => Ok(QueueStatus::Cancelled),
-        other => Err(RepositoryError::Database(format!(
-            "invalid queue status: {other}"
-        ))),
-    }
+    QueueStatus::try_from(status)
+        .map_err(|_| RepositoryError::Database(format!("invalid queue status: {status}")))
 }
 
 #[derive(sqlx::FromRow)]

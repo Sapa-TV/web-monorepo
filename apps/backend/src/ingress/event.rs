@@ -66,8 +66,15 @@ impl PlatformEvent {
 #[derive(Debug, Clone, EnumDiscriminants)]
 #[non_exhaustive]
 #[strum_discriminants(
-    derive(Serialize, Deserialize, ToSchema),
-    serde(rename_all = "snake_case")
+    derive(
+        Serialize,
+        Deserialize,
+        ToSchema,
+        strum::EnumString,
+        strum::IntoStaticStr
+    ),
+    serde(rename_all = "snake_case"),
+    strum(serialize_all = "snake_case")
 )]
 #[strum_discriminants(name(RuleTrigger))]
 pub enum PlatformEventPayload {
@@ -76,11 +83,10 @@ pub enum PlatformEventPayload {
 }
 
 impl PlatformEventPayload {
-    pub const fn type_name(&self) -> &'static str {
-        match self {
-            Self::ChatMessage(_) => "chat_message",
-            Self::RewardRedemption(_) => "reward_redemption",
-        }
+    pub fn type_name(&self) -> &'static str {
+        use strum::IntoDiscriminant;
+        let trigger = self.discriminant();
+        <&'static str>::from(&trigger)
     }
 }
 
