@@ -53,6 +53,8 @@ export class DockStore {
 	keyState = $state<KeyState | null>(null);
 	connState = $state<ConnState>("disconnected");
 	widgetOnline = $state(false);
+	dequeueBusy = $state(false);
+	enqueueBusy = $state(false);
 	events = $state<DockEvent[]>([]);
 
 	active = $derived(
@@ -143,6 +145,7 @@ export class DockStore {
 	}
 
 	async dequeueNext(): Promise<void> {
+		this.dequeueBusy = true;
 		const res = await wapi.dequeueNext(this.wapiAuth);
 		res.match(
 			(data) =>
@@ -153,6 +156,7 @@ export class DockStore {
 			(err) => this.addEvent(`❌ Dequeue: ${describeApiError(err)}`, "error"),
 		);
 		await this.loadAll();
+		this.dequeueBusy = false;
 	}
 
 	async complete(id: number): Promise<void> {
@@ -178,6 +182,7 @@ export class DockStore {
 	async enqueue(name: string): Promise<boolean> {
 		const trimmed = name.trim();
 		if (!trimmed) return false;
+		this.enqueueBusy = true;
 		const res = await wapi.enqueueAnonymous({ name: trimmed }, this.wapiAuth);
 		let added = false;
 		res.match(
@@ -188,6 +193,7 @@ export class DockStore {
 			(err) => this.addEvent(`❌ Ошибка ${describeApiError(err)}`, "error"),
 		);
 		await this.loadAll();
+		this.enqueueBusy = false;
 		return added;
 	}
 
