@@ -4,8 +4,11 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::sync::watch;
 
 use crate::actions::action::{Action, ActionId, ActionKind};
+use crate::actions::platform::{ActionContext, PlatformActionExecutor};
 use crate::actions::repository::ActionRepository;
 use crate::error::ActionServiceError;
+use crate::error::platform_action::ActionError;
+use crate::platform::PlatformId;
 
 #[non_exhaustive]
 pub struct ActionService<A>
@@ -78,6 +81,60 @@ where
     }
 }
 
+pub struct PlatformActionService<T>
+where
+    T: PlatformActionExecutor,
+{
+    twitch: Option<T>,
+}
+
+impl<T> Default for PlatformActionService<T>
+where
+    T: PlatformActionExecutor,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<T> PlatformActionService<T>
+where
+    T: PlatformActionExecutor,
+{
+    pub fn new() -> Self {
+        Self { twitch: None }
+    }
+
+    pub fn with_twitch(mut self, executor: T) -> Self {
+        self.twitch = Some(executor);
+        self
+    }
+
+    pub async fn send_chat_message(
+        &self,
+        platform: PlatformId,
+        ctx: &ActionContext,
+        text: &str,
+    ) -> Result<(), ActionError> {
+        match platform {
+            PlatformId::TWITCH => match &self.twitch {
+                Some(executor) => executor.send_chat_message(ctx, text).await,
+                None => unsupported(platform, "send_chat_message"),
+            },
+            other => unsupported(other, "send_chat_message"),
+        }
+    }
+}
+
+fn unsupported(platform: PlatformId, action: &str) -> Result<(), ActionError> {
+    tracing::warn!(
+        platform = platform.name(),
+        action,
+        "capability not supported"
+    );
+    Err(ActionError::Unsupported)
+}
+
 #[cfg(test)]
 mod tests {
     use crate::db::inmemory_actions::InMemoryActionRepository;
@@ -139,5 +196,94 @@ mod tests {
             .unwrap();
         service.delete(action.id).await.unwrap();
         assert!(service.get(action.id).await.unwrap().is_none());
+    }
+}
+
+#[cfg(test)]
+mod platform_action_tests {
+    use std::sync::Arc;
+    use std::sync::nonpoison::Mutex;
+
+    use super::*;
+
+    struct SpyExecutor {
+        calls: Arc<Mutex<Vec<String>>>,
+    }
+
+    impl Clone for SpyExecutor {
+        fn clone(&self) -> Self {
+            Self {
+                calls: Arc::clone(&self.calls),
+            }
+        }
+    }
+
+    impl SpyExecutor {
+        fn new() -> Self {
+            Self {
+                calls: Arc::new(Mutex::new(Vec::new())),
+            }
+        }
+
+        fn texts(&self) -> Vec<String> {
+            self.calls.lock().clone()
+        }
+    }
+
+    impl PlatformActionExecutor for SpyExecutor {
+        fn platform(&self) -> PlatformId {
+            PlatformId::TWITCH
+        }
+
+        async fn send_chat_message(
+            &self,
+            _ctx: &ActionContext,
+            text: &str,
+        ) -> Result<(), ActionError> {
+            self.calls.lock().push(text.to_string());
+            Ok(())
+        }
+    }
+
+    fn action_ctx() -> ActionContext {
+        ActionContext {
+            event_id: "e-1".to_string(),
+            user_id: "42".to_string(),
+            user_name: "viewer".to_string(),
+            channel_id: "bc".to_string(),
+        }
+    }
+
+    #[tokio::test]
+    async fn empty_service_reports_unsupported() {
+        let service = PlatformActionService::<SpyExecutor>::new();
+        let err = service
+            .send_chat_message(PlatformId::TWITCH, &action_ctx(), "hi")
+            .await
+            .unwrap_err();
+        assert!(matches!(err, ActionError::Unsupported));
+    }
+
+    #[tokio::test]
+    async fn non_twitch_platform_is_unsupported_even_with_executor() {
+        let service = PlatformActionService::new().with_twitch(SpyExecutor::new());
+        let err = service
+            .send_chat_message(PlatformId::YOUTUBE, &action_ctx(), "hi")
+            .await
+            .unwrap_err();
+        assert!(matches!(err, ActionError::Unsupported));
+    }
+
+    #[tokio::test]
+    async fn registered_executor_receives_text() {
+        let spy = SpyExecutor::new();
+        let service = PlatformActionService::new().with_twitch(spy.clone());
+
+        service
+            .send_chat_message(PlatformId::TWITCH, &action_ctx(), "привет!")
+            .await
+            .unwrap();
+
+        assert_eq!(spy.texts(), vec!["привет!".to_string()]);
     }
 }
