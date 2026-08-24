@@ -5,6 +5,7 @@ pub mod config;
 pub mod event;
 pub mod executor;
 pub mod ingress;
+pub mod platform_action;
 pub mod queue;
 pub mod repository;
 pub mod rules;
