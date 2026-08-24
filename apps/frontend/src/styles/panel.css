@@ -11,51 +11,6 @@ body {
 	font-size: 14px;
 }
 
-.table-wrap {
-	overflow: hidden;
-	border-radius: 12px;
-	border: 1px solid var(--outline-variant);
-}
-
-table {
-	width: 100%;
-	border-collapse: collapse;
-	background: var(--surface-container);
-}
-
-th {
-	text-align: left;
-	padding: 10px 14px;
-	font-size: 11px;
-	color: var(--on-surface-variant);
-	text-transform: uppercase;
-	letter-spacing: 0.08em;
-	border-bottom: 1px solid var(--outline-variant);
-	background: var(--surface-container-high);
-}
-
-td {
-	padding: 10px 14px;
-	border-bottom: 1px solid var(--outline-variant);
-}
-
-tr:last-child td {
-	border-bottom: none;
-}
-
-.mono {
-	font-family: var(--font-mono);
-	font-size: 12px;
-}
-
-.actions-cell {
-	display: flex;
-	align-items: center;
-	justify-content: flex-end;
-	width: 1%;
-	white-space: nowrap;
-}
-
 .visually-hidden {
 	position: absolute;
 	width: 1px;
@@ -96,10 +51,6 @@ tr:last-child td {
 .form-actions {
 	display: flex;
 	gap: 8px;
-}
-
-.actions-cell .btn {
-	margin-left: 4px;
 }
 
 .auth-card .btn--twitch {
