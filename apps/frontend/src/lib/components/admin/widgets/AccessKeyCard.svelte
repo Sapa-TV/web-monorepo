@@ -63,9 +63,10 @@
 </script>
 
 <Card>
-	<Section title="Access key">
-		<p class="section-hint">Ключ для доступа к панелям/виджетам со стримера.</p>
-
+	<Section
+		title="Access key"
+		hint="Ключ для доступа к панелям/виджетам со стримера."
+	>
 		{#if error}
 			<Alert tone="error">{error}</Alert>
 		{/if}

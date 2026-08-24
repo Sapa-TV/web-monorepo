@@ -127,7 +127,7 @@
 	</summary>
 
 	<div class="rarities-body">
-		<p class="section-hint">
+		<p class="rarities-hint">
 			Названия и цвета редкостей рулетки. Используются в слотах и на виджете.
 		</p>
 
@@ -257,6 +257,13 @@
 </details>
 
 <style>
+	.rarities-hint {
+		margin: 0 0 12px;
+		color: var(--on-surface-variant);
+		font-size: 12px;
+		line-height: 1.5;
+	}
+
 	.rarities {
 		border: 1px solid var(--outline-variant);
 		border-radius: 12px;

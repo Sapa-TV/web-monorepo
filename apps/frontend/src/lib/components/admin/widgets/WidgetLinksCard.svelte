@@ -36,11 +36,10 @@
 </script>
 
 <Card>
-	<Section title="Ссылки">
-		<p class="section-hint">
-			Ссылки с подставленным access key — открывать со стримера.
-		</p>
-
+	<Section
+		title="Ссылки"
+		hint="Ссылки с подставленным access key — открывать со стримера."
+	>
 		<div class="links-row">
 			<Button
 				size="sm"

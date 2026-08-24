@@ -25,11 +25,10 @@
 </script>
 
 <Card>
-	<Section title="Клиенты">
-		<p class="section-hint">
-			Кто сейчас подключён по websocket (опрос каждые 5 сек).
-		</p>
-
+	<Section
+		title="Клиенты"
+		hint="Кто сейчас подключён по websocket (опрос каждые 5 сек)."
+	>
 		{#if loaded}
 			<ul class="presence-list" role="status">
 				<li>
@@ -46,12 +45,17 @@
 				</li>
 			</ul>
 		{:else}
-			<p class="section-hint">Загрузка...</p>
+			<p class="loading">Загрузка...</p>
 		{/if}
 	</Section>
 </Card>
 
 <style>
+	.loading {
+		color: var(--on-surface-variant);
+		font-size: 12px;
+	}
+
 	.presence-list {
 		display: flex;
 		flex-direction: column;

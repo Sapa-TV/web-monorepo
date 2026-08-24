@@ -133,11 +133,10 @@
 </script>
 
 <Card>
-	<Section title="Слоты рулетки">
-		<p class="section-hint">
-			Секторы колеса. Шанс сектора — его вес относительно суммы весов.
-		</p>
-
+	<Section
+		title="Слоты рулетки"
+		hint="Секторы колеса. Шанс сектора — его вес относительно суммы весов."
+	>
 		{#if error}
 			<Alert tone="error">{error}</Alert>
 		{/if}

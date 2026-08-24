@@ -74,13 +74,6 @@ tr:last-child td {
 	margin-top: 12px;
 }
 
-.section-hint {
-	margin: 0 0 12px;
-	color: var(--on-surface-variant);
-	font-size: 12px;
-	line-height: 1.5;
-}
-
 .inline-form {
 	display: flex;
 	gap: 8px;

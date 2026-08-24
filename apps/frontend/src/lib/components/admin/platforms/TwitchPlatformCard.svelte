@@ -128,12 +128,10 @@
 </script>
 
 <Card>
-	<Section title="Twitch">
-		<p class="section-hint">
-			Учётка, от имени которой бекенд ходит в Twitch (стрим-статус, чтение
-			чата).
-		</p>
-
+	<Section
+		title="Twitch"
+		hint="Учётка, от имени которой бекенд ходит в Twitch (стрим-статус, чтение чата)."
+	>
 		{#if error}
 			<Alert tone="error">{error}</Alert>
 		{/if}

@@ -142,11 +142,10 @@
 </script>
 
 <Card>
-	<Section title="Действия">
-		<p class="section-hint">
-			Экшены, которые движок выполняет при срабатывании правила.
-		</p>
-
+	<Section
+		title="Действия"
+		hint="Экшены, которые движок выполняет при срабатывании правила."
+	>
 		{#if error}
 			<Alert tone="error">{error}</Alert>
 		{/if}
