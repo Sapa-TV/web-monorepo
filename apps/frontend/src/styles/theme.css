@@ -5,6 +5,10 @@
 	--c-accent: 0.16;
 	--c-neutral: 0.014;
 
+	--font-body: "Inter", system-ui, sans-serif;
+	--font-heading: "Archivo", "Inter", sans-serif;
+	--font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
 	--c-primary: var(--c-accent);
 	--c-secondary: 0.145;
 	--c-tertiary: 0.125;
@@ -196,14 +200,14 @@ body {
 	min-height: 100vh;
 	background: var(--surface);
 	color: var(--on-surface);
-	font-family: "Archivo", system-ui, sans-serif;
+	font-family: var(--font-body);
 }
 
 h1,
 h2,
 h3,
 h4 {
-	font-family: "Archivo", "Inter", sans-serif;
+	font-family: var(--font-heading);
 	font-weight: 800;
 	letter-spacing: -0.02em;
 }
@@ -215,7 +219,7 @@ a {
 code,
 kbd,
 samp {
-	font-family: "IBM Plex Mono", ui-monospace, monospace;
+	font-family: var(--font-mono);
 }
 
 ::selection {

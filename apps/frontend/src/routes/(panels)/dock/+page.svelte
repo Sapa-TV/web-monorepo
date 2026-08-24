@@ -528,7 +528,7 @@
 		padding: 14px;
 		max-height: 200px;
 		overflow-y: auto;
-		font-family: "IBM Plex Mono", ui-monospace, monospace;
+		font-family: var(--font-mono);
 		font-size: 12px;
 	}
 

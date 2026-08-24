@@ -76,7 +76,7 @@
 	}
 
 	.label {
-		font-family: "IBM Plex Mono", monospace;
+		font-family: var(--font-mono);
 		font-size: 0.72rem;
 		font-weight: 500;
 		letter-spacing: 0.14em;
@@ -124,7 +124,7 @@
 	}
 
 	.card__idx {
-		font-family: "IBM Plex Mono", monospace;
+		font-family: var(--font-mono);
 		font-size: 0.75rem;
 		font-weight: 600;
 		color: var(--on-surface-variant);
@@ -155,7 +155,7 @@
 
 	.url {
 		color: var(--on-surface-variant);
-		font-family: "IBM Plex Mono", monospace;
+		font-family: var(--font-mono);
 		font-size: 0.78rem;
 		white-space: nowrap;
 		overflow: hidden;
@@ -164,7 +164,7 @@
 
 	.card__chip {
 		margin-left: auto;
-		font-family: "IBM Plex Mono", monospace;
+		font-family: var(--font-mono);
 		font-size: 0.66rem;
 		font-weight: 500;
 		letter-spacing: 0.08em;

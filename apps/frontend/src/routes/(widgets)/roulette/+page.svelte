@@ -354,7 +354,7 @@
 		font-weight: 800;
 		margin-bottom: 6px;
 		color: var(--widget-accent);
-		font-family: "Archivo", sans-serif;
+		font-family: var(--font-heading);
 		letter-spacing: -0.01em;
 	}
 
@@ -371,7 +371,7 @@
 		font-size: 12px;
 		color: var(--widget-entry);
 		margin-top: 14px;
-		font-family: "IBM Plex Mono", monospace;
+		font-family: var(--font-mono);
 		letter-spacing: 0.04em;
 	}
 
@@ -404,7 +404,7 @@
 		background: var(--widget-overlay);
 		padding: 6px 12px;
 		border-radius: 6px;
-		font-family: "IBM Plex Mono", monospace;
+		font-family: var(--font-mono);
 		letter-spacing: 0.03em;
 	}
 

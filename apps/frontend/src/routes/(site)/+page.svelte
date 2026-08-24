@@ -160,7 +160,7 @@
 		align-items: center;
 		justify-content: space-between;
 		padding: 0.5rem 0.7rem 0.15rem;
-		font-family: "IBM Plex Mono", monospace;
+		font-family: var(--font-mono);
 		font-size: 0.62rem;
 		font-weight: 600;
 		letter-spacing: 0.12em;
@@ -173,7 +173,7 @@
 
 	.wordmark {
 		margin: 0;
-		font-family: "Archivo", sans-serif;
+		font-family: var(--font-heading);
 		font-size: clamp(2.6rem, 15vw, 6rem);
 		font-weight: 900;
 		letter-spacing: -0.04em;

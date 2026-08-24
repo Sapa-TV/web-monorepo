@@ -59,7 +59,7 @@
 
 <style>
 	.build-sha {
-		font-family: ui-monospace, monospace;
+		font-family: var(--font-mono);
 		font-size: 0.72rem;
 		color: var(--on-surface-variant);
 		user-select: all;
