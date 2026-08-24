@@ -181,3 +181,93 @@ async fn chat_rule_triggers_action_and_fills_the_queue() {
     assert_eq!(status, StatusCode::OK);
     assert_eq!(stats["pending"], 1);
 }
+
+fn redemption(event_id: &str, user_id: &str, reward_id: &str) -> PlatformEvent {
+    PlatformEvent::reward_redemption(
+        PlatformId::TWITCH,
+        event_id,
+        user_id.to_string(),
+        format!("viewer-{user_id}"),
+        reward_id.to_string(),
+        "Spin".to_string(),
+        500,
+        String::new(),
+        "unfulfilled".to_string(),
+    )
+}
+
+#[tokio::test]
+async fn reward_redemption_rule_triggers_action() {
+    let state = test_state().await;
+    state.admin_service.seed("100").await.unwrap();
+    let admin_cookie = cookie(&session_cookie(&state, "100").await);
+    let app = test_router(state.clone());
+
+    start_rule_pipeline(&state, &CancellationToken::new());
+
+    let (status, action) = post_json(
+        app.clone(),
+        &api_path("/admin/actions"),
+        from_ref(&admin_cookie),
+        json!({
+            "name": "spin on reward",
+            "kind": { "type": "enqueue_roulette" },
+            "enabled": true
+        }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+    let action_id = action["id"].as_i64().expect("action id");
+
+    let (status, _) = post_json(
+        app.clone(),
+        &api_path("/admin/rules"),
+        from_ref(&admin_cookie),
+        json!({
+            "name": "reward spin",
+            "enabled": true,
+            "trigger": "reward_redemption",
+            "conditions": {
+                "trigger": "reward_redemption",
+                "reward_id": "reward-9001"
+            },
+            "action_id": action_id
+        }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+
+    state
+        .ingress
+        .publish(redemption("red-1", "r1", "reward-9001"))
+        .await
+        .unwrap();
+
+    let matched = wait_until(WAIT_TIMEOUT, || {
+        let app = app.clone();
+        async move {
+            queue_user_names(app)
+                .await
+                .iter()
+                .any(|name| name == "viewer-r1")
+        }
+    })
+    .await;
+    assert!(
+        matched,
+        "redemption of the configured reward must trigger the rule"
+    );
+
+    state
+        .ingress
+        .publish(redemption("red-2", "r2", "reward-other"))
+        .await
+        .unwrap();
+    sleep(Duration::from_millis(50)).await;
+
+    let names = queue_user_names(app.clone()).await;
+    assert!(
+        !names.iter().any(|name| name == "viewer-r2"),
+        "a different reward must not trigger the rule"
+    );
+}
