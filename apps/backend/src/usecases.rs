@@ -1,6 +1,3 @@
-// TODO: remove once every scenario module lands
-#![allow(dead_code)]
-
 use std::future::Future;
 use std::time::{Duration, Instant};
 
@@ -84,15 +81,6 @@ pub(crate) async fn post_json(
     body: Value,
 ) -> (StatusCode, Value) {
     request_json(app, Method::POST, uri, headers, Some(body)).await
-}
-
-pub(crate) async fn patch_json(
-    app: App,
-    uri: &str,
-    headers: &[(&'static str, String)],
-    body: Value,
-) -> (StatusCode, Value) {
-    request_json(app, Method::PATCH, uri, headers, Some(body)).await
 }
 
 pub(crate) async fn put_json(
