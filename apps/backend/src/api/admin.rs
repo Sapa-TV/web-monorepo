@@ -59,6 +59,13 @@ pub struct WidgetAccessKeyResponse {
     pub widget_access_key: String,
 }
 
+#[derive(Debug, Serialize, ToSchema)]
+#[non_exhaustive]
+pub struct PresenceResponse {
+    pub dock_connected: bool,
+    pub widget_count: usize,
+}
+
 #[utoipa::path(
     get,
     path = "/admin",
@@ -148,10 +155,27 @@ pub async fn rotate_widget_access_key(
     Ok(Json(WidgetAccessKeyResponse { widget_access_key }))
 }
 
+#[utoipa::path(
+    get,
+    path = "/admin/presence",
+    tag = "admin",
+    responses(
+        (status = 200, description = "Current ws client presence", body = PresenceResponse),
+    )
+)]
+pub async fn get_presence(State(state): State<AppState>) -> Json<PresenceResponse> {
+    let snapshot = state.presence.snapshot();
+    Json(PresenceResponse {
+        dock_connected: snapshot.dock > 0,
+        widget_count: snapshot.widget,
+    })
+}
+
 pub fn session_router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
         .routes(routes!(list_admins))
         .routes(routes!(get_widget_access_key))
+        .routes(routes!(get_presence))
         .merge(actions::session_router())
         .merge(rules::session_router())
         .merge(rewards::session_router())
@@ -185,6 +209,7 @@ pub(crate) mod tests {
     use crate::db::sqlite::config::SqliteConfigRepository;
     use crate::db::sqlite::queue::SqliteQueueRepository;
     use crate::db::sqlite::test_pool;
+    use crate::presence::WsClientRole;
     use crate::test_fixtures::{
         api_path, session_cookie, test_router, test_state, test_state_with,
     };
@@ -278,6 +303,46 @@ pub(crate) mod tests {
             .await
             .unwrap();
         assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn presence_reflects_connected_ws_clients() {
+        let state = test_state().await;
+        state.admin_service.add("123", None).await.unwrap();
+        let app = test_router(state.clone());
+        let cookie = session_cookie(&state, "123").await;
+
+        let get_presence = |cookie: String, app: axum::Router| {
+            app.oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri(api_path("/admin/presence"))
+                    .header(header::COOKIE, cookie)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+        };
+
+        let response = get_presence(cookie.clone(), app.clone()).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let body: Value =
+            serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap())
+                .unwrap();
+        assert_eq!(body["dock_connected"], false);
+        assert_eq!(body["widget_count"], 0);
+
+        {
+            let _widget = state.presence.add(WsClientRole::Widget);
+            let _dock = state.presence.add(WsClientRole::Dock);
+
+            let response = get_presence(cookie, app).await.unwrap();
+            assert_eq!(response.status(), StatusCode::OK);
+            let body: Value =
+                serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap())
+                    .unwrap();
+            assert_eq!(body["dock_connected"], true);
+            assert_eq!(body["widget_count"], 1);
+        }
     }
 
     #[tokio::test]
