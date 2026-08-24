@@ -26,6 +26,7 @@ pub(crate) fn wapi_path(path: &str) -> String {
 }
 
 mod roulette_flow;
+mod rules_pipeline;
 mod wak_rotation;
 
 pub(crate) fn cookie(value: &str) -> (&'static str, String) {
@@ -91,6 +92,15 @@ pub(crate) async fn patch_json(
     body: Value,
 ) -> (StatusCode, Value) {
     request_json(app, Method::PATCH, uri, headers, Some(body)).await
+}
+
+pub(crate) async fn put_json(
+    app: App,
+    uri: &str,
+    headers: &[(&'static str, String)],
+    body: Value,
+) -> (StatusCode, Value) {
+    request_json(app, Method::PUT, uri, headers, Some(body)).await
 }
 
 pub(crate) async fn wait_until<F, Fut>(timeout: Duration, mut predicate: F) -> bool
