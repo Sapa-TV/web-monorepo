@@ -10,6 +10,7 @@ import path from "node:path";
 import ts from "typescript-eslint";
 import {
 	colorLiterals,
+	fontLiterals,
 	noExceptions,
 	propsInlineType,
 } from "@sapa-tv-ru/custom-eslint-rules";
@@ -66,6 +67,16 @@ export default defineConfig(
 		},
 	},
 	{ files: ["**/*.svelte"], ...colorLiterals },
+	{ files: ["**/*.svelte"], ...fontLiterals },
+	{
+		files: ["**/*.svelte"],
+		rules: {
+			"max-lines": [
+				"warn",
+				{ max: 350, skipBlankLines: true, skipComments: true },
+			],
+		},
+	},
 	{ files: ["src/**/*.svelte"], ...propsInlineType },
 	{
 		files: ["**/constants.ts", "**/constants/*.ts"],

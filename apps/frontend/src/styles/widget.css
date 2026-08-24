@@ -39,5 +39,5 @@ body {
 	align-items: center;
 	justify-content: center;
 	overflow: hidden;
-	color: #f2e9dc;
+	color: var(--widget-ink);
 }
