@@ -25,6 +25,7 @@ pub(crate) fn wapi_path(path: &str) -> String {
     format!("/wapi{path}")
 }
 
+mod roulette_flow;
 mod wak_rotation;
 
 pub(crate) fn cookie(value: &str) -> (&'static str, String) {
@@ -42,6 +43,10 @@ pub(crate) async fn request_json(
     for (name, value) in headers {
         builder = builder.header(*name, value);
     }
+    builder = match body {
+        Some(_) => builder.header("content-type", "application/json"),
+        None => builder,
+    };
     let request = builder
         .body(match body {
             Some(json) => Body::from(json.to_string()),
