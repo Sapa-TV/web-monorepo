@@ -27,6 +27,7 @@ pub(crate) fn wapi_path(path: &str) -> String {
 
 mod roulette_flow;
 mod rules_pipeline;
+mod sessions;
 mod wak_rotation;
 
 pub(crate) fn cookie(value: &str) -> (&'static str, String) {
