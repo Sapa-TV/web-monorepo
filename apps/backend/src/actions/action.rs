@@ -33,6 +33,7 @@ pub struct Action {
     pub enabled: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    _sealed: (),
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
@@ -45,16 +46,36 @@ pub enum ActionKind {
 }
 
 impl Action {
-    pub fn noop(id: ActionId) -> Self {
-        let now = Utc::now();
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        id: ActionId,
+        name: String,
+        kind: ActionKind,
+        enabled: bool,
+        created_at: DateTime<Utc>,
+        updated_at: DateTime<Utc>,
+    ) -> Self {
         Self {
             id,
-            name: "no-op".to_string(),
-            kind: ActionKind::NoAction,
-            enabled: true,
-            created_at: now,
-            updated_at: now,
+            name,
+            kind,
+            enabled,
+            created_at,
+            updated_at,
+            _sealed: (),
         }
+    }
+
+    pub fn noop(id: ActionId) -> Self {
+        let now = Utc::now();
+        Self::new(
+            id,
+            "no-op".to_string(),
+            ActionKind::NoAction,
+            true,
+            now,
+            now,
+        )
     }
 }
 
@@ -193,16 +214,16 @@ mod tests {
 
     #[test]
     fn action_holds_kind() {
-        let action = Action {
-            id: ActionId::new(1),
-            name: "reply".to_string(),
-            kind: ActionKind::ChatReply {
+        let action = Action::new(
+            ActionId::new(1),
+            "reply".to_string(),
+            ActionKind::ChatReply {
                 message_template: "hi {username}".to_string(),
             },
-            enabled: true,
-            created_at: Utc::now(),
-            updated_at: Utc::now(),
-        };
+            true,
+            Utc::now(),
+            Utc::now(),
+        );
         assert_eq!(
             action.kind,
             ActionKind::ChatReply {

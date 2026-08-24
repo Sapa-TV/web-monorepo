@@ -102,14 +102,14 @@ pub async fn update_action(
     Path(param): Path<ActionIdParam>,
     Json(body): Json<UpsertActionRequest>,
 ) -> Result<Json<ActionResponse>, ActionServiceError> {
-    let action = Action {
-        id: ActionId::new(param.id),
-        name: body.name,
-        kind: body.kind,
-        enabled: body.enabled,
-        created_at: chrono::Utc::now(),
-        updated_at: chrono::Utc::now(),
-    };
+    let action = Action::new(
+        ActionId::new(param.id),
+        body.name,
+        body.kind,
+        body.enabled,
+        chrono::Utc::now(),
+        chrono::Utc::now(),
+    );
     state.action_service.update(action).await?;
     let updated = state.action_service.get(ActionId::new(param.id)).await?;
     let updated = updated.ok_or(ActionServiceError::ActionNotFound)?;

@@ -8,129 +8,118 @@
 
 ## Цель и правило
 
-Любая `pub struct` с публичными полями получает приватное zero-size поле `_priv: ()`,
-закрывающее литеральное создание вне модуля определения. Единственный путь создания —
-конструктор (`new`/`from_*`/builder), объявленный в том же модуле. Приватные поля
-структур (сервисы, сторы) уже сегодня нельзя собрать литералом — они считаются
-соответствующими правилу без изменений.
+Любая `pub struct` с публичными полями получает приватное zero-size поле `_sealed: ()`,
+закрывающее литеральное создание вне модуля определения (и внутри крейта тоже).
+Единственный путь создания — конструктор (`new`/`from_*`/семантический конструктор),
+объявленный в том же модуле. Структуры, у которых все поля уже приватны (сервисы,
+сторы), правилу соответствуют без изменений.
 
-Проверено пробником: **serde-derive совместим** с `_priv: ()` — сгенерированный код
-живёт в модуле структуры и видит приватное поле; `ToSchema`/`IntoParams` тоже.
-`#[non_exhaustive]` остаётся (внешние крейты) и дополняет, а не заменяет `_priv`.
+`#[non_exhaustive]` **остаётся везде** как крейт-вайд конвенция (workspace deny
+`exhaustive_structs`) и дополняется `_sealed: ()` — он добавляет недостающее:
+запрет литерального создания внутри крейта. Конфликт линтов решён глобально:
+в `[workspace.lints.clippy]` добавлено `manual_non_exhaustive = "allow"` (линт
+предлагает убрать `_sealed` в пользу атрибута, что противоречит цели; в перспективе
+его роль возьмёт кастомный sg-lint «структура обязана иметь конструктор»).
 
-## Инвентаризация
+Проверено пробником: serde-derive / ToSchema / IntoParams совместимы с `_sealed: ()`.
 
-Всего `pub struct`: **147**. Разбивка по зонам: api/admin 19, db/sqlite 11,
-widget_api/users 10, widget_api/queue 7, user 6, api/session 6, api/admin.rs 5,
-session 4, queue/entry 4, config/runtime 4, rules/rule 4, остальные по 1–3.
+### Шаблон диффа одной структуры (из пилота Action)
 
-Категории обработки:
+```rust
+#[derive(Debug, Clone)]
+#[non_exhaustive]
+pub struct X {
+    pub field: ...,
+    _sealed: (),
+}
 
-| Категория                                       | Примеры                                              | Действие                                               |
-| ----------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------ |
-| A. Домен-энтити, `new()` уже есть               | QueueEntry, Action, RouletteSlot, Rarity, User, Rule | добавить `_priv`, литералы заменить на `new`           |
-| B. DTO-ответы, собираются From-ом в своём файле | AdminResponse, WidgetAccessKeyResponse…              | добавить `_priv`; From-имплементации остаются на месте |
-| C. Request-payloads (Deserialize)               | UpsertRuleRequest…                                   | добавить `_priv`                                       |
-| D. Newtype/marker                               | SessionToken(String), StandartRandomProvider         | пропустить                                             |
-| E. Сервисы/сторы с приватными полями            | все *Service, Presence, EventIngress                 | пропустить (уже соответствуют)                         |
+impl X {
+    #[allow(clippy::too_many_arguments)] // если аргументов много
+    pub fn new(/* все pub-поля */) -> Self { ... }
+}
+```
 
-Точную численность категорий A–C фиксируем на шаге 1 (скрипт-аудит + ручная сверка),
-она и станет чек-листом шагов 2+.
+Нюансы, найденные пилотом:
 
-## Риски (проверено/митигировано)
+- Литералы вне модуля → `X::new(...)`.
+- Struct-update синтаксис (`..base`) не пересекает модульную границу (E0451) —
+  разворачивается в явные присваивания или заменяется конструктором.
+- Для контекст-структур с `Default` добавляются семантические конструкторы
+  (`EventContext::chat(...)`, `::reward(...)`), использующие `..Self::default()`
+  внутри своего модуля.
+- Тестовые литералы → `new` либо локальный fixture-хелпер.
+- Если конструктор сбрасывал `created_at` на now при апдейте — это пре-существующий
+  баг, фиксируется отдельным пунктом бэклога, в рефакторинге поведение сохраняется.
 
-- serde + `_priv` — компилируется (пробник в корне крейта прошёл check).
-- Тесты, собирающие литералы домен-структур (Action{..}, PlatformEvent через ::new
-  уже ок) → переходят на конструкторы; там, где конструктору нужны лишние аргументы
-  (created_at/updated_at), добавляется тестовый хелпер в сам модуль типа
-  (`#[cfg(test)] pub(crate) fn fixture(...)`) вместо раскрытия полей.
-- `Default` выводить массово не будем: явные конструкторы — часть цели.
+## Инвентаризация (аудит выполнен)
+
+Всего `pub struct`: **147**. После классификации:
+
+| Категория                                         | Кол-во | Действие                                         |
+| ------------------------------------------------- | ------ | ------------------------------------------------ |
+| Newtype/unit/уже с приватными полями              | ~55    | пропустить                                       |
+| Запечатать — pub-поля, но литералов пока нет (B0) | ~10    | только `_sealed`, по одной за шаг вперемешку с A |
+| Запечатать — с внешними литералами                | **24** | таблица A ниже, по структуре за шаг              |
+| Bulk-DTO без литералов                            | **52** | только `_sealed` в своём файле, сплошной проход  |
+
+«Литералов пока нет» ≠ «соответствует правилу»: `_sealed` гарантирует
+конструкторный путь навсегда, поэтому pub-поля структур без текущих литералов
+тоже запечатываются.
+
+### B0. Только `_sealed` — pub-поля без внешних литералов (~10)
+
+QueueEntry · QueueStats · Rarity · RouletteSlot · PlatformEvent · ChatMessage ·
+RewardRedemption · Platform · StreamStatus — идут вперемешку со списком A внутри
+того же домена.
 
 ## Шаги
 
-**Протокол одного микро-шага** (= одна структура, один коммит):
-правка структуры (`_priv` + конструктор при отсутствии) → `cargo check --all-targets`
-→ минимальные фиксы литералов → `nextest` (полный, ~5с) + clippy + fmt → ревью.
-Порядок следования — чек-лист ниже; внутри домена сверху вниз.
+**Протокол микро-шага** (= одна структура, один коммит): правка структуры
+(`_sealed` + конструктор) → `cargo check --all-targets` → фиксы литералов →
+nextest + clippy + fmt → ревью. Порядок — список A, затем B0 (внутри доменов),
+затем bulk B.
 
-1. **Аудит**: скрипт строит чек-лист всех pub struct: определяющий файл,
-   наличие `new`, число файлов с литеральным использованием вне модуля.
-   Категории D/E (newtype/приватные поля) в чек-лист не попадают.
-2. **Пилот: `QueueEntry`** — одна структура, фиксируется шаблон диффа.
-   3+. **По чек-листу**, домен за доменом: queue → user/platform → roulette →
-   actions/rules → session/admin/config → ingress/state → api → widget_api.
-   Если структура тянет за собой правки >3 файлов или конструктор требует
-   спорных решений — стоп, обсуждаем до продолжения.
+1. ~~Аудит~~ — выполнен, результат ниже.
+2. ~~Пилот~~ — выполнен: `Action` (+ попутно `EventContext`), шаблон диффа выше.
+   3+. По списку A, затем bulk B.
 
-Финальный шаг: снять оставшиеся предупреждения clippy точечно, полный регресс,
-итоги в этом документе, бэклог минус пункт.
+Финал: снять точечные allow, полный регресс, итоги здесь, бэклог минус пункт.
 
-## Шаг 1 — выполнен: чек-лист структур
+### A. По одной структуре за шаг (24)
 
-Кандидаты: pub struct, у которых есть литеральное использование вне модуля
-или отсутствует конструктор. Newtype/marker/уже-соответствующие — исключены
-(55 шт.). Колонка «Лит.» — число файлов с `\bИмя\s*{` вне defining-файла;
-при правке конкретной структуры сверяемся руками (возможны ложные срабатывания
-на impl/тестах).
+| Структура             | Файл                    | Внешние литералы                                                   |
+| --------------------- | ----------------------- | ------------------------------------------------------------------ |
+| ActionContext         | actions/platform.rs     | executor, twitch_executor, service                                 |
+| Admin                 | admin.rs                | db/inmemory_admin, db/sqlite/admin                                 |
+| RarityResponse        | api/admin/roulette.rs   | widget_api/rarities                                                |
+| RouletteSlotResponse  | api/admin/roulette.rs   | widget_api/roulette_slots                                          |
+| StreamStatusResponse  | api/stream.rs           | widget_api/stream                                                  |
+| QueueRuntimeConfig    | config/runtime.rs       | config/static_config                                               |
+| RouletteRuntimeConfig | config/runtime.rs       | config/static_config                                               |
+| RuntimeConfig         | config/runtime.rs       | config/static_config                                               |
+| SessionRuntimeConfig  | config/runtime.rs       | config/static_config                                               |
+| StaticConfig          | config/static_config.rs | store, admin/twitch, admin/rewards                                 |
+| TwitchConfig          | config/twitch.rs        | admin/auth, ingress/twitch, ingress/twitch_auth, api/admin/rewards |
+| ApiError              | error/api.rs            | error/{admin,config,actions,rules,user}                            |
+| Presence              | presence.rs             | widget_api/ws — сверить при правке                                 |
+| PresenceSnapshot      | presence.rs             | widget_api/ws — сверить при правке                                 |
+| QueuePage             | queue/entry.rs          | queue/service                                                      |
+| MessageConditions     | rules/rule.rs           | sqlite/rule, parity, service, api, inmemory                        |
+| RewardConditions      | rules/rule.rs           | engine, inmemory, sqlite, service, parity, api                     |
+| Rule                  | rules/rule.rs           | те же + api                                                        |
+| LoginTicket           | session.rs              | sqlite/session, service, inmemory, parity                          |
+| Session               | session.rs              | те же                                                              |
+| ResolvedUserPlatform  | user.rs                 | user/service                                                       |
+| UserPlatform          | user.rs                 | db/inmemory_user, db/sqlite/user                                   |
+| User                  | user.rs                 | db/inmemory_user, db/sqlite/user                                   |
+| UserView              | user.rs                 | user/service, widget_api/users                                     |
 
-| Структура                  | Файл                     | new | Лит. |
-| -------------------------- | ------------------------ | --- | ---- |
-| Action                     | actions/action.rs        | ✓   | 7    |
-| ActionId                   | actions/action.rs        | ✓   | 2    |
-| EventContext               | actions/action.rs        | ✓   | 1    |
-| ActionEvent                | actions/event.rs         | —   | 1    |
-| ActionContext              | actions/platform.rs      | —   | 3    |
-| Admin                      | admin.rs                 | —   | 2    |
-| RarityResponse             | api/admin/roulette.rs    | —   | 1    |
-| RouletteSlotResponse       | api/admin/roulette.rs    | —   | 1    |
-| StreamStatusResponse       | api/stream.rs            | —   | 1    |
-| QueueRuntimeConfig         | config/runtime.rs        | —   | 1    |
-| RouletteRuntimeConfig      | config/runtime.rs        | —   | 1    |
-| RuntimeConfig              | config/runtime.rs        | —   | 1    |
-| SessionRuntimeConfig       | config/runtime.rs        | —   | 1    |
-| StaticConfig               | config/static_config.rs  | —   | 3    |
-| SharedSettings             | config/store.rs          | ✓   | 1    |
-| TwitchConfig               | config/twitch.rs         | —   | 7    |
-| ApiError                   | error/api.rs             | ✓   | 8    |
-| ChatMessage                | ingress/event.rs         | —   | 0    |
-| PlatformEvent              | ingress/event.rs         | —   | 1    |
-| RewardRedemption           | ingress/event.rs         | —   | 0    |
-| InMemoryPlatformRepository | db/inmemory_platform.rs  | —   | 0    |
-| Platform                   | platform.rs              | ✓   | 1    |
-| PlatformId                 | platform.rs              | ✓   | 3    |
-| Presence                   | presence.rs              | ✓   | 1    |
-| PresenceSnapshot           | presence.rs              | ✓   | 1    |
-| QueueEntryId               | queue/entry.rs           | ✓   | 1    |
-| QueuePage                  | queue/entry.rs           | ✓   | 1    |
-| RouletteSlot               | roulette/slot_service.rs | ✓   | 1    |
-| MessageConditions          | rules/rule.rs            | ✓   | 6    |
-| RewardConditions           | rules/rule.rs            | ✓   | 5    |
-| Rule                       | rules/rule.rs            | ✓   | 6    |
-| LoginTicket                | session.rs               | ✓   | 4    |
-| Session                    | session.rs               | ✓   | 4    |
-| UniStateParams             | state.rs                 | ✓   | 1    |
-| ResolvedUserPlatform       | user.rs                  | ✓   | 1    |
-| User                       | user.rs                  | ✓   | 3    |
-| UserId                     | user.rs                  | ✓   | 1    |
-| UserPlatform               | user.rs                  | ✓   | 2    |
-| UserView                   | user.rs                  | ✓   | 2    |
-| ApiDoc                     | lib.rs                   | —   | 0    |
+### B. Bulk-DTO (52), сплошной проход
 
-Однострочные DTO без литералов и без new (категория C, 52 шт.) — идут после
-таблицы сплошным проходом по файлам api/** и widget_api/**:
-AddAdminRequest, AdminResponse, PresenceResponse, TwitchIdParam,
-WidgetAccessKeyResponse, ActionIdParam, ActionResponse, UpsertActionRequest,
-IngressCredentialsResponse, RewardResponse, RarityIdParam, SlotIdParam,
-UpsertRarityRequest, UpsertRouletteSlotRequest, RuleIdParam, RuleResponse,
-UpsertRuleRequest, TwitchAuthCallbackQuery, TwitchAuthCallbackResponse,
-TwitchAuthStartResponse, TwitchUserResponse, TwitchUserSearchQuery,
-CreateSessionRequest, SessionResponse, TwitchLoginCallbackQuery,
-TwitchLoginCallbackResponse, TwitchLoginStartResponse, Unauthorized,
-StreamStatusResponse(wapi), AnonymousEnqueueRequest, EnqueueRequest, ListQuery,
-NextResponse, QueueEntryResponse, QueueIdParam, QueueListResponse,
-SetStreamStatusRequest, CreateUserRequest, FindUserQuery, LinkPlatformRequest,
-PlatformNameParam, PlatformResponse, UpdatePlatformRequest, UpdateUserRequest,
-UserIdParam, UserPlatformResponse, UserResponse.
+api/admin.rs (5) · api/admin/actions.rs (3) · api/admin/ingress.rs (1) ·
+api/admin/rewards.rs (1) · api/admin/roulette.rs (5) · api/admin/rules.rs (3) ·
+api/admin/twitch.rs (6) · api/session.rs (5) · widget_api/queue.rs (7) ·
+widget_api/stream.rs (2) · widget_api/users.rs (11)
 
 ## Верификация после каждого шага
 
@@ -140,18 +129,16 @@ cargo nextest run --package backend
 cargo clippy --all-targets && cargo fmt --check --package backend
 ```
 
-Дополнительно на шаге 2 (пилот): grep-контроль отсутствия литералов
-`QueueEntry {` вне defining-модуля.
-
 ## Осознанно вне скоупа
 
 - Браузерный e2e/playwright трек.
-- Введение builder-библиотек (derive_builder и пр.) — ручные конструкторы достаточны.
-- Изменение публичных API JSON — контракты DTO не меняются, только внутренний
-  способ создания.
+- Builder-библиотеки (derive_builder и пр.) — ручные конструкторы достаточны.
+- Изменение публичных JSON API — контракты DTO не меняются, только способ создания.
+- Массовое снятие `#[non_exhaustive]` со структур вне чек-листа — по мере касания.
 
 ## Оценка
 
-Уточняется на шаге 1. Исходно из бэклога 3–6 ч выглядит оптимистично при ~90+
-структурах категорий A–C; ожидаемый диапазон после аудита — **6–9 ч** суммарно
-(шаги 3–8 по 0.5–1.5 ч каждый). Пилот покажет реальную скорость на структуру.
+После аудита: **24 микро-шага категории A** (~3–5 мин каждый с учётом фикс-апов)
+
+- **52 bulk-DTO** (~1–2 ч сплошняком) + финал ≈ **4–6 ч**, верхняя граница исходной
+  оценки бэклога подтверждена.

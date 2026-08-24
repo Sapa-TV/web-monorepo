@@ -30,14 +30,14 @@ fn action_from_row(
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
 ) -> Result<Action, RepositoryError> {
-    Ok(Action {
-        id: ActionId::new(id as u32),
+    Ok(Action::new(
+        ActionId::new(id as u32),
         name,
-        kind: parse_kind(&kind)?,
+        parse_kind(&kind)?,
         enabled,
         created_at,
         updated_at,
-    })
+    ))
 }
 
 impl ActionRepository for SqliteActionRepository {
@@ -62,14 +62,14 @@ impl ActionRepository for SqliteActionRepository {
         .fetch_one(&self.pool)
         .await
         .map_err(map_err)?;
-        Ok(Action {
-            id: ActionId::new(row.id as u32),
-            name: name.to_string(),
+        Ok(Action::new(
+            ActionId::new(row.id as u32),
+            name.to_string(),
             kind,
             enabled,
-            created_at: now,
-            updated_at: now,
-        })
+            now,
+            now,
+        ))
     }
 
     async fn get_by_id(&self, id: ActionId) -> Result<Option<Action>, RepositoryError> {
@@ -138,13 +138,15 @@ impl ActionRepository for SqliteActionRepository {
         .fetch_optional(&self.pool)
         .await
         .map_err(map_err)?;
-        Ok(row.map(|row| Action {
-            id: action.id,
-            name: action.name.clone(),
-            kind: action.kind.clone(),
-            enabled: action.enabled,
-            created_at: row.created_at,
-            updated_at: now,
+        Ok(row.map(|row| {
+            Action::new(
+                action.id,
+                action.name.clone(),
+                action.kind.clone(),
+                action.enabled,
+                row.created_at,
+                now,
+            )
         }))
     }
 

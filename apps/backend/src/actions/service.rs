@@ -167,14 +167,14 @@ mod tests {
     async fn update_missing_is_not_found() {
         let service = test_service();
         let err = service
-            .update(Action {
-                id: ActionId::new(999),
-                name: "x".to_string(),
-                kind: ActionKind::EnqueueRoulette,
-                enabled: true,
-                created_at: chrono::Utc::now(),
-                updated_at: chrono::Utc::now(),
-            })
+            .update(Action::new(
+                ActionId::new(999),
+                "x".to_string(),
+                ActionKind::EnqueueRoulette,
+                true,
+                chrono::Utc::now(),
+                chrono::Utc::now(),
+            ))
             .await
             .unwrap_err();
         assert!(matches!(err, ActionServiceError::ActionNotFound));

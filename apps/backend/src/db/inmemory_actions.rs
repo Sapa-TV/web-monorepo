@@ -37,14 +37,7 @@ impl ActionRepository for InMemoryActionRepository {
     ) -> Result<Action, RepositoryError> {
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
         let now = Utc::now();
-        let action = Action {
-            id: ActionId::new(id),
-            name: name.to_string(),
-            kind,
-            enabled,
-            created_at: now,
-            updated_at: now,
-        };
+        let action = Action::new(ActionId::new(id), name.to_string(), kind, enabled, now, now);
         self.actions.lock().push(action.clone());
         Ok(action)
     }
@@ -62,11 +55,10 @@ impl ActionRepository for InMemoryActionRepository {
         let Some(stored) = actions.iter_mut().find(|a| a.id == action.id) else {
             return Ok(None);
         };
-        *stored = Action {
-            created_at: stored.created_at,
-            updated_at: Utc::now(),
-            ..action
-        };
+        stored.name = action.name;
+        stored.kind = action.kind;
+        stored.enabled = action.enabled;
+        stored.updated_at = Utc::now();
         Ok(Some(stored.clone()))
     }
 
@@ -115,11 +107,14 @@ mod tests {
         repo.create("a", reply_kind(), true).await.unwrap();
         let original = repo.get_by_id(ActionId::new(1)).await.unwrap().unwrap();
         let updated = repo
-            .update(Action {
-                name: "renamed".to_string(),
-                kind: ActionKind::EnqueueRoulette,
-                ..original.clone()
-            })
+            .update(Action::new(
+                original.id,
+                "renamed".to_string(),
+                ActionKind::EnqueueRoulette,
+                original.enabled,
+                original.created_at,
+                original.updated_at,
+            ))
             .await
             .unwrap()
             .unwrap();
@@ -128,15 +123,15 @@ mod tests {
         assert_eq!(updated.created_at, original.created_at);
         assert!(updated.updated_at > original.updated_at);
 
-        assert!(
-            repo.update(Action {
-                id: ActionId::new(99),
-                ..original
-            })
-            .await
-            .unwrap()
-            .is_none()
+        let ghost = Action::new(
+            ActionId::new(99),
+            original.name.clone(),
+            original.kind.clone(),
+            original.enabled,
+            original.created_at,
+            original.updated_at,
         );
+        assert!(repo.update(ghost).await.unwrap().is_none());
     }
 
     #[tokio::test]

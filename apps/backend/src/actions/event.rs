@@ -83,14 +83,14 @@ mod tests {
 
     fn action(kind: ActionKind) -> Arc<Action> {
         let now = chrono::Utc::now();
-        Arc::new(Action {
-            id: ActionId::new(1),
-            name: "test".to_string(),
+        Arc::new(Action::new(
+            ActionId::new(1),
+            "test".to_string(),
             kind,
-            enabled: true,
-            created_at: now,
-            updated_at: now,
-        })
+            true,
+            now,
+            now,
+        ))
     }
 
     #[test]

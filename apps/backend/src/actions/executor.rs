@@ -213,14 +213,14 @@ mod tests {
     ) -> ActionEvent {
         let now = chrono::Utc::now();
         ActionEvent::from_action(
-            Arc::new(Action {
-                id: ActionId::new(1),
-                name: "test".to_string(),
-                kind: action,
-                enabled: true,
-                created_at: now,
-                updated_at: now,
-            }),
+            Arc::new(Action::new(
+                ActionId::new(1),
+                "test".to_string(),
+                action,
+                true,
+                now,
+                now,
+            )),
             chat_event(event_id, user_id, user_name),
         )
     }

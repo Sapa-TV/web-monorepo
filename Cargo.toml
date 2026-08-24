@@ -8,6 +8,7 @@ members = ["apps/backend", "tools/gen-openapi"]
 unwrap_used = "deny"
 let_underscore_must_use = "warn"
 absolute_paths = "deny"
+manual_non_exhaustive = "allow"
 
 [workspace.lints.rust.unexpected_cfgs]
 level = "warn"
