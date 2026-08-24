@@ -61,4 +61,12 @@
 		line-height: 1.4;
 		text-align: left;
 	}
+
+	.auth-card :global(.btn--twitch) {
+		width: 100%;
+		padding: 12px 16px;
+		border-radius: 12px;
+		font-size: 14px;
+		font-weight: 700;
+	}
 </style>

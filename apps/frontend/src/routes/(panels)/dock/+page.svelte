@@ -499,13 +499,6 @@
 		flex: 1;
 	}
 
-	.inline-form {
-		display: flex;
-		gap: 8px;
-		flex-wrap: wrap;
-		align-items: center;
-	}
-
 	.inline-form :global(.field-input) {
 		min-width: 140px;
 	}
