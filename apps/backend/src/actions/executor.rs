@@ -1,14 +1,11 @@
 use std::sync::Arc;
 
-use tokio::sync::mpsc;
-use twitch_oauth2::TwitchToken;
-
 use crate::actions::action::{ActionKind, render};
 use crate::actions::event::ActionEvent;
-use crate::config::TwitchConfig;
+use crate::actions::platform::{ActionContext, PlatformActionExecutor};
+use crate::actions::service::PlatformActionService;
 use crate::error::ExecutorError;
-use crate::ingress::twitch_auth::TwitchAuthService;
-use crate::platform::{PlatformCredentialRepository, PlatformRepository};
+use crate::platform::PlatformRepository;
 use crate::queue::repository::QueueRepository;
 use crate::queue::service::QueueService;
 use crate::roulette::rarity::RarityRepository;
@@ -16,44 +13,40 @@ use crate::roulette::repository::RouletteSlotRepository;
 use crate::user::UserId;
 use crate::user::repository::UserRepository;
 use crate::user::service::UserService;
+use tokio::sync::mpsc;
 
-pub struct ActionExecutor<Q, R, S, U, P, C>
+pub struct ActionExecutor<Q, R, S, U, P, T>
 where
     Q: QueueRepository,
     R: RarityRepository,
     S: RouletteSlotRepository,
     U: UserRepository,
     P: PlatformRepository,
-    C: PlatformCredentialRepository,
+    T: PlatformActionExecutor,
 {
     queue_service: Arc<QueueService<Q, R, S>>,
     user_service: Arc<UserService<U, P>>,
-    twitch_auth: Option<Arc<TwitchAuthService<C>>>,
-    broadcaster_id: String,
+    platform_actions: Arc<PlatformActionService<T>>,
 }
 
-impl<Q, R, S, U, P, C> ActionExecutor<Q, R, S, U, P, C>
+impl<Q, R, S, U, P, T> ActionExecutor<Q, R, S, U, P, T>
 where
     Q: QueueRepository,
     R: RarityRepository,
     S: RouletteSlotRepository,
     U: UserRepository,
     P: PlatformRepository,
-    C: PlatformCredentialRepository,
+    T: PlatformActionExecutor,
 {
     pub fn new(
         queue_service: Arc<QueueService<Q, R, S>>,
         user_service: Arc<UserService<U, P>>,
-        twitch_auth: Option<Arc<TwitchAuthService<C>>>,
-        twitch_config: Option<Arc<TwitchConfig>>,
+        platform_actions: Arc<PlatformActionService<T>>,
     ) -> Self {
         Self {
             queue_service,
             user_service,
-            twitch_auth,
-            broadcaster_id: twitch_config
-                .map(|c| c.broadcaster_id.clone())
-                .unwrap_or_default(),
+            platform_actions,
         }
     }
 
@@ -75,8 +68,16 @@ where
                     .await?;
             }
             ActionKind::ChatReply { message_template } => {
-                let message = render(message_template, &event.ctx);
-                self.send_chat_message(&message).await?;
+                let text = render(message_template, &event.ctx);
+                let ctx = ActionContext {
+                    event_id: event.source.event_id.clone(),
+                    user_id: event.ctx.user_id.clone(),
+                    user_name: event.ctx.user_name.clone(),
+                    channel_id: String::new(),
+                };
+                self.platform_actions
+                    .send_chat_message(event.source.platform, &ctx, &text)
+                    .await?;
             }
         }
         Ok(())
@@ -92,46 +93,88 @@ where
             )
             .await?)
     }
-
-    async fn send_chat_message(&self, message: &str) -> Result<(), ExecutorError> {
-        let Some(twitch_auth) = &self.twitch_auth else {
-            return Err(ExecutorError::Chat("twitch is not configured".to_string()));
-        };
-        let token = twitch_auth
-            .user_token()
-            .await
-            .map_err(|e| ExecutorError::Chat(e.to_string()))?;
-        let sender_id = token
-            .user_id()
-            .ok_or_else(|| ExecutorError::Chat("token has no user_id".to_string()))?;
-        let helix = twitch_auth.helix();
-        helix
-            .send_chat_message(&self.broadcaster_id, sender_id, message, &token)
-            .await
-            .map_err(|e| ExecutorError::Chat(e.to_string()))?;
-        Ok(())
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
+    use std::sync::nonpoison::Mutex;
 
     use tokio::sync::mpsc;
 
+    use super::*;
     use crate::actions::action::{Action, ActionId};
     use crate::db::inmemory_platform::InMemoryPlatformRepository;
-    use crate::db::inmemory_platform_credential::InMemoryPlatformCredentialRepository;
     use crate::db::inmemory_queue::InMemoryQueueRepository;
     use crate::db::inmemory_rarity::InMemoryRarityRepository;
     use crate::db::inmemory_roulette_slots::InMemoryRouletteSlotRepository;
     use crate::db::inmemory_user::InMemoryUserRepository;
+    use crate::error::platform_action::ActionError as TestActionError;
     use crate::ingress::event::PlatformEvent;
-    use crate::ingress::twitch_auth::TwitchAuthService;
     use crate::platform::PlatformId;
     use crate::test_fixtures::test_state_inmemory;
 
-    use super::*;
+    struct SpyExecutor {
+        inner: Arc<SpyInner>,
+    }
+
+    #[derive(Default)]
+    struct SpyInner {
+        fail: bool,
+        texts: Mutex<Vec<String>>,
+    }
+
+    impl SpyExecutor {
+        fn ok() -> Self {
+            Self {
+                inner: Arc::new(SpyInner::default()),
+            }
+        }
+
+        fn failing() -> Self {
+            Self {
+                inner: Arc::new(SpyInner {
+                    fail: true,
+                    texts: Mutex::new(Vec::new()),
+                }),
+            }
+        }
+
+        fn texts(&self) -> Vec<String> {
+            self.inner.texts.lock().clone()
+        }
+    }
+
+    impl Clone for SpyExecutor {
+        fn clone(&self) -> Self {
+            Self {
+                inner: Arc::clone(&self.inner),
+            }
+        }
+    }
+
+    impl PlatformActionExecutor for SpyExecutor {
+        fn platform(&self) -> PlatformId {
+            PlatformId::TWITCH
+        }
+
+        fn send_chat_message(
+            &self,
+            _ctx: &ActionContext,
+            text: &str,
+        ) -> impl Future<Output = Result<(), TestActionError>> + Send {
+            let inner = Arc::clone(&self.inner);
+            let text = text.to_string();
+            async move {
+                inner.texts.lock().push(text);
+                if inner.fail {
+                    Err(TestActionError::Api("spy failure".to_string()))
+                } else {
+                    Ok(())
+                }
+            }
+        }
+    }
 
     type TestExecutor = ActionExecutor<
         InMemoryQueueRepository,
@@ -139,42 +182,16 @@ mod tests {
         InMemoryRouletteSlotRepository,
         InMemoryUserRepository,
         InMemoryPlatformRepository,
-        InMemoryPlatformCredentialRepository,
+        SpyExecutor,
     >;
 
-    async fn setup() -> TestExecutor {
-        setup_with_twitch().await
-    }
-
-    async fn setup_with_twitch() -> TestExecutor {
+    async fn setup(executor: SpyExecutor) -> TestExecutor {
         let (state, _queue_repo) = test_state_inmemory().await;
-        let config = Arc::new(TwitchConfig {
-            client_id: "cid".to_string(),
-            client_secret: "cs".to_string(),
-            broadcaster_id: "bc".to_string(),
-            redirect_uri: "https://localhost/cb".to_string(),
-            credentials_redirect_uri: "https://localhost/creds/cb".to_string(),
-            csrf_ttl_secs: 600,
-        });
-        let twitch_auth = Arc::new(TwitchAuthService::new(
-            Arc::clone(&config),
-            Arc::clone(&state.credentials),
-        ));
+        let platform_actions = Arc::new(PlatformActionService::new().with_twitch(executor));
         ActionExecutor::new(
             Arc::clone(&state.queue_service),
             Arc::clone(&state.user_service),
-            Some(twitch_auth),
-            Some(config),
-        )
-    }
-
-    async fn setup_without_twitch() -> TestExecutor {
-        let (state, _queue_repo) = test_state_inmemory().await;
-        ActionExecutor::new(
-            Arc::clone(&state.queue_service),
-            Arc::clone(&state.user_service),
-            None,
-            None,
+            platform_actions,
         )
     }
 
@@ -210,7 +227,7 @@ mod tests {
 
     #[tokio::test]
     async fn no_action_enqueues_nothing() {
-        let executor = setup().await;
+        let executor = setup(SpyExecutor::ok()).await;
         let (tx, rx) = mpsc::channel(2);
         tx.send(action_event(ActionKind::NoAction, "msg-0", "1", "viewer"))
             .await
@@ -223,7 +240,7 @@ mod tests {
 
     #[tokio::test]
     async fn enqueue_roulette_creates_user_and_enqueues() {
-        let executor = setup().await;
+        let executor = setup(SpyExecutor::ok()).await;
         let (tx, rx) = mpsc::channel(2);
         tx.send(action_event(
             ActionKind::EnqueueRoulette,
@@ -249,7 +266,7 @@ mod tests {
 
     #[tokio::test]
     async fn enqueue_roulette_reuses_existing_user() {
-        let executor = setup().await;
+        let executor = setup(SpyExecutor::ok()).await;
         let existing = executor.user_service.create("viewer").await.unwrap();
         executor
             .user_service
@@ -279,22 +296,15 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn chat_reply_without_credentials_keeps_task_alive() {
-        let executor = setup().await;
+    async fn chat_reply_is_rendered_and_dispatched_to_platform_executor() {
+        let spy = SpyExecutor::ok();
+        let executor = setup(spy.clone()).await;
         let (tx, rx) = mpsc::channel(2);
         tx.send(action_event(
             ActionKind::ChatReply {
-                message_template: "hi {username}".to_string(),
+                message_template: "привет, {username}!".to_string(),
             },
             "msg-3",
-            "1",
-            "viewer",
-        ))
-        .await
-        .unwrap();
-        tx.send(action_event(
-            ActionKind::EnqueueRoulette,
-            "msg-4",
             "1",
             "viewer",
         ))
@@ -303,14 +313,24 @@ mod tests {
         drop(tx);
         executor.run(rx).await;
 
-        let stats = executor.queue_service.count_by_status().await.unwrap();
-        assert_eq!(stats.pending, 1, "task must survive a failing chat reply");
+        assert_eq!(spy.texts(), vec!["привет, viewer!".to_string()]);
     }
 
     #[tokio::test]
-    async fn enqueue_works_without_twitch_config() {
-        let executor = setup_without_twitch().await;
+    async fn chat_reply_platform_failure_keeps_task_alive() {
+        let spy = SpyExecutor::failing();
+        let executor = setup(spy.clone()).await;
         let (tx, rx) = mpsc::channel(2);
+        tx.send(action_event(
+            ActionKind::ChatReply {
+                message_template: "hi {username}".to_string(),
+            },
+            "msg-4",
+            "1",
+            "viewer",
+        ))
+        .await
+        .unwrap();
         tx.send(action_event(
             ActionKind::EnqueueRoulette,
             "msg-5",
@@ -322,13 +342,26 @@ mod tests {
         drop(tx);
         executor.run(rx).await;
 
+        assert_eq!(
+            spy.texts(),
+            vec!["hi viewer".to_string()],
+            "failing executor must still be called"
+        );
+
         let stats = executor.queue_service.count_by_status().await.unwrap();
-        assert_eq!(stats.pending, 1);
+        assert_eq!(stats.pending, 1, "task must survive a failing chat reply");
     }
 
     #[tokio::test]
-    async fn chat_reply_without_twitch_config_keeps_task_alive() {
-        let executor = setup_without_twitch().await;
+    async fn unregistered_platform_falls_back_to_unsupported_and_task_survives() {
+        let (state, _queue_repo) = test_state_inmemory().await;
+        let platform_actions: Arc<PlatformActionService<SpyExecutor>> =
+            Arc::new(PlatformActionService::new());
+        let executor = ActionExecutor::new(
+            Arc::clone(&state.queue_service),
+            Arc::clone(&state.user_service),
+            platform_actions,
+        );
         let (tx, rx) = mpsc::channel(2);
         tx.send(action_event(
             ActionKind::ChatReply {
@@ -352,6 +385,6 @@ mod tests {
         executor.run(rx).await;
 
         let stats = executor.queue_service.count_by_status().await.unwrap();
-        assert_eq!(stats.pending, 1, "task must survive without twitch config");
+        assert_eq!(stats.pending, 1, "task must survive unsupported platform");
     }
 }

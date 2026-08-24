@@ -6,6 +6,8 @@ use tokio_util::sync::CancellationToken;
 
 use crate::actions::event::ActionEvent;
 use crate::actions::executor::ActionExecutor;
+use crate::actions::service::PlatformActionService;
+use crate::actions::twitch_executor::TwitchActionExecutor;
 use crate::consts::actions::BUS_CAPACITY;
 use crate::rules::engine::RuleEngine;
 use crate::state::AppState;
@@ -13,12 +15,19 @@ use crate::state::AppState;
 pub fn start_rule_pipeline(state: &AppState, shutdown: &CancellationToken) {
     let (tx, rx) = mpsc::channel::<ActionEvent>(BUS_CAPACITY);
 
-    let twitch_config = state.config.twitch().map(|twitch| Arc::new(twitch.clone()));
+    let mut platform_actions = PlatformActionService::new();
+    if let (Some(config), Some(twitch_api)) = (
+        state.config.twitch().map(|twitch| Arc::new(twitch.clone())),
+        state.twitch_api.clone(),
+    ) {
+        platform_actions =
+            platform_actions.with_twitch(TwitchActionExecutor::new(config, twitch_api));
+    }
+
     let executor = Arc::new(ActionExecutor::new(
         Arc::clone(&state.queue_service),
         Arc::clone(&state.user_service),
-        state.twitch_api.clone(),
-        twitch_config,
+        Arc::new(platform_actions),
     ));
 
     let engine = RuleEngine::new(
