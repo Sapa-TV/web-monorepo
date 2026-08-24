@@ -21,6 +21,12 @@ pub(crate) fn bearer(key: &str) -> (&'static str, String) {
     ("authorization", format!("Bearer {key}"))
 }
 
+pub(crate) fn wapi_path(path: &str) -> String {
+    format!("/wapi{path}")
+}
+
+mod wak_rotation;
+
 pub(crate) fn cookie(value: &str) -> (&'static str, String) {
     ("cookie", value.to_string())
 }
