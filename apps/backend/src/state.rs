@@ -26,6 +26,7 @@ use crate::ingress::{EventIngress, spawn_logging_handler};
 use crate::platform::{
     PlatformCredentialRepository, PlatformCredentialService, PlatformRepository,
 };
+use crate::presence::Presence;
 use crate::queue::repository::QueueRepository;
 use crate::queue::service::QueueService;
 use crate::random::StandartRandomProvider;
@@ -67,6 +68,7 @@ where
     pub event_publisher: BroadcastEventPublisher,
     pub stream_status: Arc<StreamStatus>,
     pub ingress: Arc<EventIngress>,
+    pub presence: Arc<Presence>,
     pub admin_auth: Arc<AdminAuthService<C>>,
     pub credentials: Arc<PlatformCredentialService<C>>,
     pub rule_service: Arc<RuleService<L, M>>,
@@ -100,6 +102,7 @@ where
             event_publisher: self.event_publisher.clone(),
             stream_status: Arc::clone(&self.stream_status),
             ingress: Arc::clone(&self.ingress),
+            presence: Arc::clone(&self.presence),
             admin_auth: Arc::clone(&self.admin_auth),
             credentials: Arc::clone(&self.credentials),
             rule_service: Arc::clone(&self.rule_service),
@@ -193,6 +196,7 @@ where
     let event_publisher = BroadcastEventPublisher::new();
     let ingress = Arc::new(EventIngress::new());
     spawn_logging_handler(ingress.subscribe());
+    let presence = Presence::new();
 
     let slot_service = Arc::new(RouletteSlotService::build(slot_repo).await?);
     let rarity_service = Arc::new(RarityService::build(rarity_repo).await?);
@@ -243,6 +247,7 @@ where
         event_publisher,
         stream_status: Arc::new(StreamStatus::new()),
         ingress,
+        presence,
         admin_auth,
         credentials,
         rule_service,
