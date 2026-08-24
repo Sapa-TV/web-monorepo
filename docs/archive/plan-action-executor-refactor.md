@@ -1,6 +1,6 @@
 # Рефакторинг ActionExecutor: платформенные экшены через трейт
 
-Статус: **план на согласование**. Пункт бэклога #3: «Разбить ActionExecutor на 3 компонента».
+Статус: **выполнен** (2026-08-24). Пункт бэклога #3: «Разбить ActionExecutor на 3 компонента».
 
 Дата: 2026-08-24
 
@@ -195,3 +195,26 @@ cargo clippy --all-targets && cargo fmt --check
 
 3–4.5 ч: контракты ~0.5 ч, twitch-реализация ~1 ч, сервис ~0.5 ч, перевод
 executor + runtime ~0.75–1 ч, тесты ~0.75 ч, регресс ~0.25 ч.
+
+## Итог (отличия от плана)
+
+Выполнено полностью; nextest 372 passed (+5 новых), clippy/fmt чисто.
+Отклонения:
+
+- **Диспетчеризация статическая** (решение на ревью плана): без `dyn` и
+  async-trait; `PlatformActionService<T>` дженерик по исполнителю, выбор —
+  `match` по `PlatformId`.
+- Следствие: `ActionExecutor` сохранил параметр-дженерик — теперь это
+  `T: PlatformActionExecutor` вместо `C: PlatformCredentialRepository`.
+  Платформенной логики в нём по-прежнему нет; тесты получили чистый spy.
+- `ExecutorError::Chat(String)` заменён на `Platform(#[from] ActionError)`.
+- **`channel_id` в ActionContext пока заполняется пустой строкой**: Twitch-
+  исполнитель берёт broadcaster из своего конфига (`TwitchConfig.broadcaster_id`),
+  поле — задел под платформы, где target живёт в событии.
+- Юниты twitch_executor добавлены сразу в шаге 2 (не 5): маппинг отсутствия
+  токена в `ActionError::Api` без сети.
+- Тесты executor переведены на in-memory фикстуру `test_state_inmemory()`
+  вместо sqlite `test_state_with`; spy сделан клонируемым через Arc-inner,
+  чтобы страница/тест держали хэндл к записанным вызовам после переезда
+  исполнителя в сервис.
+- Ручной smoke с живым Twitch остаётся за эксплуатацией.
