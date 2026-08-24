@@ -1,14 +1,15 @@
 <script lang="ts">
 	import { WS_URL, wapi, type QueueEntry } from "#lib/api";
-	import { Badge, Button, Input, Section, TableWrap } from "@sapa-tv-ru/ui-kit";
+	import EnqueueForm from "#lib/components/dock/EnqueueForm.svelte";
+	import EventLog from "#lib/components/dock/EventLog.svelte";
+	import QueueTables from "#lib/components/dock/QueueTables.svelte";
+	import { Badge, Button } from "@sapa-tv-ru/ui-kit";
 	import { onMount } from "svelte";
-	import IconCheck from "~icons/lucide/check";
 	import IconKeyRound from "~icons/lucide/key-round";
 	import IconList from "~icons/lucide/list";
 	import IconPlay from "~icons/lucide/play";
 	import IconPlus from "~icons/lucide/plus";
 	import IconRefreshCw from "~icons/lucide/refresh-cw";
-	import IconX from "~icons/lucide/x";
 	import { describeApiError } from "#lib/api-error-text";
 	import { ApiErrorKind, normalizeApiError } from "#lib/internal/api-error";
 
@@ -26,19 +27,6 @@
 	const wapiAuth = {
 		headers: { Authorization: `Bearer ${widgetAccessKey}` },
 	};
-
-	type BadgeTone =
-		| "ok"
-		| "missing"
-		| "bad"
-		| "pending"
-		| "spinning"
-		| "completed"
-		| "error"
-		| "cancelled"
-		| "root"
-		| "connected"
-		| "disconnected";
 
 	let entries = $state<QueueEntry[]>([]);
 	let nextUser = $state("");
@@ -313,141 +301,18 @@
 </div>
 
 {#if showEnqueue}
-	<Section title="Добавить в очередь">
-		<div class="inline-form">
-			<label class="visually-hidden" for="enq-name">Имя зрителя</label>
-			<Input
-				id="enq-name"
-				type="text"
-				placeholder="Имя зрителя"
-				bind:value={enqName}
-			/>
-			<Button
-				variant="primary"
-				type="button"
-				onclick={enqueueEntry}
-				disabled={enqBusy}
-			>
-				<IconPlus aria-hidden="true" />
-				Добавить
-			</Button>
-		</div>
-	</Section>
+	<EnqueueForm bind:value={enqName} busy={enqBusy} onsubmit={enqueueEntry} />
 {/if}
 
-<Section title="Активные">
-	<TableWrap>
-		<table>
-			<thead>
-				<tr>
-					<th>Имя</th>
-					<th>Статус</th>
-					<th>Слот</th>
-					<th class="th-actions"></th>
-				</tr>
-			</thead>
-			<tbody>
-				{#if active.length === 0}
-					<tr>
-						<td colspan="4" class="empty-row">Нет записей</td>
-					</tr>
-				{:else}
-					{#each active as e (e.id)}
-						<tr>
-							<td>{e.user_name || e.user_id}</td>
-							<td
-								><Badge tone={e.status.toLowerCase() as BadgeTone}
-									>{e.status}</Badge
-								></td
-							>
-							<td
-								>{e.status === "Spinning"
-									? e.slot_name || e.result_slot_id || "—"
-									: "—"}</td
-							>
-							<td class="actions-cell">
-								{#if e.status === "Pending" || e.status === "Error"}
-									<Button
-										variant="cancel"
-										size="sm"
-										icon
-										type="button"
-										onclick={() => cancelEntry(e.id)}
-										aria-label="Отменить"
-									>
-										<IconX aria-hidden="true" />
-									</Button>
-								{:else if e.status === "Spinning"}
-									<Button
-										variant="complete"
-										size="sm"
-										icon
-										type="button"
-										onclick={() => completeEntry(e.id)}
-										aria-label="Завершить"
-									>
-										<IconCheck aria-hidden="true" />
-									</Button>
-								{/if}
-							</td>
-						</tr>
-					{/each}
-				{/if}
-			</tbody>
-		</table>
-	</TableWrap>
-</Section>
-
-<Section title="Завершённые / Отменённые">
-	<TableWrap>
-		<table>
-			<thead>
-				<tr>
-					<th>Имя</th>
-					<th>Результат</th>
-					<th>Статус</th>
-				</tr>
-			</thead>
-			<tbody>
-				{#if done.length === 0}
-					<tr>
-						<td colspan="3" class="empty-row">Нет записей</td>
-					</tr>
-				{:else}
-					{#each [...done].reverse() as e (e.id)}
-						<tr>
-							<td>{e.user_name || e.user_id}</td>
-							<td
-								>{e.status === "Completed" ? e.slot_name || "✔" : "отменён"}</td
-							>
-							<td>
-								<Badge tone={e.status.toLowerCase() as BadgeTone}
-									>{e.status}</Badge
-								></td
-							>
-						</tr>
-					{/each}
-				{/if}
-			</tbody>
-		</table>
-	</TableWrap>
-</Section>
+<QueueTables
+	{active}
+	{done}
+	oncomplete={completeEntry}
+	oncancel={cancelEntry}
+/>
 
 {#if showLog}
-	<Section title="События">
-		<div class="event-log" role="log">
-			{#if events.length === 0}
-				<div class="empty-row">Ожидание событий...</div>
-			{:else}
-				{#each events as e (e)}
-					<div class={`ev ev-${e.cls}`}>
-						<span class="ev-time">[{e.time}]</span>
-						{e.text}
-					</div>
-				{/each}
-			{/if}
-		</div>
-	</Section>
+	<EventLog {events} />
 {/if}
 
 <style>
@@ -476,7 +341,7 @@
 		gap: 8px;
 	}
 
-	.icon-sm {
+	.panel-header__right :global(.icon-sm) {
 		width: 0.95rem;
 		height: 0.95rem;
 	}
@@ -497,57 +362,5 @@
 
 	.spacer {
 		flex: 1;
-	}
-
-	.inline-form :global(.field-input) {
-		min-width: 140px;
-	}
-
-	.empty-row {
-		color: var(--on-surface-variant);
-		font-style: italic;
-		padding: 14px;
-		text-align: center;
-	}
-
-	.th-actions {
-		width: 1%;
-	}
-
-	.event-log {
-		background: var(--surface-container);
-		border: 1px solid var(--outline-variant);
-		border-radius: 12px;
-		padding: 14px;
-		max-height: 200px;
-		overflow-y: auto;
-		font-family: var(--font-mono);
-		font-size: 12px;
-	}
-
-	.event-log .ev {
-		padding: 4px 0;
-		border-bottom: 1px solid var(--outline-variant);
-	}
-
-	.event-log .ev:last-child {
-		border-bottom: none;
-	}
-
-	.ev-time {
-		color: var(--on-surface-variant);
-		margin-right: 8px;
-	}
-
-	.ev-start {
-		color: var(--primary);
-	}
-
-	.ev-complete {
-		color: var(--secondary);
-	}
-
-	.ev-error {
-		color: var(--error);
 	}
 </style>

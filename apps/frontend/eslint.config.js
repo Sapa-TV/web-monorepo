@@ -72,7 +72,7 @@ export default defineConfig(
 		files: ["**/*.svelte"],
 		rules: {
 			"max-lines": [
-				"warn",
+				"error",
 				{ max: 350, skipBlankLines: true, skipComments: true },
 			],
 		},
