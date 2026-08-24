@@ -2,6 +2,7 @@
 	import { api } from "#lib/api";
 	import { Alert } from "@sapa-tv-ru/ui-kit";
 	import AccessKeyCard from "#lib/components/admin/widgets/AccessKeyCard.svelte";
+	import PresenceCard from "#lib/components/admin/widgets/PresenceCard.svelte";
 	import WidgetLinksCard from "#lib/components/admin/widgets/WidgetLinksCard.svelte";
 	import { onMount } from "svelte";
 	import { describeApiError } from "#lib/api-error-text";
@@ -37,6 +38,7 @@
 {/if}
 
 {#if loaded}
+	<PresenceCard />
 	<AccessKeyCard {accessKey} onrotated={loadWak} />
 	<WidgetLinksCard {accessKey} />
 {/if}

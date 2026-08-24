@@ -50,6 +50,7 @@
 	let nextBusy = $state(false);
 	let keyState = $state<"ok" | "missing" | "bad" | null>(null);
 	let connState = $state<"connected" | "disconnected">("disconnected");
+	let widgetOnline = $state(false);
 	let events = $state<
 		{ time: string; text: string; cls: "start" | "complete" | "error" }[]
 	>([]);
@@ -176,10 +177,17 @@
 		ws.onopen = () => {
 			connState = "connected";
 			if (widgetAccessKey)
-				ws?.send(JSON.stringify({ type: "auth", token: widgetAccessKey }));
+				ws?.send(
+					JSON.stringify({
+						type: "auth",
+						token: widgetAccessKey,
+						role: "dock",
+					}),
+				);
 		};
 		ws.onclose = () => {
 			connState = "disconnected";
+			widgetOnline = false;
 			if (!wsRejected) {
 				setTimeout(connectWs, wsRetryMs);
 				wsRetryMs = Math.min(wsRetryMs * 2, WS_RETRY_MAX_MS);
@@ -193,10 +201,13 @@
 					| "auth_err"
 					| "spin_started"
 					| "spin_completed"
-					| "spin_error";
+					| "spin_error"
+					| "presence";
 				entry_id?: number;
 				user_name?: string;
 				slot_name?: string;
+				dock?: boolean;
+				widget_count?: number;
 			};
 			switch (d.type) {
 				case "auth_ok":
@@ -205,6 +216,9 @@
 				case "auth_err":
 					wsRejected = true;
 					setKeyState(widgetAccessKey ? "bad" : "missing");
+					break;
+				case "presence":
+					widgetOnline = (d.widget_count ?? 0) > 0;
 					break;
 				case "spin_started":
 					addEvent(
@@ -255,6 +269,11 @@
 			</Badge>
 		{/if}
 		<Badge tone={connState} dot></Badge>
+		{#if connState === "connected"}
+			<Badge tone={widgetOnline ? "connected" : "disconnected"}>
+				виджет {widgetOnline ? "онлайн" : "офлайн"}
+			</Badge>
+		{/if}
 		<Button
 			size="sm"
 			icon

@@ -17,3 +17,12 @@ export const WS_URL = `${defaultOrigin}${WAPI_BASE}/ws`;
 
 export type { QueueStats } from "@sapa-tv-ru/api-client";
 export type { QueueEntryResponse as QueueEntry } from "@sapa-tv-ru/api-client";
+export type { PresenceResponse } from "@sapa-tv-ru/api-client";
+
+export type WsClientRole = "dock" | "widget";
+
+export type PresenceMessage = {
+	type: "presence";
+	dock: boolean;
+	widget_count: number;
+};

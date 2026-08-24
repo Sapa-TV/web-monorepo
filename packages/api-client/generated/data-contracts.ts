@@ -122,6 +122,12 @@ export interface PlatformResponse {
   name: string;
 }
 
+export interface PresenceResponse {
+  dock_connected: boolean;
+  /** @min 0 */
+  widget_count: number;
+}
+
 /**
  * @format int32
  * @min 0

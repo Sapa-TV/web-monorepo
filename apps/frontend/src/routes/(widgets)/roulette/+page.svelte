@@ -127,7 +127,13 @@
 		ws.onopen = () => {
 			setConn("connected", "подключено");
 			if (widgetAccessKey)
-				ws?.send(JSON.stringify({ type: "auth", token: widgetAccessKey }));
+				ws?.send(
+					JSON.stringify({
+						type: "auth",
+						token: widgetAccessKey,
+						role: "widget",
+					}),
+				);
 		};
 
 		ws.onmessage = (e) => {
@@ -137,7 +143,8 @@
 					| "auth_err"
 					| "spin_started"
 					| "spin_completed"
-					| "spin_error";
+					| "spin_error"
+					| "presence";
 				entry_id?: number;
 				user_name?: string;
 				slot_name?: string;

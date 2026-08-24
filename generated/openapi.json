@@ -219,6 +219,26 @@
         }
       }
     },
+    "/api/admin/presence": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "get_presence",
+        "responses": {
+          "200": {
+            "description": "Current ws client presence",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresenceResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/admin/rewards": {
       "get": {
         "tags": [
@@ -1951,6 +1971,22 @@
           },
           "name": {
             "type": "string"
+          }
+        }
+      },
+      "PresenceResponse": {
+        "type": "object",
+        "required": [
+          "dock_connected",
+          "widget_count"
+        ],
+        "properties": {
+          "dock_connected": {
+            "type": "boolean"
+          },
+          "widget_count": {
+            "type": "integer",
+            "minimum": 0
           }
         }
       },

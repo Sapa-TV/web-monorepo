@@ -16,6 +16,7 @@ import {
   AdminResponse,
   CreateSessionRequest,
   IngressCredentialsResponse,
+  PresenceResponse,
   RarityId,
   RarityResponse,
   RewardResponse,
@@ -158,6 +159,20 @@ export class Api<
     this.request<void, void>({
       path: `/api/admin/ingress/credentials`,
       method: "DELETE",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags admin
+   * @name GetPresence
+   * @request GET:/api/admin/presence
+   */
+  getPresence = (params: RequestParams = {}) =>
+    this.request<PresenceResponse, any>({
+      path: `/api/admin/presence`,
+      method: "GET",
+      format: "json",
       ...params,
     });
   /**
