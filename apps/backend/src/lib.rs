@@ -25,6 +25,8 @@ pub mod state;
 pub mod stream;
 #[cfg(test)]
 pub mod test_fixtures;
+#[cfg(test)]
+pub(crate) mod usecases;
 pub mod user;
 pub mod widget_api;
 
