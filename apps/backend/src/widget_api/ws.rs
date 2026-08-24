@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use subtle::ConstantTimeEq;
 use tokio::sync::broadcast;
 
+use crate::presence::{PresenceSnapshot, WsClientRole};
 use crate::queue::entry::QueueEntryId;
 use crate::state::AppState;
 
@@ -15,7 +16,7 @@ use crate::state::AppState;
 #[non_exhaustive]
 enum ClientMessage {
     #[serde(rename = "auth")]
-    Auth { token: String },
+    Auth { token: String, role: WsClientRole },
     #[serde(rename = "complete")]
     Complete { entry_id: QueueEntryId },
 }
@@ -35,16 +36,30 @@ enum ServerMessage {
         entry_id: QueueEntryId,
         error: String,
     },
+    #[serde(rename = "presence")]
+    Presence { dock: bool, widget_count: usize },
+}
+
+impl ServerMessage {
+    fn presence(snapshot: PresenceSnapshot) -> Self {
+        Self::Presence {
+            dock: snapshot.dock > 0,
+            widget_count: snapshot.widget,
+        }
+    }
+}
+
+fn validate_token(state: &AppState, token: &str) -> bool {
+    token
+        .as_bytes()
+        .ct_eq(state.config.widget_access_key().as_bytes())
+        .into()
 }
 
 async fn handle_message(state: &AppState, msg: ClientMessage) -> ServerMessage {
     match msg {
-        ClientMessage::Auth { token } => {
-            let authorized: bool = token
-                .as_bytes()
-                .ct_eq(state.config.widget_access_key().as_bytes())
-                .into();
-            if authorized {
+        ClientMessage::Auth { token, .. } => {
+            if validate_token(state, &token) {
                 ServerMessage::AuthOk
             } else {
                 ServerMessage::AuthErr
@@ -73,6 +88,10 @@ async fn handle_socket(mut socket: WebSocket, state: AppState) {
     let Ok(msg) = serde_json::from_str::<ClientMessage>(&text) else {
         return;
     };
+    let ClientMessage::Auth { role, .. } = &msg else {
+        return;
+    };
+    let role = *role;
     let reply = handle_message(&state, msg).await;
     let Ok(json) = serde_json::to_string(&reply) else {
         return;
@@ -84,12 +103,28 @@ async fn handle_socket(mut socket: WebSocket, state: AppState) {
         return;
     }
 
+    let _presence_guard = state.presence.add(role);
+    let mut presence_rx = state.presence.subscribe();
+    let initial = ServerMessage::presence(state.presence.snapshot());
+    if !send_json(&mut socket, &initial).await {
+        return;
+    }
+
     let mut rx = state.event_publisher.subscribe();
 
-    tracing::info!("ws client connected");
+    tracing::info!(role = role.as_ref(), "ws client connected");
 
     loop {
         tokio_select!(match .. {
+            .. if let changed = presence_rx.changed() => match changed {
+                Ok(()) => {
+                    let snapshot = *presence_rx.borrow_and_update();
+                    if !send_json(&mut socket, &ServerMessage::presence(snapshot)).await {
+                        break;
+                    }
+                }
+                Err(_) => break,
+            },
             .. if let result = rx.recv() => match result {
                 Ok(event) => {
                     let Ok(json) = serde_json::to_string(&*event) else {
@@ -124,7 +159,14 @@ async fn handle_socket(mut socket: WebSocket, state: AppState) {
         })
     }
 
-    tracing::debug!("ws client disconnected");
+    tracing::debug!(role = role.as_ref(), "ws client disconnected");
+}
+
+async fn send_json(socket: &mut WebSocket, message: &ServerMessage) -> bool {
+    match serde_json::to_string(message) {
+        Ok(json) => socket.send(Message::Text(json.into())).await.is_ok(),
+        Err(_) => false,
+    }
 }
 
 pub fn public_router() -> axum::Router<AppState> {
@@ -135,6 +177,7 @@ pub fn public_router() -> axum::Router<AppState> {
 mod tests {
     use serde_json::Value;
 
+    use crate::presence::{PresenceSnapshot, WsClientRole};
     use crate::queue::entry::{QueueEntryId, QueueStatus};
     use crate::roulette::rarity::{Rarity, RarityId};
     use crate::roulette::slot_service::{RouletteSlot, RouletteSlotId};
@@ -179,6 +222,7 @@ mod tests {
             &state,
             ClientMessage::Auth {
                 token: "test-key".to_string(),
+                role: WsClientRole::Dock,
             },
         )
         .await;
@@ -188,10 +232,35 @@ mod tests {
             &state,
             ClientMessage::Auth {
                 token: "wrong-key".to_string(),
+                role: WsClientRole::Widget,
             },
         )
         .await;
         assert!(matches!(bad, ServerMessage::AuthErr));
+    }
+
+    #[test]
+    fn auth_without_role_is_rejected_by_deserialization() {
+        let parsed = serde_json::from_str::<ClientMessage>(r#"{"type":"auth","token":"k"}"#);
+        assert!(parsed.is_err(), "auth requires a role field");
+
+        let parsed =
+            serde_json::from_str::<ClientMessage>(r#"{"type":"auth","token":"k","role":"widget"}"#);
+        assert!(parsed.is_ok());
+    }
+
+    #[tokio::test]
+    async fn presence_snapshot_serializes_with_type_tag() {
+        let msg = ServerMessage::presence(PresenceSnapshot { dock: 2, widget: 3 });
+        let json: Value = serde_json::to_value(&msg).unwrap();
+        assert_eq!(json["type"], "presence");
+        assert_eq!(json["dock"], true);
+        assert_eq!(json["widget_count"], 3);
+
+        let empty = ServerMessage::presence(PresenceSnapshot::default());
+        let json: Value = serde_json::to_value(&empty).unwrap();
+        assert_eq!(json["dock"], false);
+        assert_eq!(json["widget_count"], 0);
     }
 
     #[tokio::test]
