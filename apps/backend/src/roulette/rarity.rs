@@ -36,6 +36,7 @@ pub struct Rarity {
     pub(crate) display_name: String,
     pub(crate) image: String,
     pub(crate) color: String,
+    _sealed: (),
 }
 
 impl Rarity {
@@ -52,6 +53,7 @@ impl Rarity {
             display_name: display_name.into(),
             image: image.into(),
             color: color.into(),
+            _sealed: (),
         }
     }
 }
