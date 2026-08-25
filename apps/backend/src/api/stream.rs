@@ -1,16 +1,10 @@
 use axum::Json;
 use axum::extract::State;
-use utoipa::ToSchema;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
 
 use crate::state::AppState;
-
-#[derive(Debug, serde::Serialize, ToSchema)]
-#[non_exhaustive]
-pub struct StreamStatusResponse {
-    pub online: bool,
-}
+use crate::stream::StreamStatusResponse;
 
 #[utoipa::path(
     get,
@@ -21,9 +15,7 @@ pub struct StreamStatusResponse {
     )
 )]
 pub async fn get_stream_status(State(state): State<AppState>) -> Json<StreamStatusResponse> {
-    Json(StreamStatusResponse {
-        online: state.stream_status.is_online(),
-    })
+    Json(StreamStatusResponse::new(state.stream_status.is_online()))
 }
 
 pub fn public_router() -> OpenApiRouter<AppState> {
