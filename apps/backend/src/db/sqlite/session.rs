@@ -50,12 +50,14 @@ impl SessionRepository for SqliteSessionRepository {
         .fetch_optional(&self.pool)
         .await
         .map_err(map_err)?;
-        Ok(row.map(|row| Session {
-            token: SessionToken::new(row.token),
-            twitch_user_id: row.twitch_user_id,
-            twitch_user_name: row.twitch_user_name,
-            created_at: row.created_at,
-            expires_at: row.expires_at,
+        Ok(row.map(|row| {
+            Session::new(
+                SessionToken::new(row.token),
+                row.twitch_user_id,
+                row.twitch_user_name,
+                row.created_at,
+                row.expires_at,
+            )
         }))
     }
 
@@ -110,12 +112,14 @@ impl SessionRepository for SqliteSessionRepository {
         .fetch_optional(&self.pool)
         .await
         .map_err(map_err)?;
-        Ok(row.map(|row| LoginTicket {
-            ticket: LoginTicketToken::new(row.ticket),
-            twitch_user_id: row.twitch_user_id,
-            twitch_user_name: row.twitch_user_name,
-            created_at: row.created_at,
-            expires_at: row.expires_at,
+        Ok(row.map(|row| {
+            LoginTicket::new(
+                LoginTicketToken::new(row.ticket),
+                row.twitch_user_id,
+                row.twitch_user_name,
+                row.created_at,
+                row.expires_at,
+            )
         }))
     }
 
@@ -145,13 +149,13 @@ mod tests {
 
     fn sample_session(token: &str) -> Session {
         let now = Utc::now();
-        Session {
-            token: SessionToken::new(token),
-            twitch_user_id: "123".to_string(),
-            twitch_user_name: Some("sapushka_".to_string()),
-            created_at: now,
-            expires_at: now + Duration::from_secs(3600),
-        }
+        Session::new(
+            SessionToken::new(token),
+            "123".to_string(),
+            Some("sapushka_".to_string()),
+            now,
+            now + Duration::from_secs(3600),
+        )
     }
 
     #[tokio::test]
@@ -187,13 +191,13 @@ mod tests {
     async fn ticket_take_is_destructive() {
         let repo = repo().await;
         let now = Utc::now();
-        let ticket = LoginTicket {
-            ticket: LoginTicketToken::new("tic"),
-            twitch_user_id: "123".to_string(),
-            twitch_user_name: None,
-            created_at: now,
-            expires_at: now + ChronoDuration::seconds(600),
-        };
+        let ticket = LoginTicket::new(
+            LoginTicketToken::new("tic"),
+            "123".to_string(),
+            None,
+            now,
+            now + ChronoDuration::seconds(600),
+        );
 
         repo.save_ticket(&ticket).await.unwrap();
 
@@ -214,13 +218,13 @@ mod tests {
             ("boundary", ChronoDuration::zero()),
             ("fresh", ChronoDuration::hours(1)),
         ] {
-            let session = Session {
-                token: SessionToken::new(token),
-                twitch_user_id: "1".to_string(),
-                twitch_user_name: None,
-                created_at: now,
-                expires_at: now + ttl,
-            };
+            let session = Session::new(
+                SessionToken::new(token),
+                "1".to_string(),
+                None,
+                now,
+                now + ttl,
+            );
             repo.save_session(&session).await.unwrap();
         }
 

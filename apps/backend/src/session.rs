@@ -33,6 +33,27 @@ pub struct Session {
     pub twitch_user_name: Option<String>,
     pub created_at: DateTime<Utc>,
     pub expires_at: DateTime<Utc>,
+    _sealed: (),
+}
+
+impl Session {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        token: SessionToken,
+        twitch_user_id: String,
+        twitch_user_name: Option<String>,
+        created_at: DateTime<Utc>,
+        expires_at: DateTime<Utc>,
+    ) -> Self {
+        Self {
+            token,
+            twitch_user_id,
+            twitch_user_name,
+            created_at,
+            expires_at,
+            _sealed: (),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -57,4 +78,25 @@ pub struct LoginTicket {
     pub twitch_user_name: Option<String>,
     pub created_at: DateTime<Utc>,
     pub expires_at: DateTime<Utc>,
+    _sealed: (),
+}
+
+impl LoginTicket {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        ticket: LoginTicketToken,
+        twitch_user_id: String,
+        twitch_user_name: Option<String>,
+        created_at: DateTime<Utc>,
+        expires_at: DateTime<Utc>,
+    ) -> Self {
+        Self {
+            ticket,
+            twitch_user_id,
+            twitch_user_name,
+            created_at,
+            expires_at,
+            _sealed: (),
+        }
+    }
 }

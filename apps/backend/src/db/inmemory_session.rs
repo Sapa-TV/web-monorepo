@@ -82,13 +82,13 @@ mod tests {
     #[tokio::test]
     async fn session_roundtrip() {
         let repo = InMemorySessionRepository::new();
-        let session = Session {
-            token: SessionToken::new("tok"),
-            twitch_user_id: "123".to_string(),
-            twitch_user_name: Some("sapushka_".to_string()),
-            created_at: Utc::now(),
-            expires_at: Utc::now() + Duration::from_secs(3600),
-        };
+        let session = Session::new(
+            SessionToken::new("tok"),
+            "123".to_string(),
+            Some("sapushka_".to_string()),
+            Utc::now(),
+            Utc::now() + Duration::from_secs(3600),
+        );
         repo.save_session(&session).await.unwrap();
 
         let fetched = repo.get_session(&session.token).await.unwrap().unwrap();
@@ -101,13 +101,13 @@ mod tests {
     #[tokio::test]
     async fn ticket_take_is_destructive() {
         let repo = InMemorySessionRepository::new();
-        let ticket = LoginTicket {
-            ticket: LoginTicketToken::new("tic"),
-            twitch_user_id: "123".to_string(),
-            twitch_user_name: None,
-            created_at: Utc::now(),
-            expires_at: Utc::now() + Duration::from_secs(600),
-        };
+        let ticket = LoginTicket::new(
+            LoginTicketToken::new("tic"),
+            "123".to_string(),
+            None,
+            Utc::now(),
+            Utc::now() + Duration::from_secs(600),
+        );
         repo.save_ticket(&ticket).await.unwrap();
 
         let taken = repo.take_ticket(&ticket.ticket).await.unwrap().unwrap();
@@ -120,20 +120,20 @@ mod tests {
         let repo = InMemorySessionRepository::new();
         let now = Utc::now();
 
-        let stale = Session {
-            token: SessionToken::new("stale"),
-            twitch_user_id: "1".to_string(),
-            twitch_user_name: None,
-            created_at: now,
-            expires_at: now - Duration::from_secs(1),
-        };
-        let fresh = Session {
-            token: SessionToken::new("fresh"),
-            twitch_user_id: "2".to_string(),
-            twitch_user_name: None,
-            created_at: now,
-            expires_at: now + Duration::from_secs(1),
-        };
+        let stale = Session::new(
+            SessionToken::new("stale"),
+            "1".to_string(),
+            None,
+            now,
+            now - Duration::from_secs(1),
+        );
+        let fresh = Session::new(
+            SessionToken::new("fresh"),
+            "2".to_string(),
+            None,
+            now,
+            now + Duration::from_secs(1),
+        );
         repo.save_session(&stale).await.unwrap();
         repo.save_session(&fresh).await.unwrap();
 

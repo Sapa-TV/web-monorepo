@@ -130,36 +130,36 @@ async fn suite_session_lifecycle<S: SessionRepository>(repo: &S) {
     let now = Utc::now();
 
     for (token, ttl_secs) in [("expired", -3600i64), ("edge", 0), ("fresh", 3600)] {
-        let session = Session {
-            token: SessionToken::new(token),
-            twitch_user_id: token.to_string(),
-            twitch_user_name: None,
-            created_at: now,
-            expires_at: now + ChronoDuration::seconds(ttl_secs),
-        };
+        let session = Session::new(
+            SessionToken::new(token),
+            token.to_string(),
+            None,
+            now,
+            now + ChronoDuration::seconds(ttl_secs),
+        );
         repo.save_session(&session).await.unwrap();
     }
 
     // upsert same token replaces data
-    let fresh = Session {
-        token: SessionToken::new("fresh"),
-        twitch_user_id: "42".to_string(),
-        twitch_user_name: Some("n".to_string()),
-        created_at: now,
-        expires_at: now + ChronoDuration::hours(2),
-    };
+    let fresh = Session::new(
+        SessionToken::new("fresh"),
+        "42".to_string(),
+        Some("n".to_string()),
+        now,
+        now + ChronoDuration::hours(2),
+    );
     repo.save_session(&fresh).await.unwrap();
     let fetched = repo.get_session(&fresh.token).await.unwrap().unwrap();
     assert_eq!(fetched.twitch_user_id, "42");
 
     // destructive ticket take
-    let ticket = LoginTicket {
-        ticket: LoginTicketToken::new("tic"),
-        twitch_user_id: "7".to_string(),
-        twitch_user_name: None,
-        created_at: now,
-        expires_at: now + ChronoDuration::seconds(600),
-    };
+    let ticket = LoginTicket::new(
+        LoginTicketToken::new("tic"),
+        "7".to_string(),
+        None,
+        now,
+        now + ChronoDuration::seconds(600),
+    );
     repo.save_ticket(&ticket).await.unwrap();
     assert_eq!(
         repo.take_ticket(&ticket.ticket)
