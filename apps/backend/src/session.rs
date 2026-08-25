@@ -37,7 +37,6 @@ pub struct Session {
 }
 
 impl Session {
-    #[allow(clippy::too_many_arguments)]
     pub fn new(
         token: SessionToken,
         twitch_user_id: String,
@@ -82,7 +81,6 @@ pub struct LoginTicket {
 }
 
 impl LoginTicket {
-    #[allow(clippy::too_many_arguments)]
     pub fn new(
         ticket: LoginTicketToken,
         twitch_user_id: String,

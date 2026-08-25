@@ -61,7 +61,6 @@ pub struct User {
 }
 
 impl User {
-    #[allow(clippy::too_many_arguments)]
     pub fn new(
         id: UserId,
         display_name: String,
@@ -90,7 +89,6 @@ pub struct UserPlatform {
 }
 
 impl UserPlatform {
-    #[allow(clippy::too_many_arguments)]
     pub fn new(
         id: UserPlatformId,
         user_id: UserId,
