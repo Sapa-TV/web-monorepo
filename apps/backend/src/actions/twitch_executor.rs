@@ -92,12 +92,7 @@ mod tests {
     #[tokio::test]
     async fn missing_token_maps_to_api_error() {
         let executor = executor_without_credentials();
-        let ctx = ActionContext {
-            event_id: "e".to_string(),
-            user_id: "1".to_string(),
-            user_name: "u".to_string(),
-            channel_id: "bc".to_string(),
-        };
+        let ctx = ActionContext::new("e".to_string(), "1".to_string(), "u".to_string());
 
         let err = executor
             .send_chat_message(&ctx, "hello")

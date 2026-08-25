@@ -69,12 +69,11 @@ where
             }
             ActionKind::ChatReply { message_template } => {
                 let text = render(message_template, &event.ctx);
-                let ctx = ActionContext {
-                    event_id: event.source.event_id.clone(),
-                    user_id: event.ctx.user_id.clone(),
-                    user_name: event.ctx.user_name.clone(),
-                    channel_id: String::new(),
-                };
+                let ctx = ActionContext::new(
+                    event.source.event_id.clone(),
+                    event.ctx.user_id.clone(),
+                    event.ctx.user_name.clone(),
+                );
                 self.platform_actions
                     .send_chat_message(event.source.platform, &ctx, &text)
                     .await?;

@@ -246,12 +246,7 @@ mod platform_action_tests {
     }
 
     fn action_ctx() -> ActionContext {
-        ActionContext {
-            event_id: "e-1".to_string(),
-            user_id: "42".to_string(),
-            user_name: "viewer".to_string(),
-            channel_id: "bc".to_string(),
-        }
+        ActionContext::new("e-1".to_string(), "42".to_string(), "viewer".to_string())
     }
 
     #[tokio::test]

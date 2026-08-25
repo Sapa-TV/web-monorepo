@@ -9,7 +9,18 @@ pub struct ActionContext {
     pub event_id: String,
     pub user_id: String,
     pub user_name: String,
-    pub channel_id: String,
+    _sealed: (),
+}
+
+impl ActionContext {
+    pub fn new(event_id: String, user_id: String, user_name: String) -> Self {
+        Self {
+            event_id,
+            user_id,
+            user_name,
+            _sealed: (),
+        }
+    }
 }
 
 pub trait PlatformActionExecutor: Send + Sync {
