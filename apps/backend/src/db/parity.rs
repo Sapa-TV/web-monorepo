@@ -349,11 +349,11 @@ async fn parity_action_sqlite() {
 async fn suite_rule_lifecycle<R: RuleRepository>(repo: &R, action_id: ActionId) {
     assert!(repo.list().await.unwrap().is_empty());
 
-    let chat = RuleConditions::ChatMessage(MessageConditions {
-        matcher: MessageMatcher::Contains,
-        pattern: Some("!spin".to_string()),
-    });
-    let reward = RuleConditions::RewardRedemption(RewardConditions { reward_id: None });
+    let chat = RuleConditions::ChatMessage(MessageConditions::new(
+        MessageMatcher::Contains,
+        Some("!spin".to_string()),
+    ));
+    let reward = RuleConditions::RewardRedemption(RewardConditions::new(None));
 
     let r1 = repo
         .create(
@@ -396,16 +396,16 @@ async fn suite_rule_lifecycle<R: RuleRepository>(repo: &R, action_id: ActionId) 
     assert_eq!(updated.created_at, r2.created_at);
     assert!(updated.updated_at > r2.updated_at);
 
-    let missing = Rule {
-        id: RuleId::new(999),
-        name: "missing".to_string(),
-        enabled: true,
-        trigger: RuleTrigger::ChatMessage,
-        conditions: chat.clone(),
+    let missing = Rule::new(
+        RuleId::new(999),
+        "missing".to_string(),
+        true,
+        RuleTrigger::ChatMessage,
+        chat.clone(),
         action_id,
-        created_at: Utc::now(),
-        updated_at: Utc::now(),
-    };
+        Utc::now(),
+        Utc::now(),
+    );
     assert!(repo.update(missing).await.unwrap().is_none());
 
     assert!(repo.delete(r1.id).await.unwrap());

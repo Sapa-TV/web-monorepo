@@ -169,10 +169,7 @@ mod tests {
     }
 
     fn chat_conditions(matcher: MessageMatcher) -> RuleConditions {
-        RuleConditions::ChatMessage(MessageConditions {
-            matcher,
-            pattern: Some("!spin".to_string()),
-        })
+        RuleConditions::ChatMessage(MessageConditions::new(matcher, Some("!spin".to_string())))
     }
 
     async fn seed_action(actions: &ActionService<InMemoryActionRepository>) -> ActionId {
@@ -210,10 +207,7 @@ mod tests {
                 "rule",
                 true,
                 RuleTrigger::ChatMessage,
-                RuleConditions::ChatMessage(MessageConditions {
-                    matcher: MessageMatcher::Equals,
-                    pattern: None,
-                }),
+                RuleConditions::ChatMessage(MessageConditions::new(MessageMatcher::Equals, None)),
                 action_id,
             )
             .await
@@ -263,13 +257,7 @@ mod tests {
             .unwrap();
         assert_eq!(service.enabled_rules().await.unwrap().len(), 1);
 
-        service
-            .update(Rule {
-                enabled: false,
-                ..rule
-            })
-            .await
-            .unwrap();
+        service.update(rule.with_enabled(false)).await.unwrap();
         assert!(service.enabled_rules().await.unwrap().is_empty());
     }
 
@@ -279,19 +267,23 @@ mod tests {
         let action_id = seed_action(&actions).await;
         let service = test_service(&actions);
         let err = service
-            .update(Rule {
-                id: RuleId::new(999),
-                name: "x".to_string(),
-                enabled: true,
-                trigger: RuleTrigger::RewardRedemption,
-                conditions: RuleConditions::RewardRedemption(RewardConditions { reward_id: None }),
-                action_id,
-                created_at: chrono::Utc::now(),
-                updated_at: chrono::Utc::now(),
-            })
+            .update(rule_fixture(action_id).with_id(RuleId::new(999)))
             .await
             .unwrap_err();
         assert!(matches!(err, RuleServiceError::RuleNotFound));
+    }
+
+    fn rule_fixture(action_id: ActionId) -> Rule {
+        Rule::new(
+            RuleId::new(1),
+            "x".to_string(),
+            true,
+            RuleTrigger::RewardRedemption,
+            RuleConditions::RewardRedemption(RewardConditions::new(None)),
+            action_id,
+            chrono::Utc::now(),
+            chrono::Utc::now(),
+        )
     }
 
     #[tokio::test]

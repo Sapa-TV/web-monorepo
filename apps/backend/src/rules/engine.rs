@@ -119,7 +119,9 @@ where
 pub fn conditions_match(conditions: &RuleConditions, payload: &PlatformEventPayload) -> bool {
     match (conditions, payload) {
         (
-            RuleConditions::ChatMessage(MessageConditions { matcher, pattern }),
+            RuleConditions::ChatMessage(MessageConditions {
+                matcher, pattern, ..
+            }),
             PlatformEventPayload::ChatMessage(msg),
         ) => {
             let Some(pattern) = pattern else {
@@ -133,7 +135,7 @@ pub fn conditions_match(conditions: &RuleConditions, payload: &PlatformEventPayl
             }
         }
         (
-            RuleConditions::RewardRedemption(RewardConditions { reward_id }),
+            RuleConditions::RewardRedemption(RewardConditions { reward_id, .. }),
             PlatformEventPayload::RewardRedemption(red),
         ) => match reward_id {
             Some(id) => &red.reward_id == id,
@@ -201,10 +203,10 @@ mod tests {
     }
 
     fn chat_conditions() -> RuleConditions {
-        RuleConditions::ChatMessage(MessageConditions {
-            matcher: MessageMatcher::Contains,
-            pattern: Some("!spin".into()),
-        })
+        RuleConditions::ChatMessage(MessageConditions::new(
+            MessageMatcher::Contains,
+            Some("!spin".into()),
+        ))
     }
 
     #[test]
@@ -222,10 +224,10 @@ mod tests {
 
     #[test]
     fn chat_matcher_equals() {
-        let conditions = RuleConditions::ChatMessage(MessageConditions {
-            matcher: MessageMatcher::Equals,
-            pattern: Some("!spin".into()),
-        });
+        let conditions = RuleConditions::ChatMessage(MessageConditions::new(
+            MessageMatcher::Equals,
+            Some("!spin".into()),
+        ));
         assert!(conditions_match(
             &conditions,
             &chat_event("1", "!spin").payload
@@ -238,10 +240,8 @@ mod tests {
 
     #[test]
     fn chat_matcher_missing_pattern_matches_nothing() {
-        let conditions = RuleConditions::ChatMessage(MessageConditions {
-            matcher: MessageMatcher::Contains,
-            pattern: None,
-        });
+        let conditions =
+            RuleConditions::ChatMessage(MessageConditions::new(MessageMatcher::Contains, None));
         assert!(!conditions_match(
             &conditions,
             &chat_event("1", "!spin").payload
@@ -250,10 +250,9 @@ mod tests {
 
     #[test]
     fn reward_conditions_match_by_id() {
-        let expected = RuleConditions::RewardRedemption(RewardConditions {
-            reward_id: Some("reward-9".into()),
-        });
-        let wildcard = RuleConditions::RewardRedemption(RewardConditions { reward_id: None });
+        let expected =
+            RuleConditions::RewardRedemption(RewardConditions::new(Some("reward-9".into())));
+        let wildcard = RuleConditions::RewardRedemption(RewardConditions::new(None));
         assert!(conditions_match(&expected, &reward_event().payload));
         assert!(conditions_match(&wildcard, &reward_event().payload));
     }
@@ -319,13 +318,7 @@ mod tests {
         btx.send(chat_event("1", "!spin")).unwrap();
         assert!(rx.recv().await.is_some());
 
-        rules
-            .update(Rule {
-                enabled: false,
-                ..rule
-            })
-            .await
-            .unwrap();
+        rules.update(rule.with_enabled(false)).await.unwrap();
 
         btx.send(chat_event("1", "!spin")).unwrap();
         assert!(rx.try_recv().is_err(), "disabled rule must not fire");

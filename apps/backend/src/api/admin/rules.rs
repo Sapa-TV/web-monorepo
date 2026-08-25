@@ -116,16 +116,16 @@ pub async fn update_rule(
     Path(param): Path<RuleIdParam>,
     Json(body): Json<UpsertRuleRequest>,
 ) -> Result<Json<RuleResponse>, RuleServiceError> {
-    let rule = Rule {
-        id: RuleId::new(param.id),
-        name: body.name,
-        enabled: body.enabled,
-        trigger: body.trigger,
-        conditions: body.conditions,
-        action_id: body.action_id,
-        created_at: chrono::Utc::now(),
-        updated_at: chrono::Utc::now(),
-    };
+    let rule = Rule::new(
+        RuleId::new(param.id),
+        body.name,
+        body.enabled,
+        body.trigger,
+        body.conditions,
+        body.action_id,
+        chrono::Utc::now(),
+        chrono::Utc::now(),
+    );
     state.rule_service.update(rule).await?;
     let updated = state.rule_service.get(RuleId::new(param.id)).await?;
     let updated = updated.ok_or(RuleServiceError::RuleNotFound)?;
@@ -221,10 +221,10 @@ mod tests {
                 "spin-rule",
                 true,
                 RuleTrigger::ChatMessage,
-                RuleConditions::ChatMessage(MessageConditions {
-                    matcher: MessageMatcher::Contains,
-                    pattern: Some("!spin".to_string()),
-                }),
+                RuleConditions::ChatMessage(MessageConditions::new(
+                    MessageMatcher::Contains,
+                    Some("!spin".to_string()),
+                )),
                 ActionId::new(action_id),
             )
             .await
@@ -339,10 +339,10 @@ mod tests {
                 "spin-rule",
                 true,
                 RuleTrigger::ChatMessage,
-                RuleConditions::ChatMessage(MessageConditions {
-                    matcher: MessageMatcher::Contains,
-                    pattern: Some("!spin".to_string()),
-                }),
+                RuleConditions::ChatMessage(MessageConditions::new(
+                    MessageMatcher::Contains,
+                    Some("!spin".to_string()),
+                )),
                 ActionId::new(action_id),
             )
             .await

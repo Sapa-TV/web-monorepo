@@ -41,16 +41,16 @@ impl RuleRepository for InMemoryRuleRepository {
     ) -> Result<Rule, RepositoryError> {
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
         let now = Utc::now();
-        let rule = Rule {
-            id: RuleId::new(id),
-            name: name.to_string(),
+        let rule = Rule::new(
+            RuleId::new(id),
+            name.to_string(),
             enabled,
             trigger,
             conditions,
             action_id,
-            created_at: now,
-            updated_at: now,
-        };
+            now,
+            now,
+        );
         self.rules.lock().push(rule.clone());
         Ok(rule)
     }
@@ -63,16 +63,14 @@ impl RuleRepository for InMemoryRuleRepository {
         Ok(self.rules.lock().clone())
     }
 
-    async fn update(&self, rule: Rule) -> Result<Option<Rule>, RepositoryError> {
+    async fn update(&self, mut rule: Rule) -> Result<Option<Rule>, RepositoryError> {
         let mut rules = self.rules.lock();
         let Some(stored) = rules.iter_mut().find(|r| r.id == rule.id) else {
             return Ok(None);
         };
-        *stored = Rule {
-            created_at: stored.created_at,
-            updated_at: Utc::now(),
-            ..rule
-        };
+        rule.created_at = stored.created_at;
+        rule.updated_at = Utc::now();
+        *stored = rule;
         Ok(Some(stored.clone()))
     }
 
@@ -91,12 +89,12 @@ mod tests {
 
     fn conditions(trigger: RuleTrigger) -> RuleConditions {
         match trigger {
-            RuleTrigger::ChatMessage => RuleConditions::ChatMessage(MessageConditions {
-                matcher: MessageMatcher::Contains,
-                pattern: Some("!spin".to_string()),
-            }),
+            RuleTrigger::ChatMessage => RuleConditions::ChatMessage(MessageConditions::new(
+                MessageMatcher::Contains,
+                Some("!spin".to_string()),
+            )),
             RuleTrigger::RewardRedemption => {
-                RuleConditions::RewardRedemption(RewardConditions { reward_id: None })
+                RuleConditions::RewardRedemption(RewardConditions::new(None))
             }
         }
     }
@@ -159,11 +157,7 @@ mod tests {
         .unwrap();
         let original = repo.get_by_id(RuleId::new(1)).await.unwrap().unwrap();
         let updated = repo
-            .update(Rule {
-                name: "renamed".to_string(),
-                enabled: false,
-                ..original.clone()
-            })
+            .update(original.clone().with_name("renamed").with_enabled(false))
             .await
             .unwrap()
             .unwrap();
@@ -173,13 +167,10 @@ mod tests {
         assert!(updated.updated_at > original.updated_at);
 
         assert!(
-            repo.update(Rule {
-                id: RuleId::new(99),
-                ..original
-            })
-            .await
-            .unwrap()
-            .is_none()
+            repo.update(original.with_id(RuleId::new(99)))
+                .await
+                .unwrap()
+                .is_none()
         );
     }
 

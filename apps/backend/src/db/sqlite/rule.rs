@@ -47,16 +47,16 @@ struct RuleRow {
 impl RuleRow {
     fn into_rule(self) -> Result<Rule, RepositoryError> {
         let trigger = trigger_from_str(&self.trigger_kind)?;
-        Ok(Rule {
-            id: RuleId::new(self.id as u32),
-            name: self.name,
-            enabled: self.enabled,
+        Ok(Rule::new(
+            RuleId::new(self.id as u32),
+            self.name,
+            self.enabled,
             trigger,
-            conditions: parse_conditions(&self.conditions)?,
-            action_id: ActionId::new(self.action_id as u32),
-            created_at: self.created_at,
-            updated_at: self.updated_at,
-        })
+            parse_conditions(&self.conditions)?,
+            ActionId::new(self.action_id as u32),
+            self.created_at,
+            self.updated_at,
+        ))
     }
 }
 
@@ -88,16 +88,16 @@ impl RuleRepository for SqliteRuleRepository {
         .fetch_one(&self.pool)
         .await
         .map_err(map_err)?;
-        Ok(Rule {
-            id: RuleId::new(row.id as u32),
-            name: name.to_string(),
+        Ok(Rule::new(
+            RuleId::new(row.id as u32),
+            name.to_string(),
             enabled,
             trigger,
             conditions,
             action_id,
-            created_at: now,
-            updated_at: now,
-        })
+            now,
+            now,
+        ))
     }
 
     async fn get_by_id(&self, id: RuleId) -> Result<Option<Rule>, RepositoryError> {
@@ -150,15 +150,17 @@ impl RuleRepository for SqliteRuleRepository {
         .fetch_optional(&self.pool)
         .await
         .map_err(map_err)?;
-        Ok(row.map(|row| Rule {
-            id: rule.id,
-            name: rule.name.clone(),
-            enabled: rule.enabled,
-            trigger: rule.trigger,
-            conditions: rule.conditions.clone(),
-            action_id: rule.action_id,
-            created_at: row.created_at,
-            updated_at: now,
+        Ok(row.map(|row| {
+            Rule::new(
+                rule.id,
+                rule.name.clone(),
+                rule.enabled,
+                rule.trigger,
+                rule.conditions.clone(),
+                rule.action_id,
+                row.created_at,
+                now,
+            )
         }))
     }
 
@@ -217,10 +219,10 @@ mod tests {
     }
 
     fn chat_conditions() -> RuleConditions {
-        RuleConditions::ChatMessage(MessageConditions {
-            matcher: MessageMatcher::Contains,
-            pattern: Some("!spin".to_string()),
-        })
+        RuleConditions::ChatMessage(MessageConditions::new(
+            MessageMatcher::Contains,
+            Some("!spin".to_string()),
+        ))
     }
 
     #[tokio::test]
@@ -233,9 +235,7 @@ mod tests {
             (
                 "reward",
                 RuleTrigger::RewardRedemption,
-                RuleConditions::RewardRedemption(RewardConditions {
-                    reward_id: Some("rew-1".to_string()),
-                }),
+                RuleConditions::RewardRedemption(RewardConditions::new(Some("rew-1".to_string()))),
             ),
         ] {
             let saved = repo
@@ -273,7 +273,7 @@ mod tests {
             "r2",
             false,
             RuleTrigger::RewardRedemption,
-            RuleConditions::RewardRedemption(RewardConditions { reward_id: None }),
+            RuleConditions::RewardRedemption(RewardConditions::new(None)),
             action.id,
         )
         .await
@@ -304,13 +304,13 @@ mod tests {
 
         let mut next = saved.clone();
         next.name = "renamed".to_string();
-        next.conditions = RuleConditions::RewardRedemption(RewardConditions { reward_id: None });
+        next.conditions = RuleConditions::RewardRedemption(RewardConditions::new(None));
         let updated = repo.update(next).await.unwrap().unwrap();
 
         assert_eq!(updated.name, "renamed");
         assert_eq!(
             updated.conditions,
-            RuleConditions::RewardRedemption(RewardConditions { reward_id: None })
+            RuleConditions::RewardRedemption(RewardConditions::new(None))
         );
         assert_eq!(updated.created_at, saved.created_at);
         assert!(updated.updated_at > saved.updated_at);
