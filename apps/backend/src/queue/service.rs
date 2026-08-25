@@ -203,10 +203,7 @@ where
         } else {
             None
         };
-        Ok(QueuePage {
-            entries,
-            next_cursor,
-        })
+        Ok(QueuePage::new(entries, next_cursor))
     }
 
     pub async fn get_by_id(

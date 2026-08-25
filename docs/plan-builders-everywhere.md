@@ -81,7 +81,8 @@ impl X {
 
 ### B0. Только `_sealed` — pub-поля без внешних литералов (~10)
 
-QueueEntry · QueueStats · Rarity · RouletteSlot · PlatformEvent · ChatMessage ·
+~~QueueEntry · QueueStats~~ — готово (конструкторы `new` уже были, добавлен `_sealed`,
+один чанк с QueuePage). Остались: Rarity · RouletteSlot · PlatformEvent · ChatMessage ·
 RewardRedemption · Platform · StreamStatus — идут вперемешку со списком A внутри
 того же домена.
 
@@ -117,7 +118,7 @@ nextest + clippy + fmt → ревью. Порядок — список A, зат
 | Presence              | presence.rs             | exempt: все поля приватные                                         |
 | PresenceGuard         | presence.rs             | exempt: все поля приватные (вне исходного списка)                  |
 | PresenceSnapshot      | presence.rs             | готово: `new(dock, widget)`; литералы в тестах presence/ws заменены |
-| QueuePage             | queue/entry.rs          | queue/service                                                      |
+| QueuePage             | queue/entry.rs          | готово: `new(entries, next_cursor)`; литерал в service заменён     |
 | MessageConditions     | rules/rule.rs           | sqlite/rule, parity, service, api, inmemory                        |
 | RewardConditions      | rules/rule.rs           | engine, inmemory, sqlite, service, parity, api                     |
 | Rule                  | rules/rule.rs           | те же + api                                                        |

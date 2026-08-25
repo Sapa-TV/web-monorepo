@@ -68,6 +68,7 @@ pub struct QueueEntry {
     pub result_slot_id: Option<RouletteSlotId>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    _sealed: (),
 }
 
 impl QueueEntry {
@@ -88,6 +89,7 @@ impl QueueEntry {
             result_slot_id,
             created_at,
             updated_at,
+            _sealed: (),
         }
     }
 }
@@ -100,6 +102,7 @@ pub struct QueueStats {
     pub completed: u32,
     pub error: u32,
     pub cancelled: u32,
+    _sealed: (),
 }
 
 impl QueueStats {
@@ -110,6 +113,7 @@ impl QueueStats {
             completed,
             error,
             cancelled,
+            _sealed: (),
         }
     }
 }
@@ -119,4 +123,15 @@ impl QueueStats {
 pub struct QueuePage {
     pub entries: Vec<QueueEntry>,
     pub next_cursor: Option<QueueEntryId>,
+    _sealed: (),
+}
+
+impl QueuePage {
+    pub fn new(entries: Vec<QueueEntry>, next_cursor: Option<QueueEntryId>) -> Self {
+        Self {
+            entries,
+            next_cursor,
+            _sealed: (),
+        }
+    }
 }
