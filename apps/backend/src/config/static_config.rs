@@ -10,14 +10,16 @@ use crate::config::twitch::TwitchConfig;
 use crate::consts::server;
 
 #[derive(Clone, Deserialize)]
-#[non_exhaustive]
 #[serde(default)]
+#[non_exhaustive]
 pub struct StaticConfig {
     pub port: u16,
     #[serde(deserialize_with = "deserialize_cors_origins")]
     pub cors_origins: Option<Vec<String>>,
     pub cookie_secure: bool,
     pub twitch: Option<Arc<TwitchConfig>>,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 impl Default for StaticConfig {
@@ -27,11 +29,27 @@ impl Default for StaticConfig {
             cors_origins: None,
             cookie_secure: false,
             twitch: None,
+            _sealed: (),
         }
     }
 }
 
 impl StaticConfig {
+    pub fn new(
+        port: u16,
+        cors_origins: Option<Vec<String>>,
+        cookie_secure: bool,
+        twitch: Option<Arc<TwitchConfig>>,
+    ) -> Self {
+        Self {
+            port,
+            cors_origins,
+            cookie_secure,
+            twitch,
+            _sealed: (),
+        }
+    }
+
     pub fn load() -> (Self, Option<RuntimeConfig>) {
         if let Err(e) = dotenvy::dotenv()
             && !e.not_found()
@@ -54,22 +72,18 @@ impl StaticConfig {
             cors_origins: raw.cors_origins,
             cookie_secure: raw.cookie_secure,
             twitch: raw.twitch,
+            _sealed: (),
         };
-        let seed = RuntimeConfig {
-            widget_access_key: String::new(),
-            queue: QueueRuntimeConfig {
-                default_limit: raw.queue_default_limit,
-                retention_secs: raw.retention_secs,
-                cleanup_interval_secs: raw.queue_cleanup_interval_secs,
-            },
-            session: SessionRuntimeConfig {
-                ttl_secs: raw.session_ttl_secs,
-                cleanup_interval_secs: raw.sessions_cleanup_interval_secs,
-            },
-            roulette: RouletteRuntimeConfig {
-                timeout_secs: raw.roulette_timeout_secs,
-            },
-        };
+        let seed = RuntimeConfig::new(
+            String::new(),
+            QueueRuntimeConfig::new(
+                raw.queue_default_limit,
+                raw.retention_secs,
+                raw.queue_cleanup_interval_secs,
+            ),
+            SessionRuntimeConfig::new(raw.session_ttl_secs, raw.sessions_cleanup_interval_secs),
+            RouletteRuntimeConfig::new(raw.roulette_timeout_secs),
+        );
         (static_cfg, Some(seed))
     }
 }
@@ -145,6 +159,13 @@ where
 impl StaticConfig {
     pub fn test_config() -> Self {
         Self::default()
+    }
+
+    pub(crate) fn with_twitch(twitch: Option<Arc<TwitchConfig>>) -> Self {
+        Self {
+            twitch,
+            ..Self::default()
+        }
     }
 }
 

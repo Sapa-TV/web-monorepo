@@ -145,10 +145,7 @@ mod tests {
     }
 
     async fn state_with_twitch() -> AppState {
-        let static_cfg = StaticConfig {
-            twitch: Some(twitch_config()),
-            ..StaticConfig::default()
-        };
+        let static_cfg = StaticConfig::with_twitch(Some(twitch_config()));
         let (pool, _path) = test_pool().await;
         let config_store = Arc::new(ConfigStore::new(
             Arc::new(static_cfg),

@@ -12,6 +12,19 @@ pub struct QueueRuntimeConfig {
     pub default_limit: usize,
     pub retention_secs: u64,
     pub cleanup_interval_secs: u64,
+    #[serde(skip)]
+    _sealed: (),
+}
+
+impl QueueRuntimeConfig {
+    pub fn new(default_limit: usize, retention_secs: u64, cleanup_interval_secs: u64) -> Self {
+        Self {
+            default_limit,
+            retention_secs,
+            cleanup_interval_secs,
+            _sealed: (),
+        }
+    }
 }
 
 impl Default for QueueRuntimeConfig {
@@ -20,6 +33,7 @@ impl Default for QueueRuntimeConfig {
             default_limit: queue::DEFAULT_LIMIT,
             retention_secs: queue::RETENTION_SECS,
             cleanup_interval_secs: queue::CLEANUP_INTERVAL_SECS,
+            _sealed: (),
         }
     }
 }
@@ -30,6 +44,18 @@ impl Default for QueueRuntimeConfig {
 pub struct SessionRuntimeConfig {
     pub ttl_secs: u64,
     pub cleanup_interval_secs: u64,
+    #[serde(skip)]
+    _sealed: (),
+}
+
+impl SessionRuntimeConfig {
+    pub fn new(ttl_secs: u64, cleanup_interval_secs: u64) -> Self {
+        Self {
+            ttl_secs,
+            cleanup_interval_secs,
+            _sealed: (),
+        }
+    }
 }
 
 impl Default for SessionRuntimeConfig {
@@ -37,6 +63,7 @@ impl Default for SessionRuntimeConfig {
         Self {
             ttl_secs: session::TTL_SECS,
             cleanup_interval_secs: session::CLEANUP_INTERVAL_SECS,
+            _sealed: (),
         }
     }
 }
@@ -46,12 +73,24 @@ impl Default for SessionRuntimeConfig {
 #[non_exhaustive]
 pub struct RouletteRuntimeConfig {
     pub timeout_secs: u64,
+    #[serde(skip)]
+    _sealed: (),
+}
+
+impl RouletteRuntimeConfig {
+    pub fn new(timeout_secs: u64) -> Self {
+        Self {
+            timeout_secs,
+            _sealed: (),
+        }
+    }
 }
 
 impl Default for RouletteRuntimeConfig {
     fn default() -> Self {
         Self {
             timeout_secs: roulette::TIMEOUT_SECS,
+            _sealed: (),
         }
     }
 }
@@ -64,9 +103,26 @@ pub struct RuntimeConfig {
     pub queue: QueueRuntimeConfig,
     pub session: SessionRuntimeConfig,
     pub roulette: RouletteRuntimeConfig,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 impl RuntimeConfig {
+    pub fn new(
+        widget_access_key: String,
+        queue: QueueRuntimeConfig,
+        session: SessionRuntimeConfig,
+        roulette: RouletteRuntimeConfig,
+    ) -> Self {
+        Self {
+            widget_access_key,
+            queue,
+            session,
+            roulette,
+            _sealed: (),
+        }
+    }
+
     pub fn validate(&self) -> Result<(), ConfigError> {
         if self.widget_access_key.is_empty() {
             return Err(ConfigError::InvalidWidgetAccessKey);
