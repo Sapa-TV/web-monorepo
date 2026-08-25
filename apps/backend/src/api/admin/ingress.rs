@@ -12,6 +12,8 @@ use crate::state::AppState;
 #[non_exhaustive]
 pub struct IngressCredentialsResponse {
     pub configured: bool,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 #[utoipa::path(
@@ -26,7 +28,10 @@ pub async fn get_ingress_credentials(
     State(state): State<AppState>,
 ) -> Result<Json<IngressCredentialsResponse>, StatusCode> {
     let configured = state.admin_auth.is_ingress_credentials_configured().await?;
-    Ok(Json(IngressCredentialsResponse { configured }))
+    Ok(Json(IngressCredentialsResponse {
+        configured,
+        _sealed: (),
+    }))
 }
 
 #[utoipa::path(

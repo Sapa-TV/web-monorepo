@@ -13,6 +13,8 @@ use crate::state::AppState;
 #[non_exhaustive]
 pub struct TwitchAuthStartResponse {
     pub auth_url: String,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 #[derive(Debug, Deserialize, IntoParams)]
@@ -20,6 +22,8 @@ pub struct TwitchAuthStartResponse {
 pub struct TwitchAuthCallbackQuery {
     pub code: String,
     pub state: String,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -27,12 +31,16 @@ pub struct TwitchAuthCallbackQuery {
 pub struct TwitchAuthCallbackResponse {
     pub user_id: String,
     pub user_name: Option<String>,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 #[derive(Debug, Deserialize, IntoParams)]
 #[non_exhaustive]
 pub struct TwitchUserSearchQuery {
     pub login: String,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -41,6 +49,8 @@ pub struct TwitchUserResponse {
     pub id: String,
     pub login: String,
     pub display_name: String,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 #[utoipa::path(
@@ -56,7 +66,10 @@ pub async fn start_twitch_auth(
     State(state): State<AppState>,
 ) -> Result<Json<TwitchAuthStartResponse>, StatusCode> {
     let auth_url = state.admin_auth.start()?;
-    Ok(Json(TwitchAuthStartResponse { auth_url }))
+    Ok(Json(TwitchAuthStartResponse {
+        auth_url,
+        _sealed: (),
+    }))
 }
 
 #[utoipa::path(
@@ -78,6 +91,7 @@ pub async fn twitch_auth_callback(
     Ok(Json(TwitchAuthCallbackResponse {
         user_id: exchanged.user_id,
         user_name: exchanged.user_name,
+        _sealed: (),
     }))
 }
 
@@ -103,6 +117,7 @@ pub async fn find_twitch_user(
         id: user.id.to_string(),
         login: user.login.to_string(),
         display_name: user.display_name.to_string(),
+        _sealed: (),
     }))
 }
 

@@ -12,6 +12,8 @@ use crate::stream::StreamStatusResponse;
 #[non_exhaustive]
 pub struct SetStreamStatusRequest {
     pub online: bool,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 #[utoipa::path(

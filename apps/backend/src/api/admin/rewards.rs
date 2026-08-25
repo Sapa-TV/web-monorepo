@@ -20,6 +20,8 @@ pub struct RewardResponse {
     pub is_enabled: bool,
     pub is_paused: bool,
     pub used_in_rules: bool,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 impl RewardResponse {
@@ -31,6 +33,7 @@ impl RewardResponse {
             is_enabled: reward.is_enabled,
             is_paused: reward.is_paused,
             used_in_rules: used_in_rules.contains(&reward.id.to_string()),
+            _sealed: (),
         }
     }
 }

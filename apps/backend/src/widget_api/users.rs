@@ -20,6 +20,8 @@ pub struct UserResponse {
     pub platforms: Vec<UserPlatformResponse>,
     pub created_at: String,
     pub updated_at: String,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -29,6 +31,8 @@ pub struct UserPlatformResponse {
     pub platform: String,
     pub platform_user_id: String,
     pub platform_username: String,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -36,12 +40,16 @@ pub struct UserPlatformResponse {
 pub struct PlatformResponse {
     pub id: PlatformId,
     pub name: String,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
 #[non_exhaustive]
 pub struct CreateUserRequest {
     pub display_name: String,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -50,18 +58,24 @@ pub struct LinkPlatformRequest {
     pub platform: String,
     pub platform_user_id: String,
     pub platform_username: String,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
 #[non_exhaustive]
 pub struct UpdateUserRequest {
     pub display_name: String,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
 #[non_exhaustive]
 pub struct UpdatePlatformRequest {
     pub platform_username: String,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 #[derive(Debug, Deserialize, IntoParams)]
@@ -69,12 +83,16 @@ pub struct UpdatePlatformRequest {
 pub struct FindUserQuery {
     pub platform: String,
     pub platform_user_id: String,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 #[derive(Debug, Deserialize, IntoParams)]
 #[non_exhaustive]
 pub struct UserIdParam {
     pub id: UserId,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 #[derive(Debug, Deserialize, IntoParams)]
@@ -82,6 +100,8 @@ pub struct UserIdParam {
 pub struct PlatformNameParam {
     pub id: UserId,
     pub platform: String,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 fn user_not_found() -> ApiError {
@@ -112,10 +132,12 @@ impl From<UserView> for UserResponse {
                     platform: p.platform_name,
                     platform_user_id: p.platform_user_id,
                     platform_username: p.platform_username,
+                    _sealed: (),
                 })
                 .collect(),
             created_at: user.created_at.to_rfc3339(),
             updated_at: user.updated_at.to_rfc3339(),
+            _sealed: (),
         }
     }
 }
@@ -332,6 +354,7 @@ pub async fn list_platforms(
             .map(|p| PlatformResponse {
                 id: p.id,
                 name: p.name,
+                _sealed: (),
             })
             .collect(),
     ))

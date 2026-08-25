@@ -22,6 +22,8 @@ use crate::state::AppState;
 #[non_exhaustive]
 pub struct TwitchLoginStartResponse {
     pub auth_url: String,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 #[derive(Debug, Deserialize, IntoParams)]
@@ -29,6 +31,8 @@ pub struct TwitchLoginStartResponse {
 pub struct TwitchLoginCallbackQuery {
     pub code: String,
     pub state: String,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -37,6 +41,8 @@ pub struct TwitchLoginCallbackResponse {
     pub ticket: String,
     pub twitch_user_id: String,
     pub twitch_user_name: Option<String>,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 impl From<(&ExchangedToken, &LoginTicket)> for TwitchLoginCallbackResponse {
@@ -45,6 +51,7 @@ impl From<(&ExchangedToken, &LoginTicket)> for TwitchLoginCallbackResponse {
             ticket: ticket.ticket.as_str().to_string(),
             twitch_user_id: exchanged.user_id.clone(),
             twitch_user_name: exchanged.user_name.clone(),
+            _sealed: (),
         }
     }
 }
@@ -53,6 +60,8 @@ impl From<(&ExchangedToken, &LoginTicket)> for TwitchLoginCallbackResponse {
 #[non_exhaustive]
 pub struct CreateSessionRequest {
     pub ticket: String,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -62,6 +71,8 @@ pub struct SessionResponse {
     pub twitch_user_name: Option<String>,
     pub is_root: bool,
     pub expires_at: String,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 impl From<(&Session, bool)> for SessionResponse {
@@ -71,6 +82,7 @@ impl From<(&Session, bool)> for SessionResponse {
             twitch_user_name: session.twitch_user_name.clone(),
             is_root,
             expires_at: session.expires_at.to_rfc3339(),
+            _sealed: (),
         }
     }
 }
@@ -88,7 +100,10 @@ pub async fn start_twitch_login(
     State(state): State<AppState>,
 ) -> Result<Json<TwitchLoginStartResponse>, StatusCode> {
     let auth_url = state.admin_auth.start_login()?;
-    Ok(Json(TwitchLoginStartResponse { auth_url }))
+    Ok(Json(TwitchLoginStartResponse {
+        auth_url,
+        _sealed: (),
+    }))
 }
 
 #[utoipa::path(

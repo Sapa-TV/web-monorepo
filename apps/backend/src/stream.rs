@@ -27,6 +27,7 @@ impl StreamStatus {
 #[non_exhaustive]
 pub struct StreamStatusResponse {
     pub online: bool,
+    #[serde(skip)]
     _sealed: (),
 }
 

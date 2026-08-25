@@ -27,6 +27,8 @@ pub struct AdminResponse {
     pub display_name: Option<String>,
     pub is_root: bool,
     pub created_at: String,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 impl From<Admin> for AdminResponse {
@@ -36,6 +38,7 @@ impl From<Admin> for AdminResponse {
             display_name: admin.display_name,
             is_root: admin.is_root,
             created_at: admin.created_at.to_rfc3339(),
+            _sealed: (),
         }
     }
 }
@@ -45,18 +48,24 @@ impl From<Admin> for AdminResponse {
 pub struct AddAdminRequest {
     pub twitch_id: String,
     pub display_name: Option<String>,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 #[derive(Debug, Deserialize, IntoParams)]
 #[non_exhaustive]
 pub struct TwitchIdParam {
     pub twitch_id: String,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 #[derive(Debug, Serialize, ToSchema)]
 #[non_exhaustive]
 pub struct WidgetAccessKeyResponse {
     pub widget_access_key: String,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -64,6 +73,8 @@ pub struct WidgetAccessKeyResponse {
 pub struct PresenceResponse {
     pub dock_connected: bool,
     pub widget_count: usize,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 #[utoipa::path(
@@ -137,6 +148,7 @@ pub async fn remove_admin(
 pub async fn get_widget_access_key(State(state): State<AppState>) -> Json<WidgetAccessKeyResponse> {
     Json(WidgetAccessKeyResponse {
         widget_access_key: state.config.widget_access_key(),
+        _sealed: (),
     })
 }
 
@@ -152,7 +164,10 @@ pub async fn rotate_widget_access_key(
     State(state): State<AppState>,
 ) -> Result<Json<WidgetAccessKeyResponse>, ApiError> {
     let widget_access_key = state.config.rotate_widget_access_key_generated().await?;
-    Ok(Json(WidgetAccessKeyResponse { widget_access_key }))
+    Ok(Json(WidgetAccessKeyResponse {
+        widget_access_key,
+        _sealed: (),
+    }))
 }
 
 #[utoipa::path(
@@ -168,6 +183,7 @@ pub async fn get_presence(State(state): State<AppState>) -> Json<PresenceRespons
     Json(PresenceResponse {
         dock_connected: snapshot.dock > 0,
         widget_count: snapshot.widget,
+        _sealed: (),
     })
 }
 

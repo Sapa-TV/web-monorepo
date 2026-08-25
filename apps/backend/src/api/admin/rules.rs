@@ -24,6 +24,8 @@ pub struct RuleResponse {
     pub action_id: u32,
     pub created_at: String,
     pub updated_at: String,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 impl From<Rule> for RuleResponse {
@@ -37,6 +39,7 @@ impl From<Rule> for RuleResponse {
             action_id: rule.action_id.get(),
             created_at: rule.created_at.to_rfc3339(),
             updated_at: rule.updated_at.to_rfc3339(),
+            _sealed: (),
         }
     }
 }
@@ -49,12 +52,16 @@ pub struct UpsertRuleRequest {
     pub trigger: RuleTrigger,
     pub conditions: RuleConditions,
     pub action_id: ActionId,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 #[derive(Debug, Deserialize, IntoParams, ToSchema)]
 #[non_exhaustive]
 pub struct RuleIdParam {
     pub id: u32,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 #[utoipa::path(

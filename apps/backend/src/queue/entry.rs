@@ -102,6 +102,7 @@ pub struct QueueStats {
     pub completed: u32,
     pub error: u32,
     pub cancelled: u32,
+    #[serde(skip)]
     _sealed: (),
 }
 

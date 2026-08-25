@@ -20,6 +20,8 @@ pub struct ActionResponse {
     pub enabled: bool,
     pub created_at: String,
     pub updated_at: String,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 impl From<Action> for ActionResponse {
@@ -31,6 +33,7 @@ impl From<Action> for ActionResponse {
             enabled: action.enabled,
             created_at: action.created_at.to_rfc3339(),
             updated_at: action.updated_at.to_rfc3339(),
+            _sealed: (),
         }
     }
 }
@@ -41,12 +44,16 @@ pub struct UpsertActionRequest {
     pub name: String,
     pub kind: ActionKind,
     pub enabled: bool,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 #[derive(Debug, Deserialize, IntoParams, ToSchema)]
 #[non_exhaustive]
 pub struct ActionIdParam {
     pub id: u32,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 #[utoipa::path(

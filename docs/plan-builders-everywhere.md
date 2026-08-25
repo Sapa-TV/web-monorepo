@@ -131,12 +131,14 @@ nextest + clippy + fmt → ревью. Порядок — список A, зат
 | User                  | user.rs                 | db/inmemory_user, db/sqlite/user                                   |
 | UserView              | user.rs                 | user/service, widget_api/users                                     |
 
-### B. Bulk-DTO (52), сплошной проход
+### B. Bulk-DTO, сплошной проход
 
-api/admin.rs (5) · api/admin/actions.rs (3) · api/admin/ingress.rs (1) ·
-api/admin/rewards.rs (1) · api/admin/roulette.rs (5) · api/admin/rules.rs (3) ·
-api/admin/twitch.rs (6) · api/session.rs (5) · widget_api/queue.rs (7) ·
-widget_api/stream.rs (2) · widget_api/users.rs (11)
+Готово: все pub struct в api/** и widget_api/** запечатаны с `#[serde(skip)]`.
+
+Поймано регенерацией openapi.json: `_sealed` без `#[serde(skip)]` при
+derive Serialize уезжает в схему utoipa. Проверка после правок DTO:
+`cargo run -p gen-openapi -- generated/openapi.json`, git status должен быть
+чистым.
 
 ## Верификация после каждого шага
 

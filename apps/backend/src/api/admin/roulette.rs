@@ -21,12 +21,16 @@ pub struct UpsertRouletteSlotRequest {
     pub rarity_id: RarityId,
     pub weight: u64,
     pub action: String,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 #[derive(Debug, Deserialize, IntoParams, ToSchema)]
 #[non_exhaustive]
 pub struct SlotIdParam {
     pub id: RouletteSlotId,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -36,12 +40,16 @@ pub struct UpsertRarityRequest {
     pub display_name: String,
     pub image: String,
     pub color: String,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 #[derive(Debug, Deserialize, IntoParams, ToSchema)]
 #[non_exhaustive]
 pub struct RarityIdParam {
     pub id: RarityId,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 #[utoipa::path(

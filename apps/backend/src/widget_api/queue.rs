@@ -19,12 +19,16 @@ use crate::user::UserId;
 pub struct EnqueueRequest {
     pub user_id: UserId,
     pub user_name: String,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
 #[non_exhaustive]
 pub struct AnonymousEnqueueRequest {
     pub name: String,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -38,6 +42,8 @@ pub struct QueueEntryResponse {
     pub slot_name: Option<String>,
     pub created_at: String,
     pub updated_at: String,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 impl From<&QueueEntry> for QueueEntryResponse {
@@ -51,6 +57,7 @@ impl From<&QueueEntry> for QueueEntryResponse {
             slot_name: None,
             created_at: entry.created_at.to_rfc3339(),
             updated_at: entry.updated_at.to_rfc3339(),
+            _sealed: (),
         }
     }
 }
@@ -69,6 +76,8 @@ impl QueueEntryResponse {
 pub struct NextResponse {
     pub entry: QueueEntryResponse,
     pub slot: RouletteSlot,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -76,6 +85,8 @@ pub struct NextResponse {
 pub struct QueueListResponse {
     pub entries: Vec<QueueEntryResponse>,
     pub next_cursor: Option<QueueEntryId>,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 #[derive(Debug, Deserialize, IntoParams)]
@@ -84,12 +95,16 @@ pub struct ListQuery {
     pub status: Option<QueueStatus>,
     pub limit: Option<usize>,
     pub cursor: Option<QueueEntryId>,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 #[derive(Debug, Deserialize, IntoParams)]
 #[non_exhaustive]
 pub struct QueueIdParam {
     pub id: QueueEntryId,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 #[utoipa::path(
@@ -158,6 +173,7 @@ pub async fn list(
     Ok(Json(QueueListResponse {
         entries,
         next_cursor: page.next_cursor,
+        _sealed: (),
     }))
 }
 
@@ -225,6 +241,7 @@ pub async fn dequeue_next(
     Ok(Json(NextResponse {
         entry: QueueEntryResponse::from(&entry).with_slot_name(&state),
         slot,
+        _sealed: (),
     }))
 }
 
