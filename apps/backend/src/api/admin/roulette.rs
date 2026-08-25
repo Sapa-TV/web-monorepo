@@ -1,38 +1,18 @@
 use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use utoipa::IntoParams;
 use utoipa::ToSchema;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
 
 use crate::error::api::ApiError;
-use crate::roulette::rarity::{Rarity, RarityId};
+use crate::roulette::dto::{RarityResponse, RouletteSlotResponse};
+use crate::roulette::rarity::Rarity;
+use crate::roulette::rarity::RarityId;
 use crate::roulette::slot_service::{RouletteSlot, RouletteSlotId};
 use crate::state::AppState;
-
-#[derive(Debug, Serialize, ToSchema)]
-#[non_exhaustive]
-pub struct RouletteSlotResponse {
-    pub id: RouletteSlotId,
-    pub name: String,
-    pub rarity_id: RarityId,
-    pub weight: u64,
-    pub action: String,
-}
-
-impl From<RouletteSlot> for RouletteSlotResponse {
-    fn from(slot: RouletteSlot) -> Self {
-        Self {
-            id: slot.id,
-            name: slot.name,
-            rarity_id: slot.rarity_id,
-            weight: slot.weight,
-            action: slot.action,
-        }
-    }
-}
 
 #[derive(Debug, Deserialize, ToSchema)]
 #[non_exhaustive]
@@ -47,28 +27,6 @@ pub struct UpsertRouletteSlotRequest {
 #[non_exhaustive]
 pub struct SlotIdParam {
     pub id: RouletteSlotId,
-}
-
-#[derive(Debug, Serialize, ToSchema)]
-#[non_exhaustive]
-pub struct RarityResponse {
-    pub id: RarityId,
-    pub name: String,
-    pub display_name: String,
-    pub image: String,
-    pub color: String,
-}
-
-impl From<Rarity> for RarityResponse {
-    fn from(rarity: Rarity) -> Self {
-        Self {
-            id: rarity.id,
-            name: rarity.name,
-            display_name: rarity.display_name,
-            image: rarity.image,
-            color: rarity.color,
-        }
-    }
 }
 
 #[derive(Debug, Deserialize, ToSchema)]

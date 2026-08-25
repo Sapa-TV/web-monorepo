@@ -1,35 +1,11 @@
 use axum::Json;
 use axum::extract::State;
-use serde::Serialize;
-use utoipa::ToSchema;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
 
 use crate::error::api::ApiError;
-use crate::roulette::rarity::{Rarity, RarityId};
+use crate::roulette::dto::RarityResponse;
 use crate::state::AppState;
-
-#[derive(Debug, Serialize, ToSchema)]
-#[non_exhaustive]
-pub struct RarityResponse {
-    pub id: RarityId,
-    pub name: String,
-    pub display_name: String,
-    pub image: String,
-    pub color: String,
-}
-
-impl From<Rarity> for RarityResponse {
-    fn from(r: Rarity) -> Self {
-        Self {
-            id: r.id,
-            name: r.name,
-            display_name: r.display_name,
-            image: r.image,
-            color: r.color,
-        }
-    }
-}
 
 #[utoipa::path(
     get,

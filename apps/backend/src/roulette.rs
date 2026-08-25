@@ -1,3 +1,4 @@
+pub mod dto;
 pub mod machine;
 pub mod rarity;
 pub mod rarity_service;
