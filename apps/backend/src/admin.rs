@@ -11,4 +11,22 @@ pub struct Admin {
     pub display_name: Option<String>,
     pub is_root: bool,
     pub created_at: DateTime<Utc>,
+    _sealed: (),
+}
+
+impl Admin {
+    pub fn new(
+        twitch_id: String,
+        display_name: Option<String>,
+        is_root: bool,
+        created_at: DateTime<Utc>,
+    ) -> Self {
+        Self {
+            twitch_id,
+            display_name,
+            is_root,
+            created_at,
+            _sealed: (),
+        }
+    }
 }

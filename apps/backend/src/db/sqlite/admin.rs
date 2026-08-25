@@ -34,35 +34,36 @@ impl AdminRepository for SqliteAdminRepository {
         .execute(&self.pool)
         .await
         .map_err(|e| conflict_on_unique(e, "admin with this twitch_id already exists"))?;
-        Ok(Admin {
-            twitch_id: twitch_id.to_string(),
-            display_name: display_name.map(str::to_string),
+        Ok(Admin::new(
+            twitch_id.to_string(),
+            display_name.map(str::to_string),
             is_root,
             created_at,
-        })
+        ))
     }
 
     async fn get_by_twitch_id(&self, twitch_id: &str) -> Result<Option<Admin>, RepositoryError> {
-        let admin = sqlx::query_as!(
-            Admin,
+        let row = sqlx::query!(
             r#"SELECT twitch_id, display_name, is_root AS "is_root: bool", created_at AS "created_at: DateTime<Utc>" FROM admins WHERE twitch_id = ?"#,
             twitch_id
         )
         .fetch_optional(&self.pool)
         .await
         .map_err(map_err)?;
-        Ok(admin)
+        Ok(row.map(|r| Admin::new(r.twitch_id, r.display_name, r.is_root, r.created_at)))
     }
 
     async fn list(&self) -> Result<Vec<Admin>, RepositoryError> {
-        let admins = sqlx::query_as!(
-            Admin,
+        let rows = sqlx::query!(
             r#"SELECT twitch_id, display_name, is_root AS "is_root: bool", created_at AS "created_at: DateTime<Utc>" FROM admins ORDER BY rowid"#
         )
         .fetch_all(&self.pool)
         .await
         .map_err(map_err)?;
-        Ok(admins)
+        Ok(rows
+            .into_iter()
+            .map(|r| Admin::new(r.twitch_id, r.display_name, r.is_root, r.created_at))
+            .collect())
     }
 
     async fn update_display_name(
@@ -70,8 +71,7 @@ impl AdminRepository for SqliteAdminRepository {
         twitch_id: &str,
         display_name: &str,
     ) -> Result<Option<Admin>, RepositoryError> {
-        let admin = sqlx::query_as!(
-            Admin,
+        let row = sqlx::query!(
             r#"UPDATE admins SET display_name = ?1 WHERE twitch_id = ?2
                RETURNING twitch_id, display_name, is_root AS "is_root: bool", created_at AS "created_at: DateTime<Utc>""#,
             display_name,
@@ -80,7 +80,7 @@ impl AdminRepository for SqliteAdminRepository {
         .fetch_optional(&self.pool)
         .await
         .map_err(map_err)?;
-        Ok(admin)
+        Ok(row.map(|r| Admin::new(r.twitch_id, r.display_name, r.is_root, r.created_at)))
     }
 
     async fn set_root(
@@ -88,8 +88,7 @@ impl AdminRepository for SqliteAdminRepository {
         twitch_id: &str,
         is_root: bool,
     ) -> Result<Option<Admin>, RepositoryError> {
-        let admin = sqlx::query_as!(
-            Admin,
+        let row = sqlx::query!(
             r#"UPDATE admins SET is_root = ?1 WHERE twitch_id = ?2
                RETURNING twitch_id, display_name, is_root AS "is_root: bool", created_at AS "created_at: DateTime<Utc>""#,
             is_root,
@@ -98,7 +97,7 @@ impl AdminRepository for SqliteAdminRepository {
         .fetch_optional(&self.pool)
         .await
         .map_err(map_err)?;
-        Ok(admin)
+        Ok(row.map(|r| Admin::new(r.twitch_id, r.display_name, r.is_root, r.created_at)))
     }
 
     async fn delete_by_twitch_id(&self, twitch_id: &str) -> Result<bool, RepositoryError> {

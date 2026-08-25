@@ -38,12 +38,12 @@ impl AdminRepository for InMemoryAdminRepository {
                 "admin with this twitch_id already exists".to_string(),
             ));
         }
-        let admin = Admin {
-            twitch_id: twitch_id.to_string(),
-            display_name: display_name.map(str::to_string),
+        let admin = Admin::new(
+            twitch_id.to_string(),
+            display_name.map(str::to_string),
             is_root,
-            created_at: Utc::now(),
-        };
+            Utc::now(),
+        );
         admins.push(admin.clone());
         Ok(admin)
     }
