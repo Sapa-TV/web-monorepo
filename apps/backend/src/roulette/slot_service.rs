@@ -35,6 +35,8 @@ pub struct RouletteSlot {
     pub(crate) rarity_id: RarityId,
     pub(crate) weight: u64,
     pub(crate) action: String,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 impl RouletteSlot {
@@ -55,6 +57,7 @@ impl RouletteSlot {
             rarity_id,
             weight,
             action: action.into(),
+            _sealed: (),
         }
     }
 }

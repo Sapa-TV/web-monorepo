@@ -48,6 +48,8 @@ impl Display for PlatformId {
 pub struct Platform {
     pub id: PlatformId,
     pub name: String,
+    #[serde(skip)]
+    _sealed: (),
 }
 
 impl Platform {
@@ -55,6 +57,7 @@ impl Platform {
         Self {
             id,
             name: name.into(),
+            _sealed: (),
         }
     }
 

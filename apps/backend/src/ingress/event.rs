@@ -12,6 +12,7 @@ pub struct PlatformEvent {
     pub event_id: String,
     pub sent_at: DateTime<Utc>,
     pub payload: PlatformEventPayload,
+    _sealed: (),
 }
 
 impl PlatformEvent {
@@ -30,7 +31,9 @@ impl PlatformEvent {
                 user_id,
                 user_name,
                 text,
+                _sealed: (),
             }),
+            _sealed: (),
         }
     }
 
@@ -58,7 +61,9 @@ impl PlatformEvent {
                 reward_cost,
                 user_input,
                 status,
+                _sealed: (),
             }),
+            _sealed: (),
         }
     }
 }
@@ -96,6 +101,7 @@ pub struct ChatMessage {
     pub user_id: String,
     pub user_name: String,
     pub text: String,
+    _sealed: (),
 }
 
 #[derive(Debug, Clone)]
@@ -108,6 +114,7 @@ pub struct RewardRedemption {
     pub reward_cost: i64,
     pub user_input: String,
     pub status: String,
+    _sealed: (),
 }
 
 #[cfg(test)]

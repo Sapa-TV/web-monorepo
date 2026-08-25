@@ -82,10 +82,11 @@ impl X {
 ### B0. Только `_sealed` — pub-поля без внешних литералов (~10)
 
 ~~QueueEntry · QueueStats~~ — готово (конструкторы `new` уже были, добавлен `_sealed`,
-один чанк с QueuePage). ~~Rarity~~ — готово (поля pub(crate), `new` был, добавлен
-`_sealed`). Остались: RouletteSlot · PlatformEvent · ChatMessage ·
-RewardRedemption · Platform · StreamStatus — идут вперемешку со списком A внутри
-того же домена.
+один чанк с QueuePage). ~~Rarity · RouletteSlot · PlatformEvent · ChatMessage ·
+RewardRedemption · Platform · StreamStatus~~ — готово одним проходом: всем добавлен
+`_sealed` (конструкторы уже были; RouletteSlot и Platform с serde — со `#[serde(skip)]`;
+литералы ChatMessage/RewardRedemption внутри PlatformEvent::chat_message/reward_redemption);
+StreamStatus — exempt (все поля приватные). Список B0 закрыт.
 
 ## Шаги
 
