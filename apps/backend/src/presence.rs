@@ -19,6 +19,17 @@ pub enum WsClientRole {
 pub struct PresenceSnapshot {
     pub dock: usize,
     pub widget: usize,
+    _sealed: (),
+}
+
+impl PresenceSnapshot {
+    pub fn new(dock: usize, widget: usize) -> Self {
+        Self {
+            dock,
+            widget,
+            _sealed: (),
+        }
+    }
 }
 
 #[non_exhaustive]
@@ -52,10 +63,10 @@ impl Presence {
     }
 
     pub fn snapshot(&self) -> PresenceSnapshot {
-        PresenceSnapshot {
-            dock: self.dock.load(Ordering::Acquire),
-            widget: self.widget.load(Ordering::Acquire),
-        }
+        PresenceSnapshot::new(
+            self.dock.load(Ordering::Acquire),
+            self.widget.load(Ordering::Acquire),
+        )
     }
 
     pub fn subscribe(&self) -> watch::Receiver<PresenceSnapshot> {
@@ -131,15 +142,15 @@ mod tests {
 
         let dock_guard = presence.add(WsClientRole::Dock);
         rx.changed().await.unwrap();
-        assert_eq!(*rx.borrow(), PresenceSnapshot { dock: 1, widget: 0 });
+        assert_eq!(*rx.borrow(), PresenceSnapshot::new(1, 0));
 
         let widget_guard = presence.add(WsClientRole::Widget);
         rx.changed().await.unwrap();
-        assert_eq!(*rx.borrow(), PresenceSnapshot { dock: 1, widget: 1 });
+        assert_eq!(*rx.borrow(), PresenceSnapshot::new(1, 1));
 
         drop(dock_guard);
         rx.changed().await.unwrap();
-        assert_eq!(*rx.borrow(), PresenceSnapshot { dock: 0, widget: 1 });
+        assert_eq!(*rx.borrow(), PresenceSnapshot::new(0, 1));
 
         drop(widget_guard);
         rx.changed().await.unwrap();

@@ -58,6 +58,9 @@ impl X {
   (`EventContext::chat(...)`, `::reward(...)`), использующие `..Self::default()`
   внутри своего модуля.
 - Тестовые литералы → `new` либо локальный fixture-хелпер.
+- `derive(Default)` совместим с `_sealed` (`()` тоже `Default`) — для маленьких
+  Copy-типов достаточно позиционного `new(a, b)`, serde-skip не нужен, если
+  структура сама не сериализуется.
 - Если конструктор сбрасывал `created_at` на now при апдейте — это пре-существующий
   баг, фиксируется отдельным пунктом бэклога, в рефакторинге поведение сохраняется.
 
@@ -111,8 +114,9 @@ nextest + clippy + fmt → ревью. Порядок — список A, зат
 | StaticConfig          | config/static_config.rs | store, admin/twitch, admin/rewards                                 |
 | TwitchConfig          | config/twitch.rs        | admin/auth, ingress/twitch, ingress/twitch_auth, api/admin/rewards |
 | ApiError              | error/api.rs            | error/{admin,config,actions,rules,user}                            |
-| Presence              | presence.rs             | widget_api/ws — сверить при правке                                 |
-| PresenceSnapshot      | presence.rs             | widget_api/ws — сверить при правке                                 |
+| Presence              | presence.rs             | exempt: все поля приватные                                         |
+| PresenceGuard         | presence.rs             | exempt: все поля приватные (вне исходного списка)                  |
+| PresenceSnapshot      | presence.rs             | готово: `new(dock, widget)`; литералы в тестах presence/ws заменены |
 | QueuePage             | queue/entry.rs          | queue/service                                                      |
 | MessageConditions     | rules/rule.rs           | sqlite/rule, parity, service, api, inmemory                        |
 | RewardConditions      | rules/rule.rs           | engine, inmemory, sqlite, service, parity, api                     |

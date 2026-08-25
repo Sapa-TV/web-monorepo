@@ -251,7 +251,7 @@ mod tests {
 
     #[tokio::test]
     async fn presence_snapshot_serializes_with_type_tag() {
-        let msg = ServerMessage::presence(PresenceSnapshot { dock: 2, widget: 3 });
+        let msg = ServerMessage::presence(PresenceSnapshot::new(2, 3));
         let json: Value = serde_json::to_value(&msg).unwrap();
         assert_eq!(json["type"], "presence");
         assert_eq!(json["dock"], true);
