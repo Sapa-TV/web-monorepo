@@ -88,6 +88,37 @@ pub struct EventContext {
     pub reward_title: String,
     pub reward_cost: i64,
     pub user_input: String,
+    _sealed: (),
+}
+
+impl EventContext {
+    #[must_use]
+    pub fn chat(user_id: String, user_name: String, text: String) -> Self {
+        Self {
+            user_id,
+            user_name,
+            text,
+            ..Self::default()
+        }
+    }
+
+    #[must_use]
+    pub fn reward(
+        user_id: String,
+        user_name: String,
+        reward_title: String,
+        reward_cost: i64,
+        user_input: String,
+    ) -> Self {
+        Self {
+            user_id,
+            user_name,
+            reward_title,
+            reward_cost,
+            user_input,
+            ..Self::default()
+        }
+    }
 }
 
 pub fn render(template: &str, ctx: &EventContext) -> String {

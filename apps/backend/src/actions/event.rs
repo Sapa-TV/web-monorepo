@@ -27,20 +27,16 @@ impl ActionEvent {
 impl From<&PlatformEventPayload> for EventContext {
     fn from(payload: &PlatformEventPayload) -> Self {
         match payload {
-            PlatformEventPayload::ChatMessage(msg) => Self {
-                user_id: msg.user_id.clone(),
-                user_name: msg.user_name.clone(),
-                text: msg.text.clone(),
-                ..Self::default()
-            },
-            PlatformEventPayload::RewardRedemption(red) => Self {
-                user_id: red.user_id.clone(),
-                user_name: red.user_name.clone(),
-                reward_title: red.reward_title.clone(),
-                reward_cost: red.reward_cost,
-                user_input: red.user_input.clone(),
-                ..Self::default()
-            },
+            PlatformEventPayload::ChatMessage(msg) => {
+                Self::chat(msg.user_id.clone(), msg.user_name.clone(), msg.text.clone())
+            }
+            PlatformEventPayload::RewardRedemption(red) => Self::reward(
+                red.user_id.clone(),
+                red.user_name.clone(),
+                red.reward_title.clone(),
+                red.reward_cost,
+                red.user_input.clone(),
+            ),
         }
     }
 }
