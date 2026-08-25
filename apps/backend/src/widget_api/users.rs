@@ -99,7 +99,9 @@ async fn user_json(state: &AppState, id: UserId) -> Result<Json<UserResponse>, A
 
 impl From<UserView> for UserResponse {
     fn from(view: UserView) -> Self {
-        let UserView { user, platforms } = view;
+        let UserView {
+            user, platforms, ..
+        } = view;
         Self {
             id: user.id,
             display_name: user.display_name,

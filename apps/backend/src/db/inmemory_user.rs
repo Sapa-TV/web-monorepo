@@ -37,12 +37,7 @@ impl UserRepository for InMemoryUserRepository {
     async fn create(&self, display_name: &str) -> Result<User, RepositoryError> {
         let id = self.next_user_id.fetch_add(1, Ordering::Relaxed);
         let now = Utc::now();
-        let user = User {
-            id: UserId::new(id),
-            display_name: display_name.to_string(),
-            created_at: now,
-            updated_at: now,
-        };
+        let user = User::new(UserId::new(id), display_name.to_string(), now, now);
         self.users.lock().push(user.clone());
         Ok(user)
     }
@@ -98,13 +93,13 @@ impl UserRepository for InMemoryUserRepository {
         }
 
         let id = self.next_platform_id.fetch_add(1, Ordering::Relaxed);
-        let user_platform = UserPlatform {
-            id: UserPlatformId::new(id),
+        let user_platform = UserPlatform::new(
+            UserPlatformId::new(id),
             user_id,
             platform_id,
-            platform_user_id: platform_user_id.to_string(),
-            platform_username: platform_username.to_string(),
-        };
+            platform_user_id.to_string(),
+            platform_username.to_string(),
+        );
 
         {
             let mut users = self.users.lock();

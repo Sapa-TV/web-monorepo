@@ -31,12 +31,12 @@ impl UserRepository for SqliteUserRepository {
         .fetch_one(&self.pool)
         .await
         .map_err(map_err)?;
-        Ok(User {
-            id: UserId::new(row.id as u32),
-            display_name: display_name.to_string(),
-            created_at: now,
-            updated_at: now,
-        })
+        Ok(User::new(
+            UserId::new(row.id as u32),
+            display_name.to_string(),
+            now,
+            now,
+        ))
     }
 
     async fn find_by_platform(
@@ -57,11 +57,13 @@ impl UserRepository for SqliteUserRepository {
         .fetch_optional(&self.pool)
         .await
         .map_err(map_err)?;
-        Ok(row.map(|row| User {
-            id: UserId::new(row.id as u32),
-            display_name: row.display_name,
-            created_at: row.created_at,
-            updated_at: row.updated_at,
+        Ok(row.map(|row| {
+            User::new(
+                UserId::new(row.id as u32),
+                row.display_name,
+                row.created_at,
+                row.updated_at,
+            )
         }))
     }
 
@@ -76,11 +78,13 @@ impl UserRepository for SqliteUserRepository {
         .fetch_optional(&self.pool)
         .await
         .map_err(map_err)?;
-        Ok(row.map(|row| User {
-            id: UserId::new(row.id as u32),
-            display_name: row.display_name,
-            created_at: row.created_at,
-            updated_at: row.updated_at,
+        Ok(row.map(|row| {
+            User::new(
+                UserId::new(row.id as u32),
+                row.display_name,
+                row.created_at,
+                row.updated_at,
+            )
         }))
     }
 
@@ -97,12 +101,14 @@ impl UserRepository for SqliteUserRepository {
         .map_err(map_err)?;
         Ok(rows
             .into_iter()
-            .map(|row| UserPlatform {
-                id: UserPlatformId::new(row.id as u32),
-                user_id: UserId::new(row.user_id as u32),
-                platform_id: PlatformId::new(row.platform_id as u32),
-                platform_user_id: row.platform_user_id,
-                platform_username: row.platform_username,
+            .map(|row| {
+                UserPlatform::new(
+                    UserPlatformId::new(row.id as u32),
+                    UserId::new(row.user_id as u32),
+                    PlatformId::new(row.platform_id as u32),
+                    row.platform_user_id,
+                    row.platform_username,
+                )
             })
             .collect())
     }
@@ -136,13 +142,13 @@ impl UserRepository for SqliteUserRepository {
         .await
         .map_err(map_err)?;
         tx.commit().await.map_err(map_err)?;
-        Ok(UserPlatform {
-            id: UserPlatformId::new(link.id as u32),
+        Ok(UserPlatform::new(
+            UserPlatformId::new(link.id as u32),
             user_id,
             platform_id,
-            platform_user_id: platform_user_id.to_string(),
-            platform_username: platform_username.to_string(),
-        })
+            platform_user_id.to_string(),
+            platform_username.to_string(),
+        ))
     }
 
     async fn update_display_name(
@@ -162,11 +168,13 @@ impl UserRepository for SqliteUserRepository {
         .fetch_optional(&self.pool)
         .await
         .map_err(map_err)?;
-        Ok(row.map(|row| User {
-            id: UserId::new(row.id as u32),
-            display_name: row.display_name,
-            created_at: row.created_at,
-            updated_at: row.updated_at,
+        Ok(row.map(|row| {
+            User::new(
+                UserId::new(row.id as u32),
+                row.display_name,
+                row.created_at,
+                row.updated_at,
+            )
         }))
     }
 
@@ -201,13 +209,13 @@ impl UserRepository for SqliteUserRepository {
         .await
         .map_err(map_err)?;
         tx.commit().await.map_err(map_err)?;
-        Ok(Some(UserPlatform {
-            id: UserPlatformId::new(link.id as u32),
-            user_id: UserId::new(link.user_id as u32),
-            platform_id: PlatformId::new(link.platform_id as u32),
-            platform_user_id: link.platform_user_id,
-            platform_username: platform_username.to_string(),
-        }))
+        Ok(Some(UserPlatform::new(
+            UserPlatformId::new(link.id as u32),
+            UserId::new(link.user_id as u32),
+            PlatformId::new(link.platform_id as u32),
+            link.platform_user_id,
+            platform_username.to_string(),
+        )))
     }
 
     async fn delete_platform(

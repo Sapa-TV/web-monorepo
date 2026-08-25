@@ -87,7 +87,7 @@ where
         };
         let user_platforms = self.user_repo.get_platforms(user_id).await?;
         let platforms = self.resolve_user_platforms(user_platforms).await?;
-        Ok(Some(UserView { user, platforms }))
+        Ok(Some(UserView::new(user, platforms)))
     }
 
     pub async fn resolve_user_platforms(
@@ -103,12 +103,12 @@ where
                     .find(|p| p.id == up.platform_id)
                     .map(|p| p.name.clone())
                     .unwrap_or_default();
-                ResolvedUserPlatform {
-                    id: up.id,
+                ResolvedUserPlatform::new(
+                    up.id,
                     platform_name,
-                    platform_user_id: up.platform_user_id,
-                    platform_username: up.platform_username,
-                }
+                    up.platform_user_id,
+                    up.platform_username,
+                )
             })
             .collect())
     }

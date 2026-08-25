@@ -57,6 +57,25 @@ pub struct User {
     pub display_name: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    _sealed: (),
+}
+
+impl User {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        id: UserId,
+        display_name: String,
+        created_at: DateTime<Utc>,
+        updated_at: DateTime<Utc>,
+    ) -> Self {
+        Self {
+            id,
+            display_name,
+            created_at,
+            updated_at,
+            _sealed: (),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -67,6 +86,27 @@ pub struct UserPlatform {
     pub platform_id: PlatformId,
     pub platform_user_id: String,
     pub platform_username: String,
+    _sealed: (),
+}
+
+impl UserPlatform {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        id: UserPlatformId,
+        user_id: UserId,
+        platform_id: PlatformId,
+        platform_user_id: String,
+        platform_username: String,
+    ) -> Self {
+        Self {
+            id,
+            user_id,
+            platform_id,
+            platform_user_id,
+            platform_username,
+            _sealed: (),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -76,6 +116,24 @@ pub struct ResolvedUserPlatform {
     pub platform_name: String,
     pub platform_user_id: String,
     pub platform_username: String,
+    _sealed: (),
+}
+
+impl ResolvedUserPlatform {
+    pub fn new(
+        id: UserPlatformId,
+        platform_name: String,
+        platform_user_id: String,
+        platform_username: String,
+    ) -> Self {
+        Self {
+            id,
+            platform_name,
+            platform_user_id,
+            platform_username,
+            _sealed: (),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -83,4 +141,15 @@ pub struct ResolvedUserPlatform {
 pub struct UserView {
     pub user: User,
     pub platforms: Vec<ResolvedUserPlatform>,
+    _sealed: (),
+}
+
+impl UserView {
+    pub fn new(user: User, platforms: Vec<ResolvedUserPlatform>) -> Self {
+        Self {
+            user,
+            platforms,
+            _sealed: (),
+        }
+    }
 }
