@@ -168,19 +168,9 @@ mod tests {
     #[test]
     fn admin_twitch_id_comes_from_twitch_broadcaster_id() {
         let repo = Arc::new(InMemoryConfigRepository::new());
-        let static_cfg = Arc::new(StaticConfig::new(
-            3000,
-            None,
-            false,
-            Some(Arc::new(TwitchConfig {
-                client_id: "cid".to_string(),
-                client_secret: "cs".to_string(),
-                broadcaster_id: "42".to_string(),
-                redirect_uri: "https://localhost/cb".to_string(),
-                credentials_redirect_uri: "https://localhost/creds/cb".to_string(),
-                csrf_ttl_secs: 600,
-            })),
-        ));
+        let mut twitch = TwitchConfig::fixture();
+        twitch.broadcaster_id = "42".to_string();
+        let static_cfg = Arc::new(StaticConfig::new(3000, None, false, Some(Arc::new(twitch))));
         let store = ConfigStore::new(
             static_cfg,
             RuntimeConfig::test_runtime("secret"),

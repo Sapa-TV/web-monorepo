@@ -212,14 +212,13 @@ mod tests {
     use super::*;
 
     fn test_config() -> Option<Arc<TwitchConfig>> {
-        Some(Arc::new(TwitchConfig {
-            client_id: "client_id".to_string(),
-            client_secret: "client_secret".to_string(),
-            broadcaster_id: String::new(),
-            redirect_uri: "https://localhost:8080/callback".to_string(),
-            credentials_redirect_uri: "https://localhost:8080/creds/callback".to_string(),
-            csrf_ttl_secs: 600,
-        }))
+        let mut config = TwitchConfig::fixture();
+        config.client_id = "client_id".to_string();
+        config.client_secret = "client_secret".to_string();
+        config.broadcaster_id = String::new();
+        config.redirect_uri = "https://localhost:8080/callback".to_string();
+        config.credentials_redirect_uri = "https://localhost:8080/creds/callback".to_string();
+        Some(Arc::new(config))
     }
 
     fn test_service(

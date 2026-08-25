@@ -134,14 +134,7 @@ mod tests {
     use crate::test_fixtures::{api_path, session_cookie, test_router, test_state};
 
     fn twitch_config() -> Arc<TwitchConfig> {
-        Arc::new(TwitchConfig {
-            client_id: "cid".to_string(),
-            client_secret: "cs".to_string(),
-            broadcaster_id: "bc".to_string(),
-            redirect_uri: "https://localhost/cb".to_string(),
-            credentials_redirect_uri: "https://localhost/creds/cb".to_string(),
-            csrf_ttl_secs: 600,
-        })
+        Arc::new(TwitchConfig::fixture())
     }
 
     async fn state_with_twitch() -> AppState {

@@ -116,14 +116,13 @@ mod tests {
     use super::*;
 
     fn test_config() -> Arc<TwitchConfig> {
-        Arc::new(TwitchConfig {
-            client_id: "id".to_string(),
-            client_secret: "secret".to_string(),
-            broadcaster_id: "broadcaster".to_string(),
-            redirect_uri: String::new(),
-            credentials_redirect_uri: String::new(),
-            csrf_ttl_secs: 600,
-        })
+        let mut config = TwitchConfig::fixture();
+        config.client_id = "id".to_string();
+        config.client_secret = "secret".to_string();
+        config.broadcaster_id = "broadcaster".to_string();
+        config.redirect_uri = String::new();
+        config.credentials_redirect_uri = String::new();
+        Arc::new(config)
     }
 
     fn test_credentials() -> Arc<PlatformCredentialService<InMemoryPlatformCredentialRepository>> {

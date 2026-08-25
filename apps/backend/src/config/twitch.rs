@@ -12,6 +12,7 @@ pub struct TwitchConfig {
     pub redirect_uri: String,
     pub credentials_redirect_uri: String,
     pub csrf_ttl_secs: u64,
+    _sealed: (),
 }
 
 impl TwitchConfig {
@@ -48,7 +49,24 @@ impl TwitchConfig {
             redirect_uri,
             credentials_redirect_uri,
             csrf_ttl_secs,
+            _sealed: (),
         })
+    }
+}
+
+#[cfg(test)]
+impl TwitchConfig {
+    /// Canonical valid config for tests; tweak pub fields after clone if needed.
+    pub(crate) fn fixture() -> Self {
+        Self {
+            client_id: "cid".to_string(),
+            client_secret: "cs".to_string(),
+            broadcaster_id: "bc".to_string(),
+            redirect_uri: "https://localhost/cb".to_string(),
+            credentials_redirect_uri: "https://localhost/creds/cb".to_string(),
+            csrf_ttl_secs: 600,
+            _sealed: (),
+        }
     }
 }
 

@@ -66,14 +66,8 @@ mod tests {
 
     fn executor_without_credentials() -> TwitchActionExecutor<InMemoryPlatformCredentialRepository>
     {
-        let config = Arc::new(TwitchConfig {
-            client_id: "cid".to_string(),
-            client_secret: "cs".to_string(),
-            broadcaster_id: "bc".to_string(),
-            redirect_uri: "https://localhost/cb".to_string(),
-            credentials_redirect_uri: "https://localhost/creds/cb".to_string(),
-            csrf_ttl_secs: 600,
-        });
+        let config = Arc::new(TwitchConfig::fixture());
+
         let credentials = Arc::new(PlatformCredentialService::new(Arc::new(
             InMemoryPlatformCredentialRepository::new(),
         )));
