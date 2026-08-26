@@ -5,6 +5,7 @@ use crate::config::repository::ConfigRepository;
 use crate::config::runtime::RuntimeConfig;
 use crate::config::static_config::StaticConfig;
 use crate::config::twitch::TwitchConfig;
+use crate::config::vk_video_live::VkVideoLiveConfig;
 use crate::error::ConfigError;
 use crate::random::generate_secret;
 
@@ -92,6 +93,10 @@ impl<R: ConfigRepository> ConfigStore<R> {
 
     pub fn twitch(&self) -> Option<&TwitchConfig> {
         self.static_cfg.twitch.as_deref()
+    }
+
+    pub fn vk_video_live(&self) -> Option<&VkVideoLiveConfig> {
+        self.static_cfg.vk_video_live.as_deref()
     }
 
     pub async fn update_runtime(&self, next: RuntimeConfig) -> Result<(), ConfigError> {

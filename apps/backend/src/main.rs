@@ -15,6 +15,8 @@ use backend::ingress::PlatformService;
 use backend::ingress::platform::EventSink;
 use backend::ingress::supervisor::IngressSupervisor;
 use backend::ingress::twitch::TwitchPlatformService;
+use backend::ingress::vk_video_live::VkVideoLivePlatformService;
+use backend::ingress::vk_video_live_auth::VkVideoLiveAuthService;
 use backend::openapi;
 use backend::platform::{PlatformCredentialService, PlatformId};
 use backend::random::StandartRandomProvider;
@@ -76,11 +78,31 @@ async fn main() {
         }
     }
 
-    let platforms: &'static [PlatformId] = match config_store.twitch() {
-        Some(_) => &[PlatformId::TWITCH],
-        None => &[],
-    };
+    match config_store.vk_video_live() {
+        Some(vk) => {
+            tracing::info!(
+                "vk video live config ready: client_id={}, channel_url={}, redirect_uri={}, credentials_redirect_uri={}",
+                vk.client_id,
+                vk.channel_url,
+                vk.redirect_uri,
+                vk.credentials_redirect_uri
+            );
+        }
+        None => {
+            tracing::info!("vk video live config NOT configured: vk ingress will not work");
+        }
+    }
+
+    let mut platform_ids = Vec::new();
+    if config_store.twitch().is_some() {
+        platform_ids.push(PlatformId::TWITCH);
+    }
+    if config_store.vk_video_live().is_some() {
+        platform_ids.push(PlatformId::VK_VIDEO_LIVE);
+    }
+    let platforms: &'static [PlatformId] = Box::leak(platform_ids.into_boxed_slice());
     let twitch_config = config_store.twitch().map(|t| Arc::new(t.clone()));
+    let vk_config = config_store.vk_video_live().map(|t| Arc::new(t.clone()));
     let shutdown = CancellationToken::new();
     let build_ingress =
         move |platform: PlatformId,
@@ -94,6 +116,22 @@ async fn main() {
                         let config = Arc::clone(config);
                         Some(tokio::spawn(async move {
                             let service = TwitchPlatformService::new(config, credentials);
+                            if let Err(e) = service.run(sink, token).await {
+                                tracing::error!(
+                                    "{} ingress stopped: {e}",
+                                    service.platform().as_name()
+                                );
+                            }
+                        }))
+                    }
+                    None => None,
+                },
+                PlatformId::VK_VIDEO_LIVE => match &vk_config {
+                    Some(config) => {
+                        let config = Arc::clone(config);
+                        Some(tokio::spawn(async move {
+                            let auth = Arc::new(VkVideoLiveAuthService::new(config, credentials));
+                            let service = VkVideoLivePlatformService::new(auth);
                             if let Err(e) = service.run(sink, token).await {
                                 tracing::error!(
                                     "{} ingress stopped: {e}",
