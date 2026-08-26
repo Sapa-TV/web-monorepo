@@ -2,7 +2,7 @@ cargo-features = ["profile-rustflags"]
 
 [workspace]
 resolver = "2"
-members = ["apps/backend", "tools/gen-openapi"]
+members = ["apps/backend", "crates/vk-video-live", "tools/gen-openapi"]
 
 [workspace.lints.clippy]
 unwrap_used = "deny"

@@ -13,7 +13,13 @@ chrono = { workspace = true }
 rand = { workspace = true, features = ["thread_rng"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
-sqlx = { workspace = true, features = ["sqlite", "chrono", "runtime-tokio", "migrate", "macros"] }
+sqlx = { workspace = true, features = [
+    "sqlite",
+    "chrono",
+    "runtime-tokio",
+    "migrate",
+    "macros",
+] }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 tower = { workspace = true }
@@ -45,3 +51,4 @@ strum = { workspace = true, features = ["derive"] }
 axum-extra = { workspace = true, features = ["cookie"] }
 time = { workspace = true }
 tokio-util = { workspace = true }
+vk-video-live = { path = "../../crates/vk-video-live" }
