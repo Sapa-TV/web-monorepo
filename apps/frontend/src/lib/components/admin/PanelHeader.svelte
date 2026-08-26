@@ -8,7 +8,12 @@
 
 	async function handleLogout() {
 		await logout();
-		await goto(resolve("admin/login"), { replaceState: true });
+		await goto(
+			resolve("/(panels)/login-callback/[platform]", { platform: "twitch" }),
+			{
+				replaceState: true,
+			},
+		);
 	}
 </script>
 

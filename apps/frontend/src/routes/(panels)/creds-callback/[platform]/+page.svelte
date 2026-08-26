@@ -1,8 +1,20 @@
 <script lang="ts">
 	import { onMount } from "svelte";
+	import { page } from "$app/state";
 	import { AuthCard } from "@sapa-tv-ru/ui-kit";
 	import { completeCredsAuth } from "#lib/admin/creds";
 	import { ApiError, ApiErrorKind } from "#lib/internal/api-error";
+
+	const PLATFORMS = {
+		twitch: { label: "Twitch" },
+		"vk-video-live": null,
+	} as const;
+
+	const platformParam = page.params.platform as string;
+	const known = platformParam in PLATFORMS;
+	const label = known
+		? (PLATFORMS[platformParam as keyof typeof PLATFORMS]?.label ?? null)
+		: null;
 
 	let busy = $state(true);
 	let status = $state("");
@@ -10,6 +22,18 @@
 
 	async function closeIfPopup() {
 		if (window.opener) window.close();
+	}
+
+	function describeCredsError(err: ApiError): string {
+		switch (err.kind) {
+			case ApiErrorKind.Unauthorized:
+			case ApiErrorKind.Forbidden:
+				return "Нет доступа: сессия истекла или у аккаунта нет прав root. Вернись на панель, перелогинься и попробуй снова.";
+			case ApiErrorKind.BadRequest:
+				return "Не удалось завершить авторизацию: попробуй на панели «Авторизовать» ещё раз.";
+			default:
+				return `Не удалось сохранить credentials. Попробуй ещё раз.`;
+		}
 	}
 
 	onMount(() => {
@@ -20,6 +44,16 @@
 		const state = params.get("state");
 
 		async function run() {
+			if (!known) {
+				status = "";
+				error = "Неизвестная платформа.";
+				return;
+			}
+			if (!label) {
+				status = "";
+				error = "Авторизация этой платформы пока недоступна.";
+				return;
+			}
 			if (oauthError) {
 				status = "Отказано в доступе.";
 				error = oauthErrorDescription
@@ -37,20 +71,8 @@
 				error = describeCredsError(res.error);
 				return;
 			}
-			status = "Twitch credentials авторизованы.";
+			status = `${label} credentials авторизованы.`;
 			await closeIfPopup();
-		}
-
-		function describeCredsError(err: ApiError): string {
-			switch (err.kind) {
-				case ApiErrorKind.Unauthorized:
-				case ApiErrorKind.Forbidden:
-					return "Нет доступа: сессия истекла или у аккаунта нет прав root. Вернись на панель, перелогинься и попробуй снова.";
-				case ApiErrorKind.BadRequest:
-					return "Не удалось завершить авторизацию: попробуй на панели «Авторизовать» ещё раз.";
-				default:
-					return "Не удалось сохранить Twitch credentials. Попробуй ещё раз.";
-			}
 		}
 
 		run().finally(() => (busy = false));
@@ -58,11 +80,11 @@
 </script>
 
 <svelte:head>
-	<title>Sapa TV | Авторизация Twitch</title>
+	<title>Sapa TV | Авторизация</title>
 </svelte:head>
 
 <main class="creds">
-	<AuthCard title="Sapa TV" subtitle="Twitch credentials" {error}>
+	<AuthCard title="Sapa TV" subtitle="Подключение платформы" {error}>
 		{#if error}
 			<p class="creds__status creds__status--error" role="alert">{error}</p>
 		{:else if status}

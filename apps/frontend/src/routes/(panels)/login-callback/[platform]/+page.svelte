@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from "svelte";
 	import { goto } from "$app/navigation";
+	import { page } from "$app/state";
 	import { resolve } from "$app/paths";
 	import { AuthCard, Button } from "@sapa-tv-ru/ui-kit";
 	import IconTwitch from "~icons/lucide/twitch";
@@ -13,15 +14,27 @@
 	} from "#lib/admin/session";
 	import { ApiError, ApiErrorKind } from "#lib/internal/api-error";
 
+	const PLATFORMS = {
+		twitch: { label: "Twitch" },
+		"vk-video-live": null,
+	} as const;
+
+	type PlatformSlug = keyof typeof PLATFORMS;
+
+	const platformParam = page.params.platform as string;
+	const known = platformParam in PLATFORMS;
+	const platform =
+		(known ? PLATFORMS[platformParam as PlatformSlug] : null) ?? null;
+
 	let busy = $state(true);
 	let error = $state("");
 
 	function loginErrorText(err: ApiError): string {
 		switch (err.kind) {
 			case ApiErrorKind.BadRequest:
-				return "Ошибка запуска авторизации: отсутствует twitch config.";
+				return "Ошибка запуска авторизации: платформа не настроена.";
 			default:
-				return "Не удалось завершить вход через Twitch. Попробуй ещё раз.";
+				return `Не удалось завершить вход. Попробуй ещё раз.`;
 		}
 	}
 
@@ -43,7 +56,7 @@
 		else if (where === "home") await goto(resolve(""), { replaceState: true });
 	}
 
-	async function handleTwitchLogin() {
+	async function handleLogin() {
 		busy = true;
 		error = "";
 		const res = await startLogin();
@@ -56,6 +69,10 @@
 	}
 
 	onMount(async () => {
+		if (!known || !platform) {
+			busy = false;
+			return;
+		}
 		const params = new URLSearchParams(window.location.search);
 		const oauthError = params.get("error");
 		const oauthErrorDescription = params.get("error_description");
@@ -91,15 +108,21 @@
 </script>
 
 <svelte:head>
-	<title>Sapa TV | Админ-вход</title>
+	<title>Sapa TV | Вход</title>
 </svelte:head>
 
 <main class="login">
 	<AuthCard title="Sapa TV" subtitle="Вход в админ-панель" {error}>
-		<Button variant="twitch" onclick={handleTwitchLogin} disabled={busy}>
-			<IconTwitch aria-hidden="true" />
-			{busy ? "Ожидание..." : "Войти через Twitch"}
-		</Button>
+		{#if !known}
+			<p class="login__status" role="alert">Неизвестная платформа.</p>
+		{:else if !platform}
+			<p class="login__status">Вход через эту платформу пока недоступен.</p>
+		{:else if platformParam === "twitch"}
+			<Button variant="twitch" onclick={handleLogin} disabled={busy}>
+				<IconTwitch aria-hidden="true" />
+				{busy ? "Ожидание..." : "Войти через Twitch"}
+			</Button>
+		{/if}
 	</AuthCard>
 </main>
 
@@ -109,5 +132,11 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
+	}
+
+	.login__status {
+		margin: 0;
+		font-size: 13px;
+		color: var(--on-surface);
 	}
 </style>
