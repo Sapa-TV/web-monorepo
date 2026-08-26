@@ -7,6 +7,7 @@ use crate::config::runtime::{
     QueueRuntimeConfig, RouletteRuntimeConfig, RuntimeConfig, SessionRuntimeConfig,
 };
 use crate::config::twitch::TwitchConfig;
+use crate::config::vk_video_live::VkVideoLiveConfig;
 use crate::consts::server;
 
 #[derive(Clone, Deserialize)]
@@ -18,6 +19,7 @@ pub struct StaticConfig {
     pub cors_origins: Option<Vec<String>>,
     pub cookie_secure: bool,
     pub twitch: Option<Arc<TwitchConfig>>,
+    pub vk_video_live: Option<Arc<VkVideoLiveConfig>>,
     #[serde(skip)]
     _sealed: (),
 }
@@ -29,6 +31,7 @@ impl Default for StaticConfig {
             cors_origins: None,
             cookie_secure: false,
             twitch: None,
+            vk_video_live: None,
             _sealed: (),
         }
     }
@@ -40,12 +43,14 @@ impl StaticConfig {
         cors_origins: Option<Vec<String>>,
         cookie_secure: bool,
         twitch: Option<Arc<TwitchConfig>>,
+        vk_video_live: Option<Arc<VkVideoLiveConfig>>,
     ) -> Self {
         Self {
             port,
             cors_origins,
             cookie_secure,
             twitch,
+            vk_video_live,
             _sealed: (),
         }
     }
@@ -72,6 +77,7 @@ impl StaticConfig {
             cors_origins: raw.cors_origins,
             cookie_secure: raw.cookie_secure,
             twitch: raw.twitch,
+            vk_video_live: raw.vk_video_live,
             _sealed: (),
         };
         let seed = RuntimeConfig::new(
@@ -100,6 +106,7 @@ struct RawConfig {
     #[serde(deserialize_with = "deserialize_cors_origins")]
     cors_origins: Option<Vec<String>>,
     twitch: Option<Arc<TwitchConfig>>,
+    vk_video_live: Option<Arc<VkVideoLiveConfig>>,
     session_ttl_secs: u64,
     cookie_secure: bool,
 }
@@ -118,6 +125,7 @@ impl Default for RawConfig {
             port: static_cfg.port,
             cors_origins: static_cfg.cors_origins,
             twitch: static_cfg.twitch,
+            vk_video_live: static_cfg.vk_video_live,
             cookie_secure: static_cfg.cookie_secure,
         }
     }
@@ -164,6 +172,13 @@ impl StaticConfig {
     pub(crate) fn with_twitch(twitch: Option<Arc<TwitchConfig>>) -> Self {
         Self {
             twitch,
+            ..Self::default()
+        }
+    }
+
+    pub(crate) fn with_vk_video_live(vk: Option<Arc<VkVideoLiveConfig>>) -> Self {
+        Self {
+            vk_video_live: vk,
             ..Self::default()
         }
     }
@@ -248,5 +263,30 @@ mod tests {
 
         let twitch = static_cfg.twitch.expect("twitch set");
         assert_eq!(twitch.client_id, "cid");
+        assert!(static_cfg.vk_video_live.is_none());
+    }
+
+    #[test]
+    fn split_passes_vk_video_live_through() {
+        let raw: RawConfig = serde_json::from_str(
+            r#"{
+                "vk_video_live": {
+                    "client_id": "vk-cid",
+                    "client_secret": "vk-cs",
+                    "channel_url": "sapushka_",
+                    "redirect_uri": "https://localhost/login-callback/vk-video-live",
+                    "credentials_redirect_uri": "https://localhost/creds-callback/vk-video-live",
+                    "csrf_ttl_secs": 600
+                }
+            }"#,
+        )
+        .unwrap();
+
+        let (static_cfg, _) = StaticConfig::split(raw);
+
+        let vk = static_cfg.vk_video_live.expect("vk set");
+        assert_eq!(vk.client_id, "vk-cid");
+        assert_eq!(vk.channel_url, "sapushka_");
+        assert!(static_cfg.twitch.is_none());
     }
 }

@@ -170,7 +170,13 @@ mod tests {
         let repo = Arc::new(InMemoryConfigRepository::new());
         let mut twitch = TwitchConfig::fixture();
         twitch.broadcaster_id = "42".to_string();
-        let static_cfg = Arc::new(StaticConfig::new(3000, None, false, Some(Arc::new(twitch))));
+        let static_cfg = Arc::new(StaticConfig::new(
+            3000,
+            None,
+            false,
+            Some(Arc::new(twitch)),
+            None,
+        ));
         let store = ConfigStore::new(
             static_cfg,
             RuntimeConfig::test_runtime("secret"),
