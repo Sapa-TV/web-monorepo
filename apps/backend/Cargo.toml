@@ -51,4 +51,4 @@ strum = { workspace = true, features = ["derive"] }
 axum-extra = { workspace = true, features = ["cookie"] }
 time = { workspace = true }
 tokio-util = { workspace = true }
-vk-video-live = { path = "../../crates/vk-video-live" }
+vk-video-live = { workspace = true }

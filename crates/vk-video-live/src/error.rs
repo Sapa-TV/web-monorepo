@@ -2,7 +2,7 @@ use std::error::Error as StdError;
 use std::fmt::{self, Display};
 use std::result::Result as StdResult;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[non_exhaustive]
 pub enum Error {
     Http(String),
