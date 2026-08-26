@@ -7,7 +7,7 @@ pub trait Transport: Send + Sync {
         &self,
         url: &str,
         basic_auth: &str,
-        form: &[(&str, &str)],
+        encoded_body: &str,
     ) -> impl Future<Output = Result<String>> + Send;
 
     fn get(&self, url: &str, bearer: &str) -> impl Future<Output = Result<String>> + Send;

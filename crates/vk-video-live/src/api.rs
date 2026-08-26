@@ -20,7 +20,17 @@ pub struct ChannelResponse {
 #[non_exhaustive]
 pub struct ChannelData {
     pub channel: ChannelInfo,
+    pub owner: Option<ChannelOwner>,
     pub stream: Option<StreamInfo>,
+    #[serde(skip)]
+    _sealed: (),
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[non_exhaustive]
+pub struct ChannelOwner {
+    pub id: u64,
+    pub nick: String,
     #[serde(skip)]
     _sealed: (),
 }
@@ -219,7 +229,7 @@ mod tests {
             &self,
             _url: &str,
             _basic_auth: &str,
-            _form: &[(&str, &str)],
+            _encoded_body: &str,
         ) -> Result<String> {
             Err(Error::Protocol("unexpected post_form".to_string()))
         }

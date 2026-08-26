@@ -4,4 +4,4 @@ pub mod error;
 pub mod events;
 pub mod pubsub;
 pub mod transport;
-mod url;
+pub mod url;

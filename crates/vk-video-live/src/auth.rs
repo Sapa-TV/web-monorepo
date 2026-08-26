@@ -1,4 +1,4 @@
-use serde::Deserialize;
+﻿use serde::Deserialize;
 
 use crate::error::{Error, Result};
 use crate::transport::Transport;
@@ -104,7 +104,7 @@ impl OAuthClient {
     ) -> Result<()> {
         let form = [("token", token), ("token_type_hint", hint.as_str())];
         transport
-            .post_form(REVOKE_URL, &self.basic_auth(), &form)
+            .post_form(REVOKE_URL, &self.basic_auth(), &form_body(&form))
             .await?;
         Ok(())
     }
@@ -115,7 +115,7 @@ impl OAuthClient {
         form: &[(&str, &str)],
     ) -> Result<TokenResponse> {
         let body = transport
-            .post_form(TOKEN_URL, &self.basic_auth(), form)
+            .post_form(TOKEN_URL, &self.basic_auth(), &form_body(form))
             .await?;
         serde_json::from_str(&body).map_err(|e| Error::Protocol(format!("token response: {e}")))
     }
@@ -126,8 +126,14 @@ impl OAuthClient {
     }
 }
 
-fn base64_encode(data: &[u8]) -> String {
-    let mut out = String::with_capacity(data.len().div_ceil(3) * 4);
+fn form_body(form: &[(&str, &str)]) -> String {
+    form.iter()
+        .map(|(k, v)| format!("{}={}", encode_component(k), encode_component(v)))
+        .collect::<Vec<_>>()
+        .join("&")
+}
+
+fn base64_encode(data: &[u8]) -> String {    let mut out = String::with_capacity(data.len().div_ceil(3) * 4);
     for chunk in data.chunks(3) {
         let b0 = u32::from(chunk[0]);
         let b1 = u32::from(*chunk.get(1).unwrap_or(&0));
@@ -186,15 +192,12 @@ mod tests {
             &self,
             url: &str,
             basic_auth: &str,
-            form: &[(&str, &str)],
+            encoded_body: &str,
         ) -> Result<String> {
             self.records.lock().unwrap().push(Record {
                 url: url.to_string(),
                 auth: basic_auth.to_string(),
-                form: form
-                    .iter()
-                    .map(|(k, v)| ((*k).to_string(), (*v).to_string()))
-                    .collect(),
+                form: vec![("body".to_string(), encoded_body.to_string())],
             });
             self.response.clone()
         }
@@ -279,13 +282,13 @@ mod tests {
         assert_eq!(record.auth, "Basic aWQxMjM6c2VjcmV0NDU2");
         assert_eq!(
             record.form,
-            vec![
-                ("grant_type".to_string(), "authorization_code".to_string()),
-                ("code".to_string(), "the-code".to_string()),
-                (
-                    "redirect_uri".to_string(),
-                    "https://sapa-tv.ru/login-callback/twitch".to_string()
-                ),
+            vec![(
+                "body".to_string(),
+                "grant_type=authorization_code\
+&code=the-code\
+&redirect_uri=https%3A%2F%2Fsapa-tv.ru%2Flogin-callback%2Ftwitch"
+                    .to_string()
+            ),
             ]
         );
         assert_eq!(token.access_token, "at");
@@ -310,13 +313,13 @@ mod tests {
         let record = transport.last();
         assert_eq!(
             record.form,
-            vec![
-                ("grant_type".to_string(), "refresh_token".to_string()),
-                ("refresh_token".to_string(), "rt-old".to_string()),
-                (
-                    "redirect_uri".to_string(),
-                    "https://sapa-tv.ru/login-callback/twitch".to_string()
-                ),
+            vec![(
+                "body".to_string(),
+                "grant_type=refresh_token\
+&refresh_token=rt-old\
+&redirect_uri=https%3A%2F%2Fsapa-tv.ru%2Flogin-callback%2Ftwitch"
+                    .to_string()
+            ),
             ]
         );
         assert_eq!(token.access_token, "at2");
@@ -334,9 +337,10 @@ mod tests {
         assert_eq!(record.url, REVOKE_URL);
         assert_eq!(
             record.form,
-            vec![
-                ("token".to_string(), "tok-1".to_string()),
-                ("token_type_hint".to_string(), "refresh_token".to_string()),
+            vec![(
+                "body".to_string(),
+                "token=tok-1&token_type_hint=refresh_token".to_string()
+            ),
             ]
         );
     }
