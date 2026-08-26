@@ -2,6 +2,7 @@ use serde::Deserialize;
 
 use crate::error::{Error, Result};
 use crate::transport::Transport;
+use crate::url::encode_component;
 
 pub const AUTHORIZE_URL: &str = "https://auth.live.vkvideo.ru/app/oauth2/authorize";
 pub const TOKEN_URL: &str = "https://api.live.vkvideo.ru/oauth/server/token";
@@ -148,19 +149,6 @@ fn base64_encode(data: &[u8]) -> String {
     out
 }
 
-fn encode_component(value: &str) -> String {
-    let mut out = String::with_capacity(value.len());
-    for byte in value.as_bytes() {
-        match byte {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' => {
-                out.push(*byte as char)
-            }
-            other => out.push_str(&format!("%{other:02X}")),
-        }
-    }
-    out
-}
-
 #[cfg(test)]
 mod tests {
     use std::sync::{Arc, Mutex};
@@ -209,6 +197,14 @@ mod tests {
                     .collect(),
             });
             self.response.clone()
+        }
+
+        async fn get(&self, _url: &str, _bearer: &str) -> Result<String> {
+            Err(Error::Protocol("unexpected GET".to_string()))
+        }
+
+        async fn post_json(&self, _url: &str, _bearer: &str, _body: &str) -> Result<String> {
+            Err(Error::Protocol("unexpected POST JSON".to_string()))
         }
     }
 
