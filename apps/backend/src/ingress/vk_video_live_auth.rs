@@ -175,6 +175,10 @@ where
         &self.oauth
     }
 
+    pub fn transport(&self) -> &T {
+        &self.transport
+    }
+
     pub fn credentials_redirect_uri(&self) -> &str {
         &self.config.credentials_redirect_uri
     }

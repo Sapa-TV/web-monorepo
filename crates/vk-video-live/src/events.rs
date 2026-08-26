@@ -14,6 +14,29 @@ pub struct ChatMessageEvent {
     pub is_private: bool,
 }
 
+impl ChatMessageEvent {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        id: u64,
+        author_id: u64,
+        author_nick: impl Into<String>,
+        created_at: i64,
+        text: impl Into<String>,
+        is_deleted: bool,
+        is_private: bool,
+    ) -> Self {
+        Self {
+            id,
+            author_id,
+            author_nick: author_nick.into(),
+            created_at,
+            text: text.into(),
+            is_deleted,
+            is_private,
+        }
+    }
+}
+
 pub fn parse_push(frame: &str) -> Result<Option<ChatMessageEvent>> {
     let value: Value =
         serde_json::from_str(frame).map_err(|e| Error::Protocol(format!("ws frame: {e}")))?;

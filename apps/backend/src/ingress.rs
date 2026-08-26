@@ -4,6 +4,7 @@ pub mod service;
 pub mod supervisor;
 pub mod twitch;
 pub mod twitch_auth;
+pub mod vk_video_live;
 pub mod vk_video_live_auth;
 
 pub use platform::PlatformService;

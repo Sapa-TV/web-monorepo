@@ -12,6 +12,8 @@ pub mod ingress {
     pub const TWITCH_EVENTSUB_WS_URL: &str = "wss://eventsub.wss.twitch.tv/ws";
     pub const TWITCH_RECONNECT_INITIAL_DELAY: Duration = Duration::from_secs(1);
     pub const TWITCH_RECONNECT_MAX_DELAY: Duration = Duration::from_secs(60);
+    pub const VK_RECONNECT_INITIAL_DELAY: Duration = Duration::from_secs(1);
+    pub const VK_RECONNECT_MAX_DELAY: Duration = Duration::from_secs(60);
 }
 
 pub mod queue {
