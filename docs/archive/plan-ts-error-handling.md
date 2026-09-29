@@ -52,7 +52,7 @@ export const ApiErrorKind = {
 	NotFound: "not_found",
 	Conflict: "conflict",
 	RateLimited: "rate_limited",
-	Server: "server",        // любые 5xx
+	Server: "server", // любые 5xx
 	HttpOther: "http_other", // прочие статусы вне таблицы
 	// не-HTTP семьи — свои имена, никаких выдуманных цифр
 	Timeout: "timeout",

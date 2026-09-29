@@ -106,33 +106,33 @@ openapi.json без диффа).
 
 ### A. По одной структуре за шаг (24)
 
-| Структура             | Файл                    | Внешние литералы                                                   |
-| --------------------- | ----------------------- | ------------------------------------------------------------------ |
-| ActionContext         | actions/platform.rs     | executor, twitch_executor, service                                 |
-| Admin                 | admin.rs                | db/inmemory_admin, db/sqlite/admin                                 |
-| RarityResponse        | api/admin/roulette.rs   | widget_api/rarities                                                |
-| RouletteSlotResponse  | api/admin/roulette.rs   | widget_api/roulette_slots                                          |
-| StreamStatusResponse  | api/stream.rs           | widget_api/stream                                                  |
-| QueueRuntimeConfig    | config/runtime.rs       | config/static_config                                               |
-| RouletteRuntimeConfig | config/runtime.rs       | config/static_config                                               |
-| RuntimeConfig         | config/runtime.rs       | config/static_config                                               |
-| SessionRuntimeConfig  | config/runtime.rs       | config/static_config                                               |
-| StaticConfig          | config/static_config.rs | store, admin/twitch, admin/rewards                                 |
-| TwitchConfig          | config/twitch.rs        | admin/auth, ingress/twitch, ingress/twitch_auth, api/admin/rewards |
-| ApiError              | error/api.rs            | error/{admin,config,actions,rules,user}                            |
-| Presence              | presence.rs             | exempt: все поля приватные                                         |
-| PresenceGuard         | presence.rs             | exempt: все поля приватные (вне исходного списка)                  |
+| Структура             | Файл                    | Внешние литералы                                                    |
+| --------------------- | ----------------------- | ------------------------------------------------------------------- |
+| ActionContext         | actions/platform.rs     | executor, twitch_executor, service                                  |
+| Admin                 | admin.rs                | db/inmemory_admin, db/sqlite/admin                                  |
+| RarityResponse        | api/admin/roulette.rs   | widget_api/rarities                                                 |
+| RouletteSlotResponse  | api/admin/roulette.rs   | widget_api/roulette_slots                                           |
+| StreamStatusResponse  | api/stream.rs           | widget_api/stream                                                   |
+| QueueRuntimeConfig    | config/runtime.rs       | config/static_config                                                |
+| RouletteRuntimeConfig | config/runtime.rs       | config/static_config                                                |
+| RuntimeConfig         | config/runtime.rs       | config/static_config                                                |
+| SessionRuntimeConfig  | config/runtime.rs       | config/static_config                                                |
+| StaticConfig          | config/static_config.rs | store, admin/twitch, admin/rewards                                  |
+| TwitchConfig          | config/twitch.rs        | admin/auth, ingress/twitch, ingress/twitch_auth, api/admin/rewards  |
+| ApiError              | error/api.rs            | error/{admin,config,actions,rules,user}                             |
+| Presence              | presence.rs             | exempt: все поля приватные                                          |
+| PresenceGuard         | presence.rs             | exempt: все поля приватные (вне исходного списка)                   |
 | PresenceSnapshot      | presence.rs             | готово: `new(dock, widget)`; литералы в тестах presence/ws заменены |
-| QueuePage             | queue/entry.rs          | готово: `new(entries, next_cursor)`; литерал в service заменён     |
-| MessageConditions     | rules/rule.rs           | sqlite/rule, parity, service, api, inmemory                        |
-| RewardConditions      | rules/rule.rs           | engine, inmemory, sqlite, service, parity, api                     |
-| Rule                  | rules/rule.rs           | те же + api                                                        |
-| LoginTicket           | session.rs              | sqlite/session, service, inmemory, parity                          |
-| Session               | session.rs              | те же                                                              |
-| ResolvedUserPlatform  | user.rs                 | user/service                                                       |
-| UserPlatform          | user.rs                 | db/inmemory_user, db/sqlite/user                                   |
-| User                  | user.rs                 | db/inmemory_user, db/sqlite/user                                   |
-| UserView              | user.rs                 | user/service, widget_api/users                                     |
+| QueuePage             | queue/entry.rs          | готово: `new(entries, next_cursor)`; литерал в service заменён      |
+| MessageConditions     | rules/rule.rs           | sqlite/rule, parity, service, api, inmemory                         |
+| RewardConditions      | rules/rule.rs           | engine, inmemory, sqlite, service, parity, api                      |
+| Rule                  | rules/rule.rs           | те же + api                                                         |
+| LoginTicket           | session.rs              | sqlite/session, service, inmemory, parity                           |
+| Session               | session.rs              | те же                                                               |
+| ResolvedUserPlatform  | user.rs                 | user/service                                                        |
+| UserPlatform          | user.rs                 | db/inmemory_user, db/sqlite/user                                    |
+| User                  | user.rs                 | db/inmemory_user, db/sqlite/user                                    |
+| UserView              | user.rs                 | user/service, widget_api/users                                      |
 
 ### B. Bulk-DTO, сплошной проход
 

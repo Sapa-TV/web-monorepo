@@ -153,7 +153,7 @@ impl PlatformActionService {
   `platform_actions: Arc<PlatformActionService>` (генерик `C` у executor'а
   исчезает — она уходит в TwitchActionExecutor).
 - `ChatReply`: render(template, ctx) → `platform_actions.send_chat_message(
-  event.platform, &action_ctx, &text).await`; ошибка логируется существующим
+event.platform, &action_ctx, &text).await`; ошибка логируется существующим
   образом (task survives — семантика сохраняется).
 - `runtime.rs start_rule_pipeline`: собрать сервис из twitch_config и передать в
   ActionExecutor::new; сигнатура main.rs не меняется.

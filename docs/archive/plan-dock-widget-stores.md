@@ -38,26 +38,33 @@ export class DockStore {
 	active = $derived(/* Pending|Spinning|Error */);
 	done = $derived(/* Completed|Cancelled */);
 
-	constructor(private accessKey: string, private opts?: {
-		pollIntervalMs?: number;   // дефолт 10_000; в тестах — маленький
-		websocket?: typeof WebSocket; // инъекция фейка в тестах
-	}) {}
+	constructor(
+		private accessKey: string,
+		private opts?: {
+			pollIntervalMs?: number; // дефолт 10_000; в тестах — маленький
+			websocket?: typeof WebSocket; // инъекция фейка в тестах
+		},
+	) {}
 
-	start() { /* loadAll + setInterval + connectWs */ }
-	stop() { /* clearInterval, ws.close() */ }
+	start() {
+		/* loadAll + setInterval + connectWs */
+	}
+	stop() {
+		/* clearInterval, ws.close() */
+	}
 
-	async loadAll(): Promise<void>
-	async dequeueNext(): Promise<void>
-	async complete(id: number): Promise<void>
-	async cancel(id: number): Promise<void>
-	async enqueue(name: string): Promise<boolean>  // true = добавлен (страница чистит поле)
+	async loadAll(): Promise<void>;
+	async dequeueNext(): Promise<void>;
+	async complete(id: number): Promise<void>;
+	async cancel(id: number): Promise<void>;
+	async enqueue(name: string): Promise<boolean>; // true = добавлен (страница чистит поле)
 }
 ```
 
 - Весь ws-цикл (backoff, auth handshake, presence, spin-сообщения) — внутри стора.
 - `addEvent` — приватный, лимит 50 сохраняется.
 - Страница `dock/+page.svelte`: `const dock = new DockStore(key)` + `onMount(dock.start)`
-  + разметка читает `dock.*`. Ожидаемо ~150 строк.
+  - разметка читает `dock.*`. Ожидаемо ~150 строк.
 
 ### Шаг 2. Тесты DockStore (`dock-store.svelte.test.ts`, client-проект)
 

@@ -16,6 +16,8 @@ build/
 /generated/
 packages/api-client/generated/
 packages/ws-client/src/generated/
+apps/backend/.sqlx/
+apps/backend/generated/
 
 # Не код: CI, инфраструктура, служебные YAML
 .github/

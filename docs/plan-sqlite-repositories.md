@@ -121,24 +121,24 @@ trait impl → маппинг строк → тесты. Компилирует�
    - `0005_rarities.sql`: `rarities(id PK, name, display_name, image, color)` + seed 4 дефолтов
      (как `new_seeded`, фикс. id 1–4).
    - `0006_roulette_slots.sql`: `roulette_slots(id AUTOINC, name, rarity_id FK→rarities,
-     weight INTEGER, action TEXT)` + seed 4 из `SEEDED_SLOTS`.
+weight INTEGER, action TEXT)` + seed 4 из `SEEDED_SLOTS`.
    - save = INSERT + RETURNING id; update/delete по PK; weight u64↔i64 cast.
 6. **User** (`db/sqlite/user.rs`)
    - `0007_users_and_platforms.sql`:
      `users(id AUTOINC, display_name, created_at, updated_at)`;
      `user_platforms(id AUTOINC, user_id FK CASCADE, platform_id FK→platforms,
-     platform_user_id, platform_username, UNIQUE(platform_id, platform_user_id))`.
+platform_user_id, platform_username, UNIQUE(platform_id, platform_user_id))`.
    - `link_platform` в транзакции (INSERT; unique violation → `Conflict`; UPDATE users.updated_at);
      `find_by_platform` JOIN-ом.
 7. **Action + Rule** (`db/sqlite/action.rs`, `db/sqlite/rule.rs`)
    - `0008_actions.sql`: `actions(id AUTOINC, name, kind JSON, enabled INT, created_at, updated_at)`.
    - `0009_rules.sql`: `rules(id AUTOINC, name, enabled INT, trigger_kind TEXT, conditions JSON,
-     action_id FK→actions, created_at, updated_at)`.
+action_id FK→actions, created_at, updated_at)`.
    - kind/conditions через `serde_json` (roundtrip уже покрыт тестами домена);
      update сохраняет created_at, updated_at=now (как in-memory).
 8. **Queue** (`db/sqlite/queue.rs`) — самый сложный
    - `0010_queue_entries.sql`: `queue_entries(id AUTOINC, user_id, user_name, status TEXT,
-     result_slot_id NULL, created_at, updated_at)`.
+result_slot_id NULL, created_at, updated_at)`.
    - peek/dequeue: приоритет Error→Pending через
      `ORDER BY CASE status WHEN 'error' THEN 0 ELSE 1 END, id`;
    - `dequeue_next_with_slot`: **один атомарный стейтмент** (SQLite сериализует запись,

@@ -136,6 +136,7 @@ Backend API при этом остаётся раздельным: `/auth/{platf
 тестируется на фикстурных фреймах изолированно от бэкенда.
 
 Примечание: манифесты правит пользователь вручную:
+
 1. корневой `Cargo.toml` → `[workspace]` → `members`: добавить
    `"crates/vk-video-live"`;
 2. `apps/backend/Cargo.toml` → `[dependencies]`: добавить
@@ -150,7 +151,7 @@ Backend API при этом остаётся раздельным: `/auth/{platf
   обновлённый блоб через `save_rotated` (без рестарта ingress);
   `save_credential` только на connect/revoke.
 - **Блоб кредов**: `{access_token, refresh_token, expires_at,
-  user{id,nick}, channel{id,url}}` — канал резолвится при connect
+user{id,nick}, channel{id,url}}` — канал резолвится при connect
   (`GET /v1/channel` по channel_url авторизованного юзера) и хранится,
   чтобы ingress не ходил в REST на старте лишний раз.
 - **Отправка чата**: официальный `POST /v1/chat/message/send` требует
@@ -182,7 +183,7 @@ Backend API при этом остаётся раздельным: `/auth/{platf
 3. Крейт: `pubsub.rs` (centrifugo v4: connect/subscribe/push/ping,
    reconnect backoff). Тесты на фреймах.
 4. Бэкенд: `config/vk_video_live.rs` (`VkVideoLiveConfig { client_id,
-   client_secret, redirect_uri, credentials_redirect_uri }`) + поле
+client_secret, redirect_uri, credentials_redirect_uri }`) + поле
    `vk_video_live` в `StaticConfig` (+ env пример без секретов).
 5. Бэкенд: `ingress/vk_video_live_auth.rs` (блоб кредов, refresh-цикл) +
    `ingress/vk_video_live.rs` (PlatformService поверх крейта). Регистрация
