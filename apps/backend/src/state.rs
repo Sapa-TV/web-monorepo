@@ -6,6 +6,7 @@ use crate::actions::service::ActionService;
 use crate::admin::auth::AdminAuthService;
 use crate::admin::repository::AdminRepository;
 use crate::admin::service::AdminService;
+use crate::admin::vk_auth::VkVideoLiveAdminAuthService;
 use crate::config::repository::ConfigRepository;
 use crate::config::store::ConfigStore;
 use crate::db::sqlite::action::SqliteActionRepository;
@@ -22,6 +23,7 @@ use crate::db::sqlite::user::SqliteUserRepository;
 use crate::error::RepositoryError;
 use crate::event::BroadcastEventPublisher;
 use crate::ingress::twitch_auth::TwitchAuthService;
+use crate::ingress::vk_video_live_auth::VkVideoLiveAuthService;
 use crate::ingress::{EventIngress, spawn_logging_handler};
 use crate::platform::{
     PlatformCredentialRepository, PlatformCredentialService, PlatformRepository,
@@ -70,6 +72,7 @@ where
     pub ingress: Arc<EventIngress>,
     pub presence: Arc<Presence>,
     pub admin_auth: Arc<AdminAuthService<C>>,
+    pub vk_admin_auth: Arc<VkVideoLiveAdminAuthService<C>>,
     pub credentials: Arc<PlatformCredentialService<C>>,
     pub rule_service: Arc<RuleService<L, M>>,
     pub action_service: Arc<ActionService<M>>,
@@ -104,6 +107,7 @@ where
             ingress: Arc::clone(&self.ingress),
             presence: Arc::clone(&self.presence),
             admin_auth: Arc::clone(&self.admin_auth),
+            vk_admin_auth: Arc::clone(&self.vk_admin_auth),
             credentials: Arc::clone(&self.credentials),
             rule_service: Arc::clone(&self.rule_service),
             action_service: Arc::clone(&self.action_service),
@@ -226,6 +230,12 @@ where
         Arc::clone(&credentials),
     ));
 
+    let vk_config = config.vk_video_live().map(|vk| Arc::new(vk.clone()));
+    let vk_auth = vk_config
+        .clone()
+        .map(|cfg| Arc::new(VkVideoLiveAuthService::new(cfg, Arc::clone(&credentials))));
+    let vk_admin_auth = Arc::new(VkVideoLiveAdminAuthService::new(vk_config, vk_auth));
+
     let action_service = Arc::new(ActionService::new(action_repo));
     let rule_service = Arc::new(RuleService::new(rule_repo, Arc::clone(&action_service)));
 
@@ -249,6 +259,7 @@ where
         ingress,
         presence,
         admin_auth,
+        vk_admin_auth,
         credentials,
         rule_service,
         action_service,

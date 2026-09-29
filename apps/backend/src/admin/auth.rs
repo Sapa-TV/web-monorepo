@@ -1,6 +1,4 @@
-use std::collections::BTreeMap;
 use std::sync::Arc;
-use std::sync::nonpoison::Mutex;
 use std::time::{Duration, Instant};
 
 use axum::http::StatusCode;
@@ -8,6 +6,7 @@ use thiserror::Error;
 use tracing::debug;
 use twitch_oauth2::{CsrfToken, Scope, TwitchToken, UserTokenBuilder};
 
+use crate::admin::csrf::CsrfStore;
 use crate::config::TwitchConfig;
 use crate::ingress::twitch_auth::INGRESS_SCOPES;
 use crate::platform::{PlatformCredentialRepository, PlatformCredentialService, PlatformId};
@@ -51,7 +50,7 @@ where
     R: PlatformCredentialRepository,
 {
     config: Option<Arc<TwitchConfig>>,
-    pending_csrf: Mutex<BTreeMap<String, Instant>>,
+    csrf: CsrfStore,
     credentials: Arc<PlatformCredentialService<R>>,
 }
 
@@ -65,7 +64,7 @@ where
     ) -> Self {
         Self {
             config,
-            pending_csrf: Mutex::new(BTreeMap::new()),
+            csrf: CsrfStore::new(),
             credentials,
         }
     }
@@ -95,10 +94,9 @@ where
         )
         .set_scopes(scopes);
         let (auth_url, csrf) = builder.generate_url();
-        self.prune_expired();
+        self.csrf.prune();
         let ttl = Duration::from_secs(twitch.csrf_ttl_secs);
-        self.pending_csrf
-            .lock()
+        self.csrf
             .insert(csrf.secret().to_string(), Instant::now() + ttl);
         Ok(auth_url.to_string())
     }
@@ -146,8 +144,7 @@ where
         redirect: impl FnOnce(&TwitchConfig) -> &str,
     ) -> Result<twitch_oauth2::UserToken, AdminAuthError> {
         let twitch = self.config.as_ref().ok_or(AdminAuthError::NotConfigured)?;
-        self.prune_expired();
-        if self.pending_csrf.lock().remove(auth_state).is_none() {
+        if !self.csrf.consume(auth_state) {
             tracing::warn!(
                 "twitch oauth csrf mismatch or flow never started (state consumed/expired)"
             );
@@ -185,13 +182,6 @@ where
             .clear_credential(PlatformId::TWITCH)
             .await
             .map_err(|_| AdminAuthError::Persist)
-    }
-
-    fn prune_expired(&self) {
-        let now = Instant::now();
-        self.pending_csrf
-            .lock()
-            .retain(|_, expires_at| *expires_at > now);
     }
 }
 
@@ -293,7 +283,7 @@ mod tests {
         let second = service.start().expect("second start");
         assert_ne!(first, second, "each start must mint its own ticket");
 
-        assert_eq!(service.pending_csrf.lock().len(), 2);
+        assert_eq!(service.csrf.len(), 2);
     }
 
     #[test]
@@ -302,14 +292,9 @@ mod tests {
         service.start().expect("first start");
         service.start().expect("second start");
 
-        let first_ticket = service
-            .pending_csrf
-            .lock()
-            .first_key_value()
-            .map(|(ticket, _)| ticket.clone())
-            .expect("has ticket");
-        assert!(service.pending_csrf.lock().remove(&first_ticket).is_some());
-        assert_eq!(service.pending_csrf.lock().len(), 1);
+        let first_ticket = service.csrf.first_ticket().expect("has ticket");
+        assert!(service.csrf.consume(&first_ticket));
+        assert_eq!(service.csrf.len(), 1);
     }
 
     #[tokio::test]
@@ -326,14 +311,13 @@ mod tests {
     async fn expired_ticket_is_pruned_on_complete() {
         let service = test_service(test_config());
         service
-            .pending_csrf
-            .lock()
+            .csrf
             .insert("stale".to_string(), Instant::now() - Duration::from_secs(1));
         assert!(matches!(
             service.complete("code", "stale").await,
             Err(AdminAuthError::CsrfMismatch)
         ));
-        assert!(service.pending_csrf.lock().is_empty());
+        assert!(service.csrf.len() == 0);
     }
 
     #[tokio::test]

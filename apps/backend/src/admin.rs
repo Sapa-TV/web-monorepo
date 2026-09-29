@@ -1,6 +1,8 @@
 pub mod auth;
+pub mod csrf;
 pub mod repository;
 pub mod service;
+pub mod vk_auth;
 
 use chrono::{DateTime, Utc};
 

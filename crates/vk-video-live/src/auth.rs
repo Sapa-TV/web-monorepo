@@ -1,4 +1,4 @@
-﻿use serde::Deserialize;
+use serde::Deserialize;
 
 use crate::error::{Error, Result};
 use crate::transport::Transport;
@@ -7,6 +7,8 @@ use crate::url::encode_component;
 pub const AUTHORIZE_URL: &str = "https://auth.live.vkvideo.ru/app/oauth2/authorize";
 pub const TOKEN_URL: &str = "https://api.live.vkvideo.ru/oauth/server/token";
 pub const REVOKE_URL: &str = "https://api.live.vkvideo.ru/oauth/server/revoke";
+
+pub const INGRESS_SCOPES: &[&str] = &["chat:message:send"];
 
 const BASE64_TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -133,7 +135,8 @@ fn form_body(form: &[(&str, &str)]) -> String {
         .join("&")
 }
 
-fn base64_encode(data: &[u8]) -> String {    let mut out = String::with_capacity(data.len().div_ceil(3) * 4);
+fn base64_encode(data: &[u8]) -> String {
+    let mut out = String::with_capacity(data.len().div_ceil(3) * 4);
     for chunk in data.chunks(3) {
         let b0 = u32::from(chunk[0]);
         let b1 = u32::from(*chunk.get(1).unwrap_or(&0));
@@ -288,8 +291,7 @@ mod tests {
 &code=the-code\
 &redirect_uri=https%3A%2F%2Fsapa-tv.ru%2Flogin-callback%2Ftwitch"
                     .to_string()
-            ),
-            ]
+            ),]
         );
         assert_eq!(token.access_token, "at");
         assert_eq!(token.refresh_token, "rt");
@@ -319,8 +321,7 @@ mod tests {
 &refresh_token=rt-old\
 &redirect_uri=https%3A%2F%2Fsapa-tv.ru%2Flogin-callback%2Ftwitch"
                     .to_string()
-            ),
-            ]
+            ),]
         );
         assert_eq!(token.access_token, "at2");
     }
@@ -340,8 +341,7 @@ mod tests {
             vec![(
                 "body".to_string(),
                 "token=tok-1&token_type_hint=refresh_token".to_string()
-            ),
-            ]
+            ),]
         );
     }
 
