@@ -81,11 +81,13 @@ where
     }
 }
 
-pub struct PlatformActionService<T>
+pub struct PlatformActionService<T, V = T>
 where
     T: PlatformActionExecutor,
+    V: PlatformActionExecutor,
 {
     twitch: Option<T>,
+    vk_video_live: Option<V>,
 }
 
 impl<T> Default for PlatformActionService<T>
@@ -97,16 +99,25 @@ where
     }
 }
 
-impl<T> PlatformActionService<T>
+impl<T, V> PlatformActionService<T, V>
 where
     T: PlatformActionExecutor,
+    V: PlatformActionExecutor,
 {
     pub fn new() -> Self {
-        Self { twitch: None }
+        Self {
+            twitch: None,
+            vk_video_live: None,
+        }
     }
 
     pub fn with_twitch(mut self, executor: T) -> Self {
         self.twitch = Some(executor);
+        self
+    }
+
+    pub fn with_vk_video_live(mut self, executor: V) -> Self {
+        self.vk_video_live = Some(executor);
         self
     }
 
@@ -118,6 +129,10 @@ where
     ) -> Result<(), ActionError> {
         match platform {
             PlatformId::TWITCH => match &self.twitch {
+                Some(executor) => executor.send_chat_message(ctx, text).await,
+                None => unsupported(platform, "send_chat_message"),
+            },
+            PlatformId::VK_VIDEO_LIVE => match &self.vk_video_live {
                 Some(executor) => executor.send_chat_message(ctx, text).await,
                 None => unsupported(platform, "send_chat_message"),
             },
@@ -261,7 +276,8 @@ mod platform_action_tests {
 
     #[tokio::test]
     async fn non_twitch_platform_is_unsupported_even_with_executor() {
-        let service = PlatformActionService::new().with_twitch(SpyExecutor::new());
+        let service: PlatformActionService<SpyExecutor> =
+            PlatformActionService::new().with_twitch(SpyExecutor::new());
         let err = service
             .send_chat_message(PlatformId::YOUTUBE, &action_ctx(), "hi")
             .await
@@ -272,7 +288,8 @@ mod platform_action_tests {
     #[tokio::test]
     async fn registered_executor_receives_text() {
         let spy = SpyExecutor::new();
-        let service = PlatformActionService::new().with_twitch(spy.clone());
+        let service: PlatformActionService<SpyExecutor> =
+            PlatformActionService::new().with_twitch(spy.clone());
 
         service
             .send_chat_message(PlatformId::TWITCH, &action_ctx(), "привет!")

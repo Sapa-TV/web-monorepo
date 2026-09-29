@@ -138,7 +138,7 @@ mod tests {
     #[tokio::test]
     async fn seed_promotes_existing_non_root() {
         let svc = test_service();
-        svc.add("100", Some("sapushka_")).await.unwrap();
+        svc.add("100", Some("tester")).await.unwrap();
         assert!(!svc.is_root("100").await.unwrap());
 
         svc.seed("100").await.unwrap();

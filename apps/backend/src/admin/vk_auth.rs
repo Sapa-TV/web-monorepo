@@ -147,7 +147,7 @@ mod tests {
 
     const TOKEN_JSON: &str =
         r#"{"access_token":"at1","refresh_token":"rt1","expires_in":3600,"token_type":"Bearer"}"#;
-    const CHANNEL_JSON: &str = r#"{"data":{"channel":{"id":12414691,"url":"sapushka_","nick":"Sapushka_","web_socket_channels":{"chat":"channel-chat:12414691"}},"owner":{"id":29605551,"nick":"Th0r_N13"},"stream":null}}"#;
+    const CHANNEL_JSON: &str = r#"{"data":{"channel":{"id":4242,"url":"test_channel","nick":"TestChannel","web_socket_channels":{"chat":"channel-chat:4242"}},"owner":{"id":555,"nick":"tester"},"stream":null}}"#;
 
     #[test]
     fn start_requires_config() {
@@ -203,8 +203,8 @@ mod tests {
             .to_string();
 
         let identity = svc.complete("the-code", &state).await.unwrap();
-        assert_eq!(identity.user_id, "29605551");
-        assert_eq!(identity.user_name, "Th0r_N13");
+        assert_eq!(identity.user_id, "555");
+        assert_eq!(identity.user_name, "tester");
         assert!(svc.is_configured().await.unwrap());
         assert_eq!(svc.csrf.len(), 0);
     }

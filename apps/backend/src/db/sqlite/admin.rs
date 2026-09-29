@@ -123,12 +123,12 @@ mod tests {
     #[tokio::test]
     async fn create_and_get() {
         let repo = repo().await;
-        let admin = repo.create("100", Some("sapushka_"), true).await.unwrap();
+        let admin = repo.create("100", Some("tester"), true).await.unwrap();
         assert!(admin.is_root);
 
         let fetched = repo.get_by_twitch_id("100").await.unwrap().unwrap();
         assert_eq!(fetched.twitch_id, "100");
-        assert_eq!(fetched.display_name.as_deref(), Some("sapushka_"));
+        assert_eq!(fetched.display_name.as_deref(), Some("tester"));
     }
 
     #[tokio::test]

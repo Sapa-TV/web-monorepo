@@ -8,6 +8,7 @@ use crate::actions::event::ActionEvent;
 use crate::actions::executor::ActionExecutor;
 use crate::actions::service::PlatformActionService;
 use crate::actions::twitch_executor::TwitchActionExecutor;
+use crate::actions::vk_video_live_executor::VkVideoLiveActionExecutor;
 use crate::consts::actions::BUS_CAPACITY;
 use crate::rules::engine::RuleEngine;
 use crate::state::AppState;
@@ -22,6 +23,15 @@ pub fn start_rule_pipeline(state: &AppState, shutdown: &CancellationToken) {
     ) {
         platform_actions =
             platform_actions.with_twitch(TwitchActionExecutor::new(config, twitch_api));
+    }
+    if let (Some(config), Some(vk_api)) = (
+        state.config.vk_video_live().map(|vk| Arc::new(vk.clone())),
+        state.vk_api.clone(),
+    ) {
+        platform_actions = platform_actions.with_vk_video_live(VkVideoLiveActionExecutor::new(
+            config.channel_url.clone(),
+            vk_api,
+        ));
     }
 
     let executor = Arc::new(ActionExecutor::new(

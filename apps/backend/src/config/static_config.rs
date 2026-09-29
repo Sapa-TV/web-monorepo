@@ -273,7 +273,7 @@ mod tests {
                 "vk_video_live": {
                     "client_id": "vk-cid",
                     "client_secret": "vk-cs",
-                    "channel_url": "sapushka_",
+                    "channel_url": "test_channel",
                     "redirect_uri": "https://localhost/login-callback/vk-video-live",
                     "credentials_redirect_uri": "https://localhost/creds-callback/vk-video-live",
                     "csrf_ttl_secs": 600
@@ -286,7 +286,7 @@ mod tests {
 
         let vk = static_cfg.vk_video_live.expect("vk set");
         assert_eq!(vk.client_id, "vk-cid");
-        assert_eq!(vk.channel_url, "sapushka_");
+        assert_eq!(vk.channel_url, "test_channel");
         assert!(static_cfg.twitch.is_none());
     }
 }

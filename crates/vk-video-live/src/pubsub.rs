@@ -137,9 +137,9 @@ mod tests {
     use tokio::net::TcpListener;
     use tokio_tungstenite::accept_async;
 
-    const CHAT_CHANNEL: &str = "channel-chat:12414691";
-    const PUSH_1: &str = r#"{"push":{"channel":"channel-chat:12414691","pub":{"data":{"type":"message","data":{"id":1,"createdAt":10,"author":{"id":2,"nick":"a"},"data":[{"type":"text","content":"[\"hi\",\"\"]"}]}}}}}"#;
-    const PUSH_2: &str = r#"{"push":{"channel":"channel-chat:12414691","pub":{"data":{"type":"message","data":{"id":2,"createdAt":11,"author":{"id":2,"nick":"a"},"data":[{"type":"text","content":"[\"yo\",\"\"]"}]}}}}}"#;
+    const CHAT_CHANNEL: &str = "channel-chat:4242";
+    const PUSH_1: &str = r#"{"push":{"channel":"channel-chat:4242","pub":{"data":{"type":"message","data":{"id":1,"createdAt":10,"author":{"id":2,"nick":"a"},"data":[{"type":"text","content":"[\"hi\",\"\"]"}]}}}}}"#;
+    const PUSH_2: &str = r#"{"push":{"channel":"channel-chat:4242","pub":{"data":{"type":"message","data":{"id":2,"createdAt":11,"author":{"id":2,"nick":"a"},"data":[{"type":"text","content":"[\"yo\",\"\"]"}]}}}}}"#;
 
     #[tokio::test]
     async fn connect_subscribe_receive_with_ping_pong() {

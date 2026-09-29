@@ -77,6 +77,7 @@ where
     pub rule_service: Arc<RuleService<L, M>>,
     pub action_service: Arc<ActionService<M>>,
     pub twitch_api: Option<Arc<TwitchAuthService<C>>>,
+    pub vk_api: Option<Arc<VkVideoLiveAuthService<C>>>,
 }
 
 impl<Q, R, U, P, S, A, Se, C, K, L, M> Clone for UniAppState<Q, R, U, P, S, A, Se, C, K, L, M>
@@ -112,6 +113,7 @@ where
             rule_service: Arc::clone(&self.rule_service),
             action_service: Arc::clone(&self.action_service),
             twitch_api: self.twitch_api.clone(),
+            vk_api: self.vk_api.clone(),
         }
     }
 }
@@ -231,10 +233,10 @@ where
     ));
 
     let vk_config = config.vk_video_live().map(|vk| Arc::new(vk.clone()));
-    let vk_auth = vk_config
+    let vk_api = vk_config
         .clone()
         .map(|cfg| Arc::new(VkVideoLiveAuthService::new(cfg, Arc::clone(&credentials))));
-    let vk_admin_auth = Arc::new(VkVideoLiveAdminAuthService::new(vk_config, vk_auth));
+    let vk_admin_auth = Arc::new(VkVideoLiveAdminAuthService::new(vk_config, vk_api.clone()));
 
     let action_service = Arc::new(ActionService::new(action_repo));
     let rule_service = Arc::new(RuleService::new(rule_repo, Arc::clone(&action_service)));
@@ -264,6 +266,7 @@ where
         rule_service,
         action_service,
         twitch_api,
+        vk_api,
     })
 }
 

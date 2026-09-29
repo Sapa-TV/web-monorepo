@@ -1,4 +1,4 @@
-﻿use chrono::Utc;
+use chrono::Utc;
 use std::sync::Arc;
 
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
@@ -403,7 +403,7 @@ mod tests {
 
     const TOKEN_JSON: &str =
         r#"{"access_token":"at1","refresh_token":"rt1","expires_in":3600,"token_type":"Bearer"}"#;
-    const CHANNEL_JSON: &str = r#"{"data":{"channel":{"id":12414691,"url":"sapushka_","nick":"Sapushka_","web_socket_channels":{"chat":"channel-chat:12414691"}},"owner":{"id":29605551,"nick":"Th0r_N13"},"stream":null}}"#;
+    const CHANNEL_JSON: &str = r#"{"data":{"channel":{"id":4242,"url":"test_channel","nick":"TestChannel","web_socket_channels":{"chat":"channel-chat:4242"}},"owner":{"id":555,"nick":"tester"},"stream":null}}"#;
 
     #[tokio::test]
     async fn complete_connect_exchanges_saves_and_resolves_channel() {
@@ -417,10 +417,10 @@ mod tests {
 
         let creds = service.complete_connect("the-code").await.unwrap();
 
-        assert_eq!(creds.channel_id, 12414691);
-        assert_eq!(creds.channel_url, "sapushka_");
-        assert_eq!(creds.user_id, "29605551");
-        assert_eq!(creds.user_nick, "Th0r_N13");
+        assert_eq!(creds.channel_id, 4242);
+        assert_eq!(creds.channel_url, "test_channel");
+        assert_eq!(creds.user_id, "555");
+        assert_eq!(creds.user_nick, "tester");
         assert_eq!(creds.access_token, "at1");
 
         let stored = service.load().await.unwrap().expect("creds saved");
@@ -438,8 +438,8 @@ mod tests {
             serde_json::from_str::<TokenResponse>(TOKEN_JSON).unwrap(),
             1,
             "nick",
-            12414691,
-            "sapushka_",
+            4242,
+            "test_channel",
         );
         creds.expires_at = Utc::now().timestamp() + 3600;
         service.save(&creds).await.unwrap();
@@ -461,8 +461,8 @@ mod tests {
             serde_json::from_str::<TokenResponse>(TOKEN_JSON).unwrap(),
             1,
             "nick",
-            12414691,
-            "sapushka_",
+            4242,
+            "test_channel",
         );
         creds.expires_at = Utc::now().timestamp() - 10;
         service.save(&creds).await.unwrap();
@@ -475,7 +475,23 @@ mod tests {
         assert_eq!(stored.refresh_token, "rt2");
         assert!(stored.expires_at > Utc::now().timestamp());
         assert_eq!(*lifecycle.borrow(), before);
+
+        let calls = service.transport.calls();
+        assert_eq!(calls.len(), 1);
+        assert!(
+            calls[0].url.ends_with("/oauth/server/token"),
+            "{:?}",
+            calls[0].url
+        );
+        assert!(calls[0].auth.starts_with("Basic "));
+        assert!(
+            calls[0]
+                .body
+                .as_deref()
+                .is_some_and(|body| body.contains("grant_type=refresh_token"))
+        );
     }
+
     #[tokio::test]
     async fn access_token_without_creds_is_auth_error() {
         let transport = FakeTransport::new(vec![]);
@@ -524,8 +540,8 @@ mod tests {
         assert!(!auth.is_configured().await.unwrap());
 
         let identity = auth.connect("the-code").await.unwrap();
-        assert_eq!(identity.user_id, "29605551");
-        assert_eq!(identity.user_name, "Th0r_N13");
+        assert_eq!(identity.user_id, "555");
+        assert_eq!(identity.user_name, "tester");
         assert!(auth.is_configured().await.unwrap());
 
         auth.revoke().await.unwrap();

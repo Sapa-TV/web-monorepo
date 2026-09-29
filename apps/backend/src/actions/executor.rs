@@ -15,7 +15,7 @@ use crate::user::repository::UserRepository;
 use crate::user::service::UserService;
 use tokio::sync::mpsc;
 
-pub struct ActionExecutor<Q, R, S, U, P, T>
+pub struct ActionExecutor<Q, R, S, U, P, T, V = T>
 where
     Q: QueueRepository,
     R: RarityRepository,
@@ -23,13 +23,14 @@ where
     U: UserRepository,
     P: PlatformRepository,
     T: PlatformActionExecutor,
+    V: PlatformActionExecutor,
 {
     queue_service: Arc<QueueService<Q, R, S>>,
     user_service: Arc<UserService<U, P>>,
-    platform_actions: Arc<PlatformActionService<T>>,
+    platform_actions: Arc<PlatformActionService<T, V>>,
 }
 
-impl<Q, R, S, U, P, T> ActionExecutor<Q, R, S, U, P, T>
+impl<Q, R, S, U, P, T, V> ActionExecutor<Q, R, S, U, P, T, V>
 where
     Q: QueueRepository,
     R: RarityRepository,
@@ -37,11 +38,12 @@ where
     U: UserRepository,
     P: PlatformRepository,
     T: PlatformActionExecutor,
+    V: PlatformActionExecutor,
 {
     pub fn new(
         queue_service: Arc<QueueService<Q, R, S>>,
         user_service: Arc<UserService<U, P>>,
-        platform_actions: Arc<PlatformActionService<T>>,
+        platform_actions: Arc<PlatformActionService<T, V>>,
     ) -> Self {
         Self {
             queue_service,

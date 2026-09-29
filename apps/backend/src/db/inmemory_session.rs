@@ -85,7 +85,7 @@ mod tests {
         let session = Session::new(
             SessionToken::new("tok"),
             "123".to_string(),
-            Some("sapushka_".to_string()),
+            Some("tester".to_string()),
             Utc::now(),
             Utc::now() + Duration::from_secs(3600),
         );

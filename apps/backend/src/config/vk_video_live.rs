@@ -61,7 +61,7 @@ impl VkVideoLiveConfig {
         Self {
             client_id: "cid".to_string(),
             client_secret: "cs".to_string(),
-            channel_url: "sapushka_".to_string(),
+            channel_url: "test_channel".to_string(),
             redirect_uri: "https://localhost/login-callback/vk-video-live".to_string(),
             credentials_redirect_uri: "https://localhost/creds-callback/vk-video-live".to_string(),
             csrf_ttl_secs: 600,
@@ -109,7 +109,7 @@ mod tests {
         json!({
             "client_id": "client_id",
             "client_secret": "client_secret",
-            "channel_url": "sapushka_",
+            "channel_url": "test_channel",
             "redirect_uri": "https://localhost/login-callback/vk-video-live",
             "credentials_redirect_uri": "https://localhost/creds-callback/vk-video-live",
             "csrf_ttl_secs": 600,
@@ -120,7 +120,7 @@ mod tests {
     fn valid_config_is_accepted() {
         let config = from_value::<VkVideoLiveConfig>(vk_json()).expect("should deserialize");
         assert_eq!(config.csrf_ttl_secs, 600);
-        assert_eq!(config.channel_url, "sapushka_");
+        assert_eq!(config.channel_url, "test_channel");
     }
 
     #[test]
@@ -128,7 +128,7 @@ mod tests {
         let config = VkVideoLiveConfig::build(
             String::new(),
             "secret".to_string(),
-            "sapushka_".to_string(),
+            "test_channel".to_string(),
             "https://localhost/cb".to_string(),
             "https://localhost/creds/cb".to_string(),
             600,

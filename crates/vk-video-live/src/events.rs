@@ -162,15 +162,15 @@ fn flag(value: &Value, key: &str) -> bool {
 mod tests {
     use super::*;
 
-    const LEGACY_FRAME: &str = r#"{"push":{"channel":"channel-chat:12414691","pub":{"data":{"type":"message","data":{"parent":null,"id":651722866,"createdAt":1787682950,"styles":[],"flags":{"isParentDeleted":false,"isFirstMessage":false},"author":{"id":29605551,"nick":"Th0r_N13","name":"Th0r_N13","displayName":"Th0r_N13","nickColor":13,"isChannelModerator":true,"roles":[]},"isDeleted":false,"isPrivate":false,"data":[{"type":"text","content":"[\"ку\",\"unstyled\",[]]","modificator":"","donation":false},{"type":"text","content":"","modificator":"BLOCK_END","donation":false}],"threadId":null,"streamSlot":null,"user":{"id":29605551,"nick":"Th0r_N13"}}}}}}"#;
+    const LEGACY_FRAME: &str = r#"{"push":{"channel":"channel-chat:4242","pub":{"data":{"type":"message","data":{"parent":null,"id":9001,"createdAt":1787682950,"styles":[],"flags":{"isParentDeleted":false,"isFirstMessage":false},"author":{"id":555,"nick":"tester","name":"tester","displayName":"tester","nickColor":13,"isChannelModerator":true,"roles":[]},"isDeleted":false,"isPrivate":false,"data":[{"type":"text","content":"[\"ку\",\"unstyled\",[]]","modificator":"","donation":false},{"type":"text","content":"","modificator":"BLOCK_END","donation":false}],"threadId":null,"streamSlot":null,"user":{"id":555,"nick":"tester"}}}}}}"#;
 
-    const V8_FRAME: &str = r#"{"push":{"channel":"channel-chat:12414691","pub":{"data":{"type":"message_v8","data":{"chatMessageSend":{"message":{"id":"651722866","author":{"id":29605551,"nick":"Th0r_N13","nickColor":13,"roles":[]},"createdAt":1787682950,"textData":[{"text":{"type":"text","content":"[\"ку\",\"unstyled\",[]]","modificator":"","donation":false}},{"text":{"type":"text","content":"","modificator":"BLOCK_END","donation":false}}],"text":"ку","styles":[],"flags":{"isDeleted":false,"isParentDeleted":false,"isFirstMessage":false,"isPrivate":false}}}}}}}}"#;
+    const V8_FRAME: &str = r#"{"push":{"channel":"channel-chat:4242","pub":{"data":{"type":"message_v8","data":{"chatMessageSend":{"message":{"id":"9001","author":{"id":555,"nick":"tester","nickColor":13,"roles":[]},"createdAt":1787682950,"textData":[{"text":{"type":"text","content":"[\"ку\",\"unstyled\",[]]","modificator":"","donation":false}},{"text":{"type":"text","content":"","modificator":"BLOCK_END","donation":false}}],"text":"ку","styles":[],"flags":{"isDeleted":false,"isParentDeleted":false,"isFirstMessage":false,"isPrivate":false}}}}}}}}"#;
 
     fn expected() -> ChatMessageEvent {
         ChatMessageEvent {
-            id: 651722866,
-            author_id: 29605551,
-            author_nick: "Th0r_N13".to_string(),
+            id: 9001,
+            author_id: 555,
+            author_nick: "tester".to_string(),
             created_at: 1_787_682_950,
             text: "ку".to_string(),
             is_deleted: false,
@@ -192,7 +192,7 @@ mod tests {
 
     #[test]
     fn non_chat_channel_is_ignored() {
-        let frame = r#"{"push":{"channel":"channel-info:12414691","pub":{"data":{"type":"stream_status","data":{}}}}}"#;
+        let frame = r#"{"push":{"channel":"channel-info:4242","pub":{"data":{"type":"stream_status","data":{}}}}}"#;
         assert_eq!(parse_push(frame).unwrap(), None);
     }
 

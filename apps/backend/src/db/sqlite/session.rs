@@ -152,7 +152,7 @@ mod tests {
         Session::new(
             SessionToken::new(token),
             "123".to_string(),
-            Some("sapushka_".to_string()),
+            Some("tester".to_string()),
             now,
             now + Duration::from_secs(3600),
         )
@@ -167,7 +167,7 @@ mod tests {
 
         let fetched = repo.get_session(&session.token).await.unwrap().unwrap();
         assert_eq!(fetched.twitch_user_id, "123");
-        assert_eq!(fetched.twitch_user_name.as_deref(), Some("sapushka_"));
+        assert_eq!(fetched.twitch_user_name.as_deref(), Some("tester"));
 
         assert!(repo.delete_session(&session.token).await.unwrap());
         assert!(!repo.delete_session(&session.token).await.unwrap());

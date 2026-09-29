@@ -7,4 +7,6 @@ pub enum ActionError {
     Unsupported,
     #[error("platform api error: {0}")]
     Api(String),
+    #[error("platform rate limit reached")]
+    RateLimited,
 }

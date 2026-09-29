@@ -259,26 +259,26 @@ mod tests {
     #[tokio::test]
     async fn channel_parses_ids_and_ws_channels() {
         let transport = FakeApi::new(Ok(
-            r#"{"data":{"channel":{"id":12414691,"url":"sapushka_","nick":"Sapushka_",
-                "web_socket_channels":{"chat":"channel-chat:12414691","info":"channel-info:12414691",
-                "channel_points":"channel-points:12414691"}},
+            r#"{"data":{"channel":{"id":4242,"url":"test_channel","nick":"TestChannel",
+                "web_socket_channels":{"chat":"channel-chat:4242","info":"channel-info:4242",
+                "channel_points":"channel-points:4242"}},
                 "stream":{"id":"s1","status":"online","started_at":1787501283,
                 "counters":{"viewers":37}}}}"#
                 .replace('\n', "")
                 .to_string(),
         ));
-        let res = channel(&transport, BEARER, "sapushka_").await.unwrap();
+        let res = channel(&transport, BEARER, "test_channel").await.unwrap();
 
         let call = transport.last();
         assert_eq!(
             call.url,
-            format!("{API_BASE}/v1/channel?channel_url=sapushka_")
+            format!("{API_BASE}/v1/channel?channel_url=test_channel")
         );
         assert_eq!(call.bearer, BEARER);
-        assert_eq!(res.data.channel.id, 12414691);
+        assert_eq!(res.data.channel.id, 4242);
         assert_eq!(
             res.data.channel.web_socket_channels.chat.as_deref(),
-            Some("channel-chat:12414691")
+            Some("channel-chat:4242")
         );
         let stream = res.data.stream.unwrap();
         assert_eq!(stream.id, "s1");
@@ -309,14 +309,14 @@ mod tests {
     #[tokio::test]
     async fn send_chat_message_posts_parts_payload() {
         let transport = FakeApi::new(Ok("{}".to_string()));
-        send_chat_message(&transport, BEARER, "sapushka_", "s1", TEXT_HI)
+        send_chat_message(&transport, BEARER, "test_channel", "s1", TEXT_HI)
             .await
             .unwrap();
 
         let call = transport.last();
         assert_eq!(
             call.url,
-            format!("{API_BASE}/v1/chat/message/send?channel_url=sapushka_&stream_id=s1")
+            format!("{API_BASE}/v1/chat/message/send?channel_url=test_channel&stream_id=s1")
         );
         let expected = format!(r#"{{"parts":[{{"text":{{"content":"{TEXT_HI}"}}}}]}}"#);
         assert_eq!(call.body.as_deref(), Some(expected.as_str()));
@@ -326,25 +326,25 @@ mod tests {
     async fn chat_messages_maps_history() {
         let transport = FakeApi::new(Ok(r#"{"data":{"chat_messages":[
                 {"id":11,"created_at":1787682744,"is_private":false,
-                 "author":{"id":29605551,"nick":"Th0r_N13"},
+                 "author":{"id":555,"nick":"tester"},
                  "parts":[{"text":{"content":"hi"}},{"text":{"content":"!"}}]},
                 {"id":12,"created_at":1787682745,"is_private":true,
                  "author":{"id":7,"nick":"anon"},"parts":[]}]}}"#
             .replace('\n', "")
             .to_string()));
-        let messages = chat_messages(&transport, BEARER, "sapushka_", 50)
+        let messages = chat_messages(&transport, BEARER, "test_channel", 50)
             .await
             .unwrap();
 
         let call = transport.last();
         assert!(
             call.url
-                .ends_with("/v1/chat/messages?channel_url=sapushka_&limit=50")
+                .ends_with("/v1/chat/messages?channel_url=test_channel&limit=50")
         );
         assert_eq!(messages.len(), 2);
         assert_eq!(messages[0].id, 11);
         assert_eq!(messages[0].text, "hi!");
-        assert_eq!(messages[0].author_nick, "Th0r_N13");
+        assert_eq!(messages[0].author_nick, "tester");
         assert!(messages[1].is_private);
         assert_eq!(messages[1].text, "");
     }

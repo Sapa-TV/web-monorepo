@@ -317,7 +317,7 @@ mod tests {
             service.complete("code", "stale").await,
             Err(AdminAuthError::CsrfMismatch)
         ));
-        assert!(service.csrf.len() == 0);
+        assert!(service.csrf.is_empty());
     }
 
     #[tokio::test]

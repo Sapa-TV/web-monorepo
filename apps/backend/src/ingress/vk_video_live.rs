@@ -143,23 +143,20 @@ mod tests {
     use crate::ingress::event::PlatformEventPayload;
 
     fn event(id: u64, nick: &str, text: &str) -> ChatMessageEvent {
-        ChatMessageEvent::new(id, 29605551, nick, 1_787_682_950, text, false, false)
+        ChatMessageEvent::new(id, 555, nick, 1_787_682_950, text, false, false)
     }
 
     #[test]
     fn normal_message_maps_to_platform_event() {
-        let mapped = chat_event_from(
-            PlatformId::VK_VIDEO_LIVE,
-            &event(651, "Th0r_N13", "Р С”РЎС“"),
-        )
-        .expect("mapped");
+        let mapped = chat_event_from(PlatformId::VK_VIDEO_LIVE, &event(651, "tester", "hi"))
+            .expect("mapped");
         assert_eq!(mapped.platform, PlatformId::VK_VIDEO_LIVE);
         assert_eq!(mapped.event_id, "651");
         match &mapped.payload {
             PlatformEventPayload::ChatMessage(msg) => {
-                assert_eq!(msg.user_id, "29605551");
-                assert_eq!(msg.user_name, "Th0r_N13");
-                assert_eq!(msg.text, "Р С”РЎС“");
+                assert_eq!(msg.user_id, "555");
+                assert_eq!(msg.user_name, "tester");
+                assert_eq!(msg.text, "hi");
             }
             other => panic!("expected chat message payload, got {other:?}"),
         }

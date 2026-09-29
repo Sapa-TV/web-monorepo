@@ -42,6 +42,11 @@ impl CsrfStore {
     }
 
     #[cfg(test)]
+    pub fn is_empty(&self) -> bool {
+        self.pending.lock().is_empty()
+    }
+
+    #[cfg(test)]
     pub fn first_ticket(&self) -> Option<String> {
         self.pending.lock().keys().next().cloned()
     }

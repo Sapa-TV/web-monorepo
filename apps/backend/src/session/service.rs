@@ -234,7 +234,7 @@ mod tests {
     async fn ticket_is_one_time_use() {
         let svc = test_service();
         let ticket = svc
-            .create_login_ticket("123", Some("sapushka_"))
+            .create_login_ticket("123", Some("tester"))
             .await
             .unwrap();
 
@@ -243,7 +243,7 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(consumed.twitch_user_id, "123");
-        assert_eq!(consumed.twitch_user_name.as_deref(), Some("sapushka_"));
+        assert_eq!(consumed.twitch_user_name.as_deref(), Some("tester"));
 
         let err = svc
             .consume_login_ticket(ticket.ticket.as_str())
