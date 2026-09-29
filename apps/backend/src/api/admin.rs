@@ -4,6 +4,7 @@ pub mod rewards;
 pub mod roulette;
 pub mod rules;
 pub mod twitch;
+pub mod vk_video_live;
 
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
@@ -204,6 +205,7 @@ pub fn root_router() -> OpenApiRouter<AppState> {
         .routes(routes!(remove_admin))
         .routes(routes!(rotate_widget_access_key))
         .merge(twitch::root_router())
+        .merge(vk_video_live::root_router())
         .merge(ingress::root_router())
         .merge(actions::root_router())
         .merge(rules::root_router())

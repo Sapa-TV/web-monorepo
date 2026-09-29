@@ -193,7 +193,7 @@
         "operationId": "get_ingress_credentials",
         "responses": {
           "200": {
-            "description": "Whether ingress credentials are configured",
+            "description": "Whether ingress credentials are configured per platform",
             "content": {
               "application/json": {
                 "schema": {
@@ -209,9 +209,22 @@
           "admin"
         ],
         "operationId": "revoke_ingress_credentials",
+        "parameters": [
+          {
+            "name": "platform",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/IngressPlatform"
+            }
+          }
+        ],
         "responses": {
           "204": {
             "description": "Ingress credentials revoked"
+          },
+          "400": {
+            "description": "Platform not configured"
           },
           "500": {
             "description": "Failed to clear credentials"
@@ -734,6 +747,73 @@
           },
           "404": {
             "description": "Twitch user not found"
+          }
+        }
+      }
+    },
+    "/api/admin/vk-video-live/auth": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "start_vk_video_live_auth",
+        "responses": {
+          "200": {
+            "description": "VK Video Live authorization URL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VkVideoLiveAuthStartResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VK Video Live not configured"
+          }
+        }
+      }
+    },
+    "/api/admin/vk-video-live/auth/callback": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "vk_video_live_auth_callback",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Token exchanged and credentials persisted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VkVideoLiveAuthCallbackResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VK Video Live not configured"
+          },
+          "403": {
+            "description": "CSRF state mismatch or flow never started"
           }
         }
       }
@@ -1886,10 +1966,14 @@
       "IngressCredentialsResponse": {
         "type": "object",
         "required": [
-          "configured"
+          "twitch",
+          "vk_video_live"
         ],
         "properties": {
-          "configured": {
+          "twitch": {
+            "type": "boolean"
+          },
+          "vk_video_live": {
             "type": "boolean"
           }
         }
@@ -2650,6 +2734,32 @@
             }
           },
           "updated_at": {
+            "type": "string"
+          }
+        }
+      },
+      "VkVideoLiveAuthCallbackResponse": {
+        "type": "object",
+        "required": [
+          "user_id",
+          "user_name"
+        ],
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "user_name": {
+            "type": "string"
+          }
+        }
+      },
+      "VkVideoLiveAuthStartResponse": {
+        "type": "object",
+        "required": [
+          "auth_url"
+        ],
+        "properties": {
+          "auth_url": {
             "type": "string"
           }
         }
