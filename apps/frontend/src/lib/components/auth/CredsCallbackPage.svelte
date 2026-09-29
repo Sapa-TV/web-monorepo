@@ -1,20 +1,15 @@
 <script lang="ts">
 	import { onMount } from "svelte";
-	import { page } from "$app/state";
 	import { AuthCard } from "@sapa-tv-ru/ui-kit";
-	import { completeCredsAuth } from "#lib/admin/creds";
+	import { completeCredsAuth, type CredsPlatform } from "#lib/admin/creds";
 	import { ApiError, ApiErrorKind } from "#lib/internal/api-error";
 
-	const PLATFORMS = {
-		twitch: { label: "Twitch" },
-		"vk-video-live": null,
-	} as const;
+	interface Props {
+		platform: CredsPlatform;
+		title: string;
+	}
 
-	const platformParam = page.params.platform as string;
-	const known = platformParam in PLATFORMS;
-	const label = known
-		? (PLATFORMS[platformParam as keyof typeof PLATFORMS]?.label ?? null)
-		: null;
+	let { platform, title }: Props = $props();
 
 	let busy = $state(true);
 	let status = $state("");
@@ -32,7 +27,7 @@
 			case ApiErrorKind.BadRequest:
 				return "Не удалось завершить авторизацию: попробуй на панели «Авторизовать» ещё раз.";
 			default:
-				return `Не удалось сохранить credentials. Попробуй ещё раз.`;
+				return "Не удалось сохранить credentials. Попробуй ещё раз.";
 		}
 	}
 
@@ -44,16 +39,6 @@
 		const state = params.get("state");
 
 		async function run() {
-			if (!known) {
-				status = "";
-				error = "Неизвестная платформа.";
-				return;
-			}
-			if (!label) {
-				status = "";
-				error = "Авторизация этой платформы пока недоступна.";
-				return;
-			}
 			if (oauthError) {
 				status = "Отказано в доступе.";
 				error = oauthErrorDescription
@@ -66,12 +51,12 @@
 				return;
 			}
 			status = "Авторизация...";
-			const res = await completeCredsAuth(code, state);
+			const res = await completeCredsAuth(platform, code, state);
 			if (res.isErr()) {
 				error = describeCredsError(res.error);
 				return;
 			}
-			status = `${label} credentials авторизованы.`;
+			status = `${title} credentials авторизованы.`;
 			await closeIfPopup();
 		}
 

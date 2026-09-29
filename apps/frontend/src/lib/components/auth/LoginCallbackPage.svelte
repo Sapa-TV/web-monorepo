@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { onMount } from "svelte";
 	import { goto } from "$app/navigation";
-	import { page } from "$app/state";
 	import { resolve } from "$app/paths";
 	import { AuthCard, Button } from "@sapa-tv-ru/ui-kit";
 	import IconTwitch from "~icons/lucide/twitch";
@@ -14,17 +13,12 @@
 	} from "#lib/admin/session";
 	import { ApiError, ApiErrorKind } from "#lib/internal/api-error";
 
-	const PLATFORMS = {
-		twitch: { label: "Twitch" },
-		"vk-video-live": null,
-	} as const;
+	interface Props {
+		/** Platforms with a working site-login flow. */
+		loginSupported?: boolean;
+	}
 
-	type PlatformSlug = keyof typeof PLATFORMS;
-
-	const platformParam = page.params.platform as string;
-	const known = platformParam in PLATFORMS;
-	const platform =
-		(known ? PLATFORMS[platformParam as PlatformSlug] : null) ?? null;
+	let { loginSupported = true }: Props = $props();
 
 	let busy = $state(true);
 	let error = $state("");
@@ -34,7 +28,7 @@
 			case ApiErrorKind.BadRequest:
 				return "Ошибка запуска авторизации: платформа не настроена.";
 			default:
-				return `Не удалось завершить вход. Попробуй ещё раз.`;
+				return "Не удалось завершить вход. Попробуй ещё раз.";
 		}
 	}
 
@@ -69,10 +63,6 @@
 	}
 
 	onMount(async () => {
-		if (!known || !platform) {
-			busy = false;
-			return;
-		}
 		const params = new URLSearchParams(window.location.search);
 		const oauthError = params.get("error");
 		const oauthErrorDescription = params.get("error_description");
@@ -113,11 +103,9 @@
 
 <main class="login">
 	<AuthCard title="Sapa TV" subtitle="Вход в админ-панель" {error}>
-		{#if !known}
-			<p class="login__status" role="alert">Неизвестная платформа.</p>
-		{:else if !platform}
+		{#if !loginSupported}
 			<p class="login__status">Вход через эту платформу пока недоступен.</p>
-		{:else if platformParam === "twitch"}
+		{:else}
 			<Button variant="twitch" onclick={handleLogin} disabled={busy}>
 				<IconTwitch aria-hidden="true" />
 				{busy ? "Ожидание..." : "Войти через Twitch"}

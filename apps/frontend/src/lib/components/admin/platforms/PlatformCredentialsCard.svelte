@@ -1,14 +1,34 @@
 <script lang="ts">
 	import { api } from "#lib/api";
 	import { Alert, Badge, Button, Card, Section } from "@sapa-tv-ru/ui-kit";
-	import { onDestroy, onMount } from "svelte";
-	import IconTwitch from "~icons/lucide/twitch";
+	import { onDestroy, onMount, type Snippet } from "svelte";
+	import type { Result } from "neverthrow";
 	import { describeApiError } from "#lib/api-error-text";
 	import {
 		ApiError,
 		ApiErrorKind,
 		normalizeApiError,
 	} from "#lib/internal/api-error";
+
+	type Platform = "twitch" | "vk_video_live";
+
+	interface Props {
+		platform: Platform;
+		title: string;
+		description: string;
+		icon: Snippet;
+		buttonVariant?: "primary" | "twitch";
+		startAuth: () => Promise<Result<{ auth_url: string }, unknown>>;
+	}
+
+	let {
+		platform,
+		title,
+		description,
+		icon,
+		buttonVariant = "primary",
+		startAuth,
+	}: Props = $props();
 
 	let loaded = $state(false);
 	let configured = $state(false);
@@ -27,7 +47,7 @@
 	async function fetchConfigured(): Promise<boolean | ApiError> {
 		const res = await api.getIngressCredentials();
 		if (res.isErr()) return normalizeApiError(res.error);
-		return res.value.configured;
+		return res.value[platform];
 	}
 
 	async function load(): Promise<void> {
@@ -58,11 +78,10 @@
 					configured = result;
 					if (configured) {
 						clearPoll();
-						hint = "Twitch credentials авторизованы.";
+						hint = `${title} credentials авторизованы.`;
 					} else if (tries >= POLL_MAX_TRIES) {
 						clearPoll();
-						error =
-							"Таймаут авторизации: подтверди доступ в окне Twitch и нажми «Авторизовать» ещё раз.";
+						error = `Таймаут авторизации: подтверди доступ в окне ${title} и нажми «Авторизовать» ещё раз.`;
 					}
 					return;
 				}
@@ -85,16 +104,16 @@
 		error = "";
 		const win = window.open(
 			"",
-			"sapa_twitch_auth",
+			`sapa_${platform}_auth`,
 			"popup,width=560,height=720",
 		);
-		const res = await api.startTwitchAuth();
+		const res = await startAuth();
 		if (res.isErr()) {
 			win?.close();
 			setError(res.error);
 		} else if (win) {
 			win.location.assign(res.value.auth_url);
-			hint = "Авторизуйся во всплывающем окне — статус обновится сам.";
+			hint = `Авторизуйся во всплывающем окне — статус обновится сам.`;
 			startPoll();
 		} else {
 			hint =
@@ -106,12 +125,12 @@
 	async function revoke() {
 		if (
 			!confirm(
-				"Отозвать Twitch credentials? Интеграция с Twitch перестанет работать.",
+				`Отозвать ${title} credentials? Интеграция с ${title} перестанет работать.`,
 			)
 		)
 			return;
 		error = "";
-		const res = await api.revokeIngressCredentials();
+		const res = await api.revokeIngressCredentials({ platform });
 		if (res.isErr()) {
 			setError(res.error);
 			return;
@@ -128,10 +147,7 @@
 </script>
 
 <Card>
-	<Section
-		title="Twitch"
-		hint="Учётка, от имени которой бекенд ходит в Twitch (стрим-статус, чтение чата)."
-	>
+	<Section {title} hint={description}>
 		{#if error}
 			<Alert tone="error">{error}</Alert>
 		{/if}
@@ -140,17 +156,17 @@
 		{/if}
 
 		{#if loaded}
-			<div class="twitch-row">
+			<div class="platform-row">
 				<Badge tone={configured ? "ok" : "missing"}>
 					{configured ? "авторизовано" : "не авторизовано"}
 				</Badge>
 				<Button
-					variant="primary"
+					variant={buttonVariant}
 					type="button"
 					onclick={authorize}
 					disabled={authorizeBusy}
 				>
-					<IconTwitch aria-hidden="true" />
+					{@render icon()}
 					{authorizeBusy ? "Открытие..." : "Авторизовать"}
 				</Button>
 				{#if configured}
@@ -164,7 +180,7 @@
 </Card>
 
 <style>
-	.twitch-row {
+	.platform-row {
 		display: flex;
 		align-items: center;
 		gap: 10px;

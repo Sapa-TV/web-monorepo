@@ -34,6 +34,8 @@ import {
   UpsertRarityRequest,
   UpsertRouletteSlotRequest,
   UpsertRuleRequest,
+  VkVideoLiveAuthCallbackResponse,
+  VkVideoLiveAuthStartResponse,
   WidgetAccessKeyResponse,
 } from "./data-contracts";
 import { ContentType, HttpClient, RequestParams } from "./http-client";
@@ -155,10 +157,16 @@ export class Api<
    * @name RevokeIngressCredentials
    * @request DELETE:/api/admin/ingress/credentials
    */
-  revokeIngressCredentials = (params: RequestParams = {}) =>
+  revokeIngressCredentials = (
+    query?: {
+      platform?: any;
+    },
+    params: RequestParams = {},
+  ) =>
     this.request<void, void>({
       path: `/api/admin/ingress/credentials`,
       method: "DELETE",
+      query: query,
       ...params,
     });
   /**
@@ -428,6 +436,41 @@ export class Api<
   ) =>
     this.request<TwitchUserResponse, void>({
       path: `/api/admin/twitch/users`,
+      method: "GET",
+      query: query,
+      format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags admin
+   * @name StartVkVideoLiveAuth
+   * @request GET:/api/admin/vk-video-live/auth
+   */
+  startVkVideoLiveAuth = (params: RequestParams = {}) =>
+    this.request<VkVideoLiveAuthStartResponse, void>({
+      path: `/api/admin/vk-video-live/auth`,
+      method: "GET",
+      format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags admin
+   * @name VkVideoLiveAuthCallback
+   * @request GET:/api/admin/vk-video-live/auth/callback
+   */
+  vkVideoLiveAuthCallback = (
+    query: {
+      code: string;
+      state: string;
+    },
+    params: RequestParams = {},
+  ) =>
+    this.request<VkVideoLiveAuthCallbackResponse, void>({
+      path: `/api/admin/vk-video-live/auth/callback`,
       method: "GET",
       query: query,
       format: "json",

@@ -28,12 +28,9 @@
 		}
 		const guard = guardRes.value;
 		if (guard.status === GuardStatus.NotLoggedIn) {
-			await goto(
-				resolve("/(panels)/login-callback/[platform]", { platform: "twitch" }),
-				{
-					replaceState: true,
-				},
-			);
+			await goto(resolve("login-callback/twitch"), {
+				replaceState: true,
+			});
 			return;
 		}
 		if (guard.status === GuardStatus.NotAdmin) {

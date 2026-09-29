@@ -92,7 +92,8 @@ export interface EnqueueRequest {
 }
 
 export interface IngressCredentialsResponse {
-  configured: boolean;
+  twitch: boolean;
+  vk_video_live: boolean;
 }
 
 export interface LinkPlatformRequest {
@@ -373,6 +374,15 @@ export interface UserResponse {
   id: UserId;
   platforms: UserPlatformResponse[];
   updated_at: string;
+}
+
+export interface VkVideoLiveAuthCallbackResponse {
+  user_id: string;
+  user_name: string;
+}
+
+export interface VkVideoLiveAuthStartResponse {
+  auth_url: string;
 }
 
 export interface WidgetAccessKeyResponse {
