@@ -1,6 +1,6 @@
 # Интеграция VK Video Live
 
-Статус: **план на согласование**. Пункт бэклога #1.
+Статус: **выполнен** (2026-08-26). Пункт бэклога #1 закрыт.
 Дата: 2026-08-26
 
 ## Контекст
@@ -170,40 +170,41 @@ user{id,nick}, channel{id,url}}` — канал резолвится при conn
 - **Фичефлаг**: конфиг VK отсутствует → платформа не стартует и в
   списке супервизора её нет (симметрично twitch).
 
-## Шаги реализации (по образцу twitch, шаг = коммит)
+## Шаги реализации (по образцу twitch, шаг = коммит) — все выполнены
 
-0. Redirect-миграция: новые фронтовые маршруты `/login-callback/{platform}`,
-   `/creds-callback/{platform}` (generic-компонент), обновить env и
-   зарегистрированные URI в Twitch console и приложении VK, api-client
-   регенерация. Twitch flow должен остаться зелёным.
-1. Крейт `crates/vk-video-live`: скелет + `auth.rs` (OAuth по докам) +
-   `error.rs`. Юнит-тесты на построение запросов/парсинг ответов.
-2. Крейт: `api.rs` (channel, chat history/send, ws token) + `events.rs`
-   (парсинг message/message_v8 на фикстурных фреймах из devtools).
-3. Крейт: `pubsub.rs` (centrifugo v4: connect/subscribe/push/ping,
-   reconnect backoff). Тесты на фреймах.
-4. Бэкенд: `config/vk_video_live.rs` (`VkVideoLiveConfig { client_id,
-client_secret, redirect_uri, credentials_redirect_uri }`) + поле
-   `vk_video_live` в `StaticConfig` (+ env пример без секретов).
-5. Бэкенд: `ingress/vk_video_live_auth.rs` (блоб кредов, refresh-цикл) +
-   `ingress/vk_video_live.rs` (PlatformService поверх крейта). Регистрация
-   в `main.rs` (список платформ + build_ingress).
-6. Бэкенд: обобщение CSRF/state в `AdminAuthService` под платформы;
-   `api/admin/vk_video_live.rs` (auth + callback); per-platform статус
-   кредов в `/admin/ingress/credentials`.
-7. Бэкенд: `actions/vk_video_live_executor.rs` (send_chat_message с
-   интервалом ≥10s) + dispatch в `actions/service.rs`; обобщение
-   `PlatformError`.
-8. Фронтенд: `VkPlatformCard.svelte`, брендовый цвет, регенерация
-   api-client и openapi.json.
-9. Финал: полный регресс (nextest, clippy, fmt, openapi чистый).
+0. ~~Redirect-миграция~~ — маршруты `/login-callback/{twitch,vk-video-live}` и
+   `/creds-callback/{twitch,vk-video-live}` (общие компоненты
+   `LoginCallbackPage`/`CredsCallbackPage`), env на новые URI, api-client
+   перегенерирован. Статические роуты, а не `[platform]`: у adapter-static
+   нет SPA-fallback, динамический роут роняет prerender.
+1. ~~Крейт: `auth.rs` + `error.rs`~~ (свой base64 и percent-encoding, без
+   HTTP-зависимостей — транспорт внедряется трейтом `Transport`).
+2. ~~Крейт: `api.rs` + `events.rs`~~ (на фикстурных фреймах из devtools).
+3. ~~Крейт: `pubsub.rs`~~ (Centrifugo v4, тесты на настоящем WS-хендшейке
+   с локальным сервером).
+4. ~~Бэкенд: `config/vk_video_live.rs` + `StaticConfig` + env~~.
+5. ~~Бэкенд: `ingress/vk_video_live_auth.rs` (блоб кредов, тихая ротация
+   через `save_rotated`) + `ingress/vk_video_live.rs` (run-цикл с backoff)
+   - регистрация в `main.rs`~~.
+6. ~~Бэкенд: общий `admin/csrf.rs` (CSRF-стор вынесен из `AdminAuthService`),
+   `admin/vk_auth.rs`, `api/admin/vk_video_live.rs`, per-platform статус и
+   отзыв кредов в `/admin/ingress/credentials`~~.
+7. ~~Бэкенд: `actions/vk_video_live_executor.rs` (троттлинг 10с,
+   `stream_id` из `GET /v1/channel`) + диспетчер на два экзекутора
+   (`PlatformActionService<T, V = T>`)~~.
+8. ~~Фронт: общий `PlatformCredentialsCard.svelte`, карточка VK, регенерация
+   api-client и openapi.json~~.
+9. ~~Финал~~ — регресс: 437 тестов воркспейса, clippy/fmt чисто, openapi
+   стабилен, фронт: 54 теста, svelte-check 0, build и lint зелёные.
 
-## Риски
+Дальнейшие задачи вынесены в `backlog.md` (награды VK, вход через VK,
+статус стрима по платформам).
 
-- Часть API полуофициальная (сокет-события могут пополняться/меняться);
-  парсинг событий делаем устойчивым к неизвестным `type`.
-- Лимит отправки чата ~10 сек/сообщение (send_too_fast) — в экшене
-  предусматриваем очередь/дроп с логом.
-- Ребрендинг доменов продолжается — все URL в константах одного модуля.
+## Риски (актуальные)
 
-Оценка: исследование завершено (0 ч остатка), реализация 4–6 ч.
+- Часть API полуофициальная: события сокета могут появляться/меняться;
+  парсинг устойчив к неизвестным `type` (возвращается `None`, не падает).
+- Лимит отправки чата ~10 сек/сообщение — в экзекуторе троттлинг с
+  дропом и логом, ответ `send_too_fast` мапится в `ActionError::RateLimited`.
+- Ребрендинг доменов продолжается — все URL собраны в константах крейта
+  (`api.rs`, `pubsub.rs`, `auth.rs`).
