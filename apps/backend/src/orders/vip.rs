@@ -34,6 +34,7 @@ impl Display for VipRecordId {
     Debug, Clone, Copy, PartialEq, Eq, Serialize, ToSchema, strum::EnumString, strum::IntoStaticStr,
 )]
 #[strum(serialize_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum VipKind {
     Vip,
@@ -57,6 +58,7 @@ impl<'de> Deserialize<'de> for VipKind {
     Debug, Clone, Copy, PartialEq, Eq, Serialize, ToSchema, strum::EnumString, strum::IntoStaticStr,
 )]
 #[strum(serialize_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum VipStatus {
     Active,

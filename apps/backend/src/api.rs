@@ -7,6 +7,7 @@
 
 pub mod admin;
 pub mod auth;
+pub mod orders;
 pub mod session;
 pub mod stream;
 
@@ -25,6 +26,7 @@ fn public_router() -> OpenApiRouter<AppState> {
         .routes(routes!(health))
         .routes(routes!(version))
         .merge(stream::public_router())
+        .merge(orders::public_router())
         .merge(session::public_router())
 }
 

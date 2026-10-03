@@ -32,6 +32,7 @@ impl Display for GameOrderId {
     Debug, Clone, Copy, PartialEq, Eq, Serialize, ToSchema, strum::EnumString, strum::IntoStaticStr,
 )]
 #[strum(serialize_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum GameOrderKind {
     Stream,
@@ -55,6 +56,7 @@ impl<'de> Deserialize<'de> for GameOrderKind {
     Debug, Clone, Copy, PartialEq, Eq, Serialize, ToSchema, strum::EnumString, strum::IntoStaticStr,
 )]
 #[strum(serialize_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum OrderSource {
     Donate,

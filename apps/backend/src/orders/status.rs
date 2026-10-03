@@ -6,6 +6,7 @@ use utoipa::ToSchema;
     Debug, Clone, Copy, PartialEq, Eq, Serialize, ToSchema, strum::EnumString, strum::IntoStaticStr,
 )]
 #[strum(serialize_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum OrderStatus {
     Pending,
