@@ -7,7 +7,7 @@ use crate::orders::repository::{GameOrderRepository, MovieOrderRepository, VipRe
 use crate::orders::status::OrderStatus;
 use crate::orders::vip::{
     NewVipRecord, UNVIP_DURATION_DAYS, VIP_DURATION_DAYS, VipKind, VipRecord, VipRecordId,
-    VipStatus,
+    VipRecordUpdate, VipStatus,
 };
 
 fn normalize_title(title: Option<String>) -> Option<String> {
@@ -102,6 +102,35 @@ impl<R: GameOrderRepository> GameOrderService<R> {
             .ok_or(OrdersServiceError::NotFound)
     }
 
+    /// Replaces editable fields, preserving user_id and created_at.
+    pub async fn replace(
+        &self,
+        id: GameOrderId,
+        mut order: NewGameOrder,
+    ) -> Result<GameOrder, OrdersServiceError> {
+        let existing = self.get_by_id(id).await?;
+        order.customer_name = require_customer(&order.customer_name)?;
+        order.title = normalize_title(order.title.take());
+        order.comment = normalize_optional(order.comment.take());
+        let updated = GameOrder::new(
+            id,
+            order.title,
+            order.customer_name,
+            existing.user_id,
+            order.kind,
+            order.source,
+            order.status,
+            order.completed_at,
+            order.comment,
+            existing.created_at,
+            existing.updated_at,
+        );
+        self.repo
+            .update(updated)
+            .await?
+            .ok_or(OrdersServiceError::NotFound)
+    }
+
     pub async fn delete(&self, id: GameOrderId) -> Result<(), OrdersServiceError> {
         if !self.repo.delete(id).await? {
             return Err(OrdersServiceError::NotFound);
@@ -168,6 +197,34 @@ impl<R: MovieOrderRepository> MovieOrderService<R> {
         order.comment = normalize_optional(order.comment.take());
         self.repo
             .update(order)
+            .await?
+            .ok_or(OrdersServiceError::NotFound)
+    }
+
+    /// Replaces editable fields, preserving user_id and created_at.
+    pub async fn replace(
+        &self,
+        id: MovieOrderId,
+        mut order: NewMovieOrder,
+    ) -> Result<MovieOrder, OrdersServiceError> {
+        let existing = self.get_by_id(id).await?;
+        order.customer_name = require_customer(&order.customer_name)?;
+        order.title = normalize_title(order.title.take());
+        order.comment = normalize_optional(order.comment.take());
+        let updated = MovieOrder::new(
+            id,
+            order.title,
+            order.customer_name,
+            existing.user_id,
+            order.kind,
+            order.source,
+            order.status,
+            order.comment,
+            existing.created_at,
+            existing.updated_at,
+        );
+        self.repo
+            .update(updated)
             .await?
             .ok_or(OrdersServiceError::NotFound)
     }
@@ -282,6 +339,38 @@ impl<R: VipRecordRepository> VipService<R> {
         }
         self.repo
             .update(record)
+            .await?
+            .ok_or(OrdersServiceError::NotFound)
+    }
+
+    /// Replaces editable fields, preserving user_id and created_at.
+    pub async fn replace(
+        &self,
+        id: VipRecordId,
+        mut update: VipRecordUpdate,
+    ) -> Result<VipRecord, OrdersServiceError> {
+        let existing = self.get_by_id(id).await?;
+        update.customer_name = require_customer(&update.customer_name)?;
+        update.note = normalize_optional(update.note.take());
+        if update.end_date < update.roulette_date {
+            return Err(OrdersServiceError::Invalid(
+                "end date is before roulette date".to_string(),
+            ));
+        }
+        let updated = VipRecord::new(
+            id,
+            update.customer_name,
+            existing.user_id,
+            update.kind,
+            update.roulette_date,
+            update.end_date,
+            update.status,
+            update.note,
+            existing.created_at,
+            existing.updated_at,
+        );
+        self.repo
+            .update(updated)
             .await?
             .ok_or(OrdersServiceError::NotFound)
     }

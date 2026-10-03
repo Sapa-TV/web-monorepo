@@ -157,3 +157,36 @@ impl NewVipRecord {
         }
     }
 }
+
+#[derive(Debug, Clone)]
+#[non_exhaustive]
+pub struct VipRecordUpdate {
+    pub customer_name: String,
+    pub kind: VipKind,
+    pub roulette_date: NaiveDate,
+    pub end_date: NaiveDate,
+    pub status: VipStatus,
+    pub note: Option<String>,
+    _sealed: (),
+}
+
+impl VipRecordUpdate {
+    pub fn new(
+        customer_name: String,
+        kind: VipKind,
+        roulette_date: NaiveDate,
+        end_date: NaiveDate,
+        status: VipStatus,
+        note: Option<String>,
+    ) -> Self {
+        Self {
+            customer_name,
+            kind,
+            roulette_date,
+            end_date,
+            status,
+            note,
+            _sealed: (),
+        }
+    }
+}

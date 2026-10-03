@@ -1,5 +1,6 @@
 pub mod actions;
 pub mod ingress;
+pub mod orders;
 pub mod rewards;
 pub mod roulette;
 pub mod rules;
@@ -197,6 +198,7 @@ pub fn session_router() -> OpenApiRouter<AppState> {
         .merge(rules::session_router())
         .merge(rewards::session_router())
         .merge(roulette::session_router())
+        .merge(orders::session_router())
 }
 
 pub fn root_router() -> OpenApiRouter<AppState> {
