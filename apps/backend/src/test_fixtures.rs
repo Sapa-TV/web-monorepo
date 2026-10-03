@@ -16,6 +16,9 @@ use crate::config::store::ConfigStore;
 use crate::db::inmemory_actions::InMemoryActionRepository;
 use crate::db::inmemory_admin::InMemoryAdminRepository;
 use crate::db::inmemory_config::InMemoryConfigRepository;
+use crate::db::inmemory_orders::{
+    InMemoryGameOrderRepository, InMemoryMovieOrderRepository, InMemoryVipRecordRepository,
+};
 use crate::db::inmemory_platform::InMemoryPlatformRepository;
 use crate::db::inmemory_platform_credential::InMemoryPlatformCredentialRepository;
 use crate::db::inmemory_queue::InMemoryQueueRepository;
@@ -61,6 +64,9 @@ pub type InMemoryAppState = UniAppState<
     InMemoryConfigRepository,
     InMemoryRuleRepository,
     InMemoryActionRepository,
+    InMemoryGameOrderRepository,
+    InMemoryMovieOrderRepository,
+    InMemoryVipRecordRepository,
 >;
 
 /// No sqlite at all. Platforms are seeded (like migrations do); slots/rarities
@@ -85,6 +91,9 @@ pub async fn test_state_inmemory() -> (InMemoryAppState, Arc<InMemoryQueueReposi
         session_repo: Arc::new(InMemorySessionRepository::new()),
         rule_repo: Arc::new(InMemoryRuleRepository::new()),
         action_repo: Arc::new(InMemoryActionRepository::new()),
+        game_order_repo: Arc::new(InMemoryGameOrderRepository::new()),
+        movie_order_repo: Arc::new(InMemoryMovieOrderRepository::new()),
+        vip_record_repo: Arc::new(InMemoryVipRecordRepository::new()),
     })
     .await
     .expect("failed to build in-memory test state");

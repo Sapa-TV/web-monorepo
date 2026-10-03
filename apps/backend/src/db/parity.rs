@@ -21,6 +21,9 @@ use crate::config::runtime::RuntimeConfig;
 use crate::db::inmemory_actions::InMemoryActionRepository;
 use crate::db::inmemory_admin::InMemoryAdminRepository;
 use crate::db::inmemory_config::InMemoryConfigRepository;
+use crate::db::inmemory_orders::{
+    InMemoryGameOrderRepository, InMemoryMovieOrderRepository, InMemoryVipRecordRepository,
+};
 use crate::db::inmemory_queue::InMemoryQueueRepository;
 use crate::db::inmemory_rarity::InMemoryRarityRepository;
 use crate::db::inmemory_roulette_slots::InMemoryRouletteSlotRepository;
@@ -30,6 +33,8 @@ use crate::db::inmemory_user::InMemoryUserRepository;
 use crate::db::sqlite::action::SqliteActionRepository;
 use crate::db::sqlite::admin::SqliteAdminRepository;
 use crate::db::sqlite::config::SqliteConfigRepository;
+use crate::db::sqlite::game_order::SqliteGameOrderRepository;
+use crate::db::sqlite::movie_order::SqliteMovieOrderRepository;
 use crate::db::sqlite::queue::SqliteQueueRepository;
 use crate::db::sqlite::rarity::SqliteRarityRepository;
 use crate::db::sqlite::roulette_slot::SqliteRouletteSlotRepository;
@@ -37,8 +42,14 @@ use crate::db::sqlite::rule::SqliteRuleRepository;
 use crate::db::sqlite::session::SqliteSessionRepository;
 use crate::db::sqlite::test_pool;
 use crate::db::sqlite::user::SqliteUserRepository;
+use crate::db::sqlite::vip_record::SqliteVipRecordRepository;
 use crate::error::RepositoryError;
 use crate::ingress::event::RuleTrigger;
+use crate::orders::game::{GameOrderId, GameOrderKind, NewGameOrder, OrderSource};
+use crate::orders::movie::{MovieKind, MovieOrderId, NewMovieOrder};
+use crate::orders::repository::{GameOrderRepository, MovieOrderRepository, VipRecordRepository};
+use crate::orders::status::OrderStatus;
+use crate::orders::vip::{NewVipRecord, VipKind, VipRecordId, VipStatus};
 use crate::platform::PlatformId;
 use crate::queue::entry::{QueueEntryId, QueueStatus};
 use crate::queue::repository::{DequeueOutcome, QueueRepository, StatusUpdateOutcome};
@@ -773,4 +784,199 @@ async fn parity_queue_purge_and_timeout_in_memory() {
 async fn parity_queue_purge_and_timeout_sqlite() {
     let (pool, _path) = test_pool().await;
     suite_queue_purge_and_timeout(&SqliteQueueRepository::new(pool)).await;
+}
+
+// ---------------------------------------------------------------- orders
+
+fn date(s: &str) -> chrono::NaiveDate {
+    chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").unwrap()
+}
+
+async fn suite_game_order_lifecycle<G: GameOrderRepository>(repo: &G) {
+    assert!(repo.list().await.unwrap().is_empty());
+
+    let created = repo
+        .create(NewGameOrder::new(
+            Some("Noita".to_string()),
+            "Rikrims".to_string(),
+            None,
+            GameOrderKind::Stream,
+            OrderSource::Roulette,
+            OrderStatus::Pending,
+            None,
+            Some("note".to_string()),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(created.id.get(), 1);
+    assert_eq!(created.created_at, created.updated_at);
+
+    let fetched = repo.get_by_id(created.id).await.unwrap().unwrap();
+    assert_eq!(fetched.title.as_deref(), Some("Noita"));
+    assert_eq!(fetched.kind, GameOrderKind::Stream);
+    assert_eq!(fetched.source, OrderSource::Roulette);
+    assert_eq!(fetched.status, OrderStatus::Pending);
+
+    let second = repo
+        .create(NewGameOrder::new(
+            None,
+            "Jeker3".to_string(),
+            None,
+            GameOrderKind::Playthrough,
+            OrderSource::Donate,
+            OrderStatus::Pending,
+            None,
+            None,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(second.id.get(), 2);
+    assert_eq!(repo.list().await.unwrap().len(), 2);
+
+    sleep(Duration::from_millis(5)).await;
+    let mut next = created.clone();
+    next.status = OrderStatus::Completed;
+    next.completed_at = Some(date("2026-10-03"));
+    let updated = repo.update(next).await.unwrap().unwrap();
+    assert_eq!(updated.status, OrderStatus::Completed);
+    assert_eq!(updated.completed_at, Some(date("2026-10-03")));
+    assert_eq!(updated.created_at, created.created_at);
+    assert!(updated.updated_at > created.updated_at);
+
+    let mut missing = created.clone();
+    missing.id = GameOrderId::new(999);
+    assert!(repo.update(missing).await.unwrap().is_none());
+
+    assert!(repo.delete(created.id).await.unwrap());
+    assert!(!repo.delete(created.id).await.unwrap());
+    assert!(repo.get_by_id(created.id).await.unwrap().is_none());
+    assert_eq!(repo.list().await.unwrap().len(), 1);
+}
+
+#[tokio::test]
+async fn parity_game_order_in_memory() {
+    suite_game_order_lifecycle(&InMemoryGameOrderRepository::new()).await;
+}
+
+#[tokio::test]
+async fn parity_game_order_sqlite() {
+    let (pool, _path) = test_pool().await;
+    suite_game_order_lifecycle(&SqliteGameOrderRepository::new(pool)).await;
+}
+
+async fn suite_movie_order_lifecycle<M: MovieOrderRepository>(repo: &M) {
+    assert!(repo.list().await.unwrap().is_empty());
+
+    let created = repo
+        .create(NewMovieOrder::new(
+            Some("Большой куш".to_string()),
+            "ViyScar".to_string(),
+            None,
+            MovieKind::Movie,
+            OrderSource::Donate,
+            OrderStatus::Pending,
+            None,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(created.id.get(), 1);
+
+    let fetched = repo.get_by_id(created.id).await.unwrap().unwrap();
+    assert_eq!(fetched.kind, MovieKind::Movie);
+    assert_eq!(fetched.source, OrderSource::Donate);
+
+    sleep(Duration::from_millis(5)).await;
+    let mut next = created.clone();
+    next.kind = MovieKind::Series;
+    next.status = OrderStatus::Completed;
+    let updated = repo.update(next).await.unwrap().unwrap();
+    assert_eq!(updated.kind, MovieKind::Series);
+    assert!(updated.updated_at > created.updated_at);
+
+    let mut missing = created.clone();
+    missing.id = MovieOrderId::new(999);
+    assert!(repo.update(missing).await.unwrap().is_none());
+
+    assert!(repo.delete(created.id).await.unwrap());
+    assert!(!repo.delete(created.id).await.unwrap());
+    assert!(repo.get_by_id(created.id).await.unwrap().is_none());
+}
+
+#[tokio::test]
+async fn parity_movie_order_in_memory() {
+    suite_movie_order_lifecycle(&InMemoryMovieOrderRepository::new()).await;
+}
+
+#[tokio::test]
+async fn parity_movie_order_sqlite() {
+    let (pool, _path) = test_pool().await;
+    suite_movie_order_lifecycle(&SqliteMovieOrderRepository::new(pool)).await;
+}
+
+async fn suite_vip_record_lifecycle<V: VipRecordRepository>(repo: &V) {
+    assert!(repo.list().await.unwrap().is_empty());
+
+    let created = repo
+        .create(
+            NewVipRecord::new(
+                "kasperaas".to_string(),
+                None,
+                VipKind::Vip,
+                date("2026-10-01"),
+                None,
+                None,
+            ),
+            date("2026-10-15"),
+        )
+        .await
+        .unwrap();
+    assert_eq!(created.id.get(), 1);
+    assert_eq!(created.status, VipStatus::Active);
+    assert_eq!(created.end_date, date("2026-10-15"));
+
+    let fetched = repo.get_by_id(created.id).await.unwrap().unwrap();
+    assert_eq!(fetched.kind, VipKind::Vip);
+    assert_eq!(fetched.roulette_date, date("2026-10-01"));
+
+    let unvip = repo
+        .create(
+            NewVipRecord::new(
+                "JackTheRizer".to_string(),
+                None,
+                VipKind::Unvip,
+                date("2026-10-02"),
+                None,
+                Some("lost permanent vip".to_string()),
+            ),
+            date("2026-10-09"),
+        )
+        .await
+        .unwrap();
+    assert_eq!(repo.list().await.unwrap().len(), 2);
+
+    sleep(Duration::from_millis(5)).await;
+    let mut next = created.clone();
+    next.status = VipStatus::Done;
+    let updated = repo.update(next).await.unwrap().unwrap();
+    assert_eq!(updated.status, VipStatus::Done);
+    assert!(updated.updated_at > created.updated_at);
+
+    let mut missing = unvip.clone();
+    missing.id = VipRecordId::new(999);
+    assert!(repo.update(missing).await.unwrap().is_none());
+
+    assert!(repo.delete(unvip.id).await.unwrap());
+    assert!(!repo.delete(unvip.id).await.unwrap());
+    assert_eq!(repo.list().await.unwrap().len(), 1);
+}
+
+#[tokio::test]
+async fn parity_vip_record_in_memory() {
+    suite_vip_record_lifecycle(&InMemoryVipRecordRepository::new()).await;
+}
+
+#[tokio::test]
+async fn parity_vip_record_sqlite() {
+    let (pool, _path) = test_pool().await;
+    suite_vip_record_lifecycle(&SqliteVipRecordRepository::new(pool)).await;
 }

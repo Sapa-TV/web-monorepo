@@ -12,6 +12,8 @@ use crate::config::store::ConfigStore;
 use crate::db::sqlite::action::SqliteActionRepository;
 use crate::db::sqlite::admin::SqliteAdminRepository;
 use crate::db::sqlite::config::SqliteConfigRepository;
+use crate::db::sqlite::game_order::SqliteGameOrderRepository;
+use crate::db::sqlite::movie_order::SqliteMovieOrderRepository;
 use crate::db::sqlite::platform::SqlitePlatformRepository;
 use crate::db::sqlite::platform_credential::SqlitePlatformCredentialRepository;
 use crate::db::sqlite::queue::SqliteQueueRepository;
@@ -20,11 +22,14 @@ use crate::db::sqlite::roulette_slot::SqliteRouletteSlotRepository;
 use crate::db::sqlite::rule::SqliteRuleRepository;
 use crate::db::sqlite::session::SqliteSessionRepository;
 use crate::db::sqlite::user::SqliteUserRepository;
+use crate::db::sqlite::vip_record::SqliteVipRecordRepository;
 use crate::error::RepositoryError;
 use crate::event::BroadcastEventPublisher;
 use crate::ingress::twitch_auth::TwitchAuthService;
 use crate::ingress::vk_video_live_auth::VkVideoLiveAuthService;
 use crate::ingress::{EventIngress, spawn_logging_handler};
+use crate::orders::repository::{GameOrderRepository, MovieOrderRepository, VipRecordRepository};
+use crate::orders::service::{GameOrderService, MovieOrderService, VipService};
 use crate::platform::{
     PlatformCredentialRepository, PlatformCredentialService, PlatformRepository,
 };
@@ -46,7 +51,7 @@ use crate::user::repository::UserRepository;
 use crate::user::service::UserService;
 
 #[non_exhaustive]
-pub struct UniAppState<Q, R, U, P, S, A, Se, C, K, L, M>
+pub struct UniAppState<Q, R, U, P, S, A, Se, C, K, L, M, Go, Mo, V>
 where
     Q: QueueRepository,
     R: RarityRepository,
@@ -59,6 +64,9 @@ where
     K: ConfigRepository,
     L: RuleRepository,
     M: ActionRepository,
+    Go: GameOrderRepository,
+    Mo: MovieOrderRepository,
+    V: VipRecordRepository,
 {
     pub slot_service: Arc<RouletteSlotService<Arc<S>>>,
     pub rarity_service: Arc<RarityService<Arc<R>>>,
@@ -78,9 +86,13 @@ where
     pub action_service: Arc<ActionService<M>>,
     pub twitch_api: Option<Arc<TwitchAuthService<C>>>,
     pub vk_api: Option<Arc<VkVideoLiveAuthService<C>>>,
+    pub game_order_service: Arc<GameOrderService<Arc<Go>>>,
+    pub movie_order_service: Arc<MovieOrderService<Arc<Mo>>>,
+    pub vip_service: Arc<VipService<Arc<V>>>,
 }
 
-impl<Q, R, U, P, S, A, Se, C, K, L, M> Clone for UniAppState<Q, R, U, P, S, A, Se, C, K, L, M>
+impl<Q, R, U, P, S, A, Se, C, K, L, M, Go, Mo, V> Clone
+    for UniAppState<Q, R, U, P, S, A, Se, C, K, L, M, Go, Mo, V>
 where
     Q: QueueRepository,
     R: RarityRepository,
@@ -93,6 +105,9 @@ where
     K: ConfigRepository,
     L: RuleRepository,
     M: ActionRepository,
+    Go: GameOrderRepository,
+    Mo: MovieOrderRepository,
+    V: VipRecordRepository,
 {
     fn clone(&self) -> Self {
         Self {
@@ -114,6 +129,9 @@ where
             action_service: Arc::clone(&self.action_service),
             twitch_api: self.twitch_api.clone(),
             vk_api: self.vk_api.clone(),
+            game_order_service: Arc::clone(&self.game_order_service),
+            movie_order_service: Arc::clone(&self.movie_order_service),
+            vip_service: Arc::clone(&self.vip_service),
         }
     }
 }
@@ -137,10 +155,13 @@ pub type AppState = UniAppState<
     SqliteConfigRepository,
     SqliteRuleRepository,
     SqliteActionRepository,
+    SqliteGameOrderRepository,
+    SqliteMovieOrderRepository,
+    SqliteVipRecordRepository,
 >;
 
 #[non_exhaustive]
-pub struct UniStateParams<Q, R, U, P, S, A, Se, C, K, L, M>
+pub struct UniStateParams<Q, R, U, P, S, A, Se, C, K, L, M, Go, Mo, V>
 where
     Q: QueueRepository,
     R: RarityRepository,
@@ -153,6 +174,9 @@ where
     K: ConfigRepository,
     L: RuleRepository,
     M: ActionRepository,
+    Go: GameOrderRepository,
+    Mo: MovieOrderRepository,
+    V: VipRecordRepository,
 {
     pub random: StandartRandomProvider,
     pub config: Arc<ConfigStore<K>>,
@@ -166,11 +190,15 @@ where
     pub session_repo: Arc<Se>,
     pub rule_repo: Arc<L>,
     pub action_repo: Arc<M>,
+    pub game_order_repo: Arc<Go>,
+    pub movie_order_repo: Arc<Mo>,
+    pub vip_record_repo: Arc<V>,
 }
 
-pub async fn assemble_uni_state<Q, R, U, P, S, A, Se, C, K, L, M>(
-    params: UniStateParams<Q, R, U, P, S, A, Se, C, K, L, M>,
-) -> Result<UniAppState<Q, R, U, P, S, A, Se, C, K, L, M>, RepositoryError>
+#[allow(clippy::type_complexity)]
+pub async fn assemble_uni_state<Q, R, U, P, S, A, Se, C, K, L, M, Go, Mo, V>(
+    params: UniStateParams<Q, R, U, P, S, A, Se, C, K, L, M, Go, Mo, V>,
+) -> Result<UniAppState<Q, R, U, P, S, A, Se, C, K, L, M, Go, Mo, V>, RepositoryError>
 where
     Q: QueueRepository,
     R: RarityRepository,
@@ -183,6 +211,9 @@ where
     K: ConfigRepository,
     L: RuleRepository,
     M: ActionRepository,
+    Go: GameOrderRepository,
+    Mo: MovieOrderRepository,
+    V: VipRecordRepository,
 {
     let UniStateParams {
         random,
@@ -197,6 +228,9 @@ where
         session_repo,
         rule_repo,
         action_repo,
+        game_order_repo,
+        movie_order_repo,
+        vip_record_repo,
     } = params;
 
     let event_publisher = BroadcastEventPublisher::new();
@@ -241,6 +275,10 @@ where
     let action_service = Arc::new(ActionService::new(action_repo));
     let rule_service = Arc::new(RuleService::new(rule_repo, Arc::clone(&action_service)));
 
+    let game_order_service = Arc::new(GameOrderService::new(game_order_repo));
+    let movie_order_service = Arc::new(MovieOrderService::new(movie_order_repo));
+    let vip_service = Arc::new(VipService::new(vip_record_repo));
+
     let twitch_api = config.twitch().map(|twitch| {
         Arc::new(TwitchAuthService::new(
             Arc::new(twitch.clone()),
@@ -267,6 +305,9 @@ where
         action_service,
         twitch_api,
         vk_api,
+        game_order_service,
+        movie_order_service,
+        vip_service,
     })
 }
 
@@ -335,6 +376,9 @@ impl AppStateBuilder {
             session_repo: Arc::new(SqliteSessionRepository::new(self.pool.clone())),
             rule_repo: Arc::new(SqliteRuleRepository::new(self.pool.clone())),
             action_repo: Arc::new(SqliteActionRepository::new(self.pool.clone())),
+            game_order_repo: Arc::new(SqliteGameOrderRepository::new(self.pool.clone())),
+            movie_order_repo: Arc::new(SqliteMovieOrderRepository::new(self.pool.clone())),
+            vip_record_repo: Arc::new(SqliteVipRecordRepository::new(self.pool.clone())),
         })
         .await
     }

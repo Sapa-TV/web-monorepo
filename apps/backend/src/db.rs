@@ -1,6 +1,7 @@
 pub mod inmemory_actions;
 pub mod inmemory_admin;
 pub mod inmemory_config;
+pub mod inmemory_orders;
 pub mod inmemory_platform;
 pub mod inmemory_platform_credential;
 pub mod inmemory_queue;

@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE movie_orders SET title = ?1, customer_name = ?2, user_id = ?3, kind = ?4, source = ?5, status = ?6, comment = ?7, updated_at = ?8\n             WHERE id = ?9\n             RETURNING id AS \"id!: i64\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: i64",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "movie_orders",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 9
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "bbe0ac68508fa26760b874c6a1dff46608c6471bb2a7c65c47a4fc5902e1055a"
+}

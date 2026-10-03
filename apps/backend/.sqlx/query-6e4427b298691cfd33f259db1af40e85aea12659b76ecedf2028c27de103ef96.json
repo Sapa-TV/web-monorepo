@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO vip_records (customer_name, user_id, kind, roulette_date, end_date, status, note, created_at, updated_at)\n             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)\n             RETURNING id AS \"id!: i64\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: i64",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "vip_records",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 9
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "6e4427b298691cfd33f259db1af40e85aea12659b76ecedf2028c27de103ef96"
+}

@@ -16,6 +16,8 @@ use crate::error::RepositoryError;
 pub mod action;
 pub mod admin;
 pub mod config;
+pub mod game_order;
+pub mod movie_order;
 pub mod platform;
 pub mod platform_credential;
 pub mod queue;
@@ -24,6 +26,7 @@ pub mod roulette_slot;
 pub mod rule;
 pub mod session;
 pub mod user;
+pub mod vip_record;
 
 pub async fn connect_from_env() -> Result<SqlitePool, RepositoryError> {
     use std::env;

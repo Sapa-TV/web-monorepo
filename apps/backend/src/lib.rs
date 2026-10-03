@@ -13,6 +13,7 @@ pub mod db;
 pub mod error;
 pub mod event;
 pub mod ingress;
+pub mod orders;
 pub mod platform;
 pub mod presence;
 pub mod queue;
