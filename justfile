@@ -1,6 +1,8 @@
 # Workspace tasks
 #   just          — list recipes
 #   just run      — run the backend
+#   just dev      — backend + frontend dev servers in separate windows
+#   just dev-admin — seed local dev admin session (cookie sapa_session=devtoken123)
 #   just gen      — generate OpenAPI spec to generated/openapi.json
 #   just sqlx-prepare — regenerate sqlx offline metadata (.sqlx) after query/migration changes
 #   just google-key — print GOOGLE_SERVICE_ACCOUNT_KEY_BASE64=... from secrets/google-sa.json
@@ -21,6 +23,14 @@ default:
 # Run the backend (port from config.toml / PORT env, default 3000)
 run:
     cargo run -p backend
+
+# Start backend + frontend dev servers in separate terminal windows
+dev:
+    powershell -NoProfile -Command "Start-Process powershell -ArgumentList '-NoExit','-Command','cargo run -p backend'; Start-Process powershell -ArgumentList '-NoExit','-Command','Set-Location apps/frontend; pnpm run dev'"
+
+# Seed a local dev admin + 30-day session into data/server.db (prints the cookie)
+dev-admin:
+    node --no-warnings apps/backend/scripts/dev-admin-session.mjs
 
 # Generate OpenAPI spec file
 gen path='generated/openapi.json':

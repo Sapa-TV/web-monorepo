@@ -6,7 +6,7 @@ use crate::error::SheetsError;
 use crate::orders::game::{GameOrder, NewGameOrder};
 use crate::orders::movie::{MovieOrder, NewMovieOrder};
 use crate::orders::repository::{GameOrderRepository, MovieOrderRepository, VipRecordRepository};
-use crate::orders::vip::{NewVipRecord, VipKind, VipRecord};
+use crate::orders::vip::{NewVipRecord, VipKind, VipRecord, VipStatus};
 use crate::sheets::client::GoogleSheetsClient;
 use crate::sheets::parse;
 
@@ -194,9 +194,14 @@ where
         let total = parsed.len() as u32;
         let fresh = new_vip_only(&self.vip_repo.list().await?, parsed);
         let imported = fresh.len() as u32;
+        let today = chrono::Utc::now().date_naive();
         for record in fresh {
             let end_date = record.end_date.unwrap_or(record.roulette_date);
-            self.vip_repo.create(record, end_date).await?;
+            let mut created = self.vip_repo.create(record, end_date).await?;
+            if created.end_date < today {
+                created.status = VipStatus::Done;
+                self.vip_repo.update(created).await?;
+            }
         }
         Ok(ImportCount::new(imported, total - imported))
     }
@@ -294,6 +299,25 @@ mod tests {
 
         let second = svc.import_vip(vec![record()]).await.unwrap();
         assert_eq!(second, ImportCount::new(0, 1));
+    }
+
+    #[tokio::test]
+    async fn import_vip_marks_expired_records_done() {
+        let svc = test_service();
+        let past = NaiveDate::from_ymd_opt(2020, 1, 1).unwrap();
+        let record = NewVipRecord::new(
+            "old".to_string(),
+            None,
+            VipKind::Vip,
+            past,
+            Some(past),
+            None,
+        );
+
+        svc.import_vip(vec![record]).await.unwrap();
+
+        let all = svc.vip_repo.list().await.unwrap();
+        assert_eq!(all[0].status, VipStatus::Done);
     }
 
     #[tokio::test]

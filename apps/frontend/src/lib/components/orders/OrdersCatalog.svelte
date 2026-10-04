@@ -112,16 +112,18 @@
 		<tbody>
 			{#each filtered as order (order.id)}
 				<tr>
-					<td class="mono">{order.id}</td>
-					<td>{order.title ?? "—"}</td>
-					<td>{order.customer_name}</td>
-					<td>{kindLabel(order.kind)}</td>
-					<td>{sourceLabels[order.source] ?? order.source}</td>
-					<td>
+					<td class="mono cell-nowrap">{order.id}</td>
+					<td class="title cell-grow">{order.title ?? "—"}</td>
+					<td class="cell-nowrap">{order.customer_name}</td>
+					<td class="cell-nowrap">{kindLabel(order.kind)}</td>
+					<td class="cell-nowrap"
+						>{sourceLabels[order.source] ?? order.source}</td
+					>
+					<td class="cell-nowrap">
 						<Badge tone={order.status}>{statusLabel(order.status)}</Badge>
 					</td>
 					{#if mode === "games"}
-						<td class="mono">
+						<td class="mono cell-nowrap">
 							{"completed_at" in order ? (order.completed_at ?? "") : ""}
 						</td>
 					{/if}
@@ -152,8 +154,12 @@
 		color: var(--on-surface-variant);
 	}
 
+	.title {
+		width: 30%;
+	}
+
 	.comment {
-		max-width: 22rem;
+		min-width: 16rem;
 		font-size: 0.82rem;
 		color: var(--on-surface-variant);
 	}

@@ -152,7 +152,7 @@
 	});
 </script>
 
-<Card>
+<Card wide>
 	<Section title="Заказы игр" hint="Список синхронизируется с Google-таблицей.">
 		{#if error}
 			<Alert tone="error">{error}</Alert>
@@ -243,15 +243,26 @@
 						</tr>
 					</thead>
 					<tbody>
+						{#if orders.length === 0}
+							<tr>
+								<td class="empty" colspan="7"
+									>Пока пусто — создай заказ или импортируй из таблицы.</td
+								>
+							</tr>
+						{/if}
 						{#each orders as order (order.id)}
 							<tr>
-								<td class="mono">{order.id}</td>
+								<td class="mono cell-nowrap">{order.id}</td>
 								<td>{order.title ?? "—"}</td>
-								<td>{order.customer_name}</td>
-								<td>{kindLabels[order.kind] ?? order.kind}</td>
-								<td>{sourceLabels[order.source] ?? order.source}</td>
-								<td>
-									<Badge tone={order.status}>
+								<td class="cell-nowrap">{order.customer_name}</td>
+								<td class="cell-nowrap"
+									>{kindLabels[order.kind] ?? order.kind}</td
+								>
+								<td class="cell-nowrap"
+									>{sourceLabels[order.source] ?? order.source}</td
+								>
+								<td class="cell-nowrap"
+									><Badge tone={order.status}>
 										{statusLabels[order.status] ?? order.status}
 									</Badge>
 								</td>
@@ -285,3 +296,11 @@
 		{/if}
 	</Section>
 </Card>
+
+<style>
+	.empty {
+		text-align: center;
+		color: var(--on-surface-variant);
+		font-size: 13px;
+	}
+</style>

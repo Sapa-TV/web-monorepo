@@ -157,7 +157,7 @@
 	});
 </script>
 
-<Card>
+<Card wide>
 	<Section
 		title="VIP / UnVIP"
 		hint="VIP выдаётся на 14 дней, UnVIP (проигрыш постоянной випки) — на 7. Даты окончания подставляются автоматически, если оставить поле пустым."
@@ -274,19 +274,24 @@
 						</tr>
 					</thead>
 					<tbody>
+						{#if records.length === 0}
+							<tr>
+								<td class="empty" colspan="7">Записей нет.</td>
+							</tr>
+						{/if}
 						{#each records as record (record.id)}
 							<tr>
-								<td class="mono">{record.id}</td>
-								<td>{record.customer_name}</td>
-								<td>
-									<Badge tone={record.kind === "vip" ? "ok" : "bad"}>
+								<td class="mono cell-nowrap">{record.id}</td>
+								<td class="cell-nowrap">{record.customer_name}</td>
+								<td class="cell-nowrap"
+									><Badge tone={record.kind === "vip" ? "ok" : "bad"}>
 										{kindLabels[record.kind] ?? record.kind}
 									</Badge>
 								</td>
-								<td class="mono">{record.roulette_date}</td>
-								<td class="mono">{record.end_date}</td>
-								<td>
-									<Badge tone={statusTones[record.status] ?? "pending"}>
+								<td class="mono cell-nowrap">{record.roulette_date}</td>
+								<td class="mono cell-nowrap">{record.end_date}</td>
+								<td class="cell-nowrap"
+									><Badge tone={statusTones[record.status] ?? "pending"}>
 										{statusLabels[record.status] ?? record.status}
 									</Badge>
 								</td>
@@ -349,5 +354,11 @@
 		font-family: var(--font-mono);
 		font-size: 11px;
 		color: var(--on-surface-variant);
+	}
+
+	.empty {
+		text-align: center;
+		color: var(--on-surface-variant);
+		font-size: 13px;
 	}
 </style>

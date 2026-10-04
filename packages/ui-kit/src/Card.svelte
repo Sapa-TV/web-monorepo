@@ -2,13 +2,14 @@
 	import type { Snippet } from "svelte";
 
 	interface Props {
+		wide?: boolean;
 		children?: Snippet;
 	}
 
-	let { children }: Props = $props();
+	let { wide = false, children }: Props = $props();
 </script>
 
-<section class="card">
+<section class="card" class:card--wide={wide}>
 	{@render children?.()}
 </section>
 
@@ -20,5 +21,9 @@
 		padding: 18px;
 		margin-bottom: 20px;
 		max-width: 720px;
+	}
+
+	.card--wide {
+		max-width: none;
 	}
 </style>

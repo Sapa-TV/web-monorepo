@@ -49,7 +49,7 @@
 
 <style>
 	.catalog {
-		max-width: 64rem;
+		max-width: none;
 		width: 100%;
 		margin: 0 auto;
 		min-height: calc(100vh - var(--site-nav-h));

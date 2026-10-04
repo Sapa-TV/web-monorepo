@@ -14,9 +14,17 @@
 
 <style>
 	.table-wrap {
-		overflow: hidden;
+		overflow-x: auto;
 		border-radius: 12px;
 		border: 1px solid var(--outline-variant);
+	}
+
+	.table-wrap :global(.cell-nowrap) {
+		white-space: nowrap;
+	}
+
+	.table-wrap :global(.cell-grow) {
+		min-width: 10rem;
 	}
 
 	.table-wrap :global(table) {
@@ -27,7 +35,7 @@
 
 	.table-wrap :global(th) {
 		text-align: left;
-		padding: 10px 14px;
+		padding: 12px 22px;
 		font-size: 11px;
 		color: var(--on-surface-variant);
 		text-transform: uppercase;
@@ -37,7 +45,7 @@
 	}
 
 	.table-wrap :global(td) {
-		padding: 10px 14px;
+		padding: 12px 22px;
 		border-bottom: 1px solid var(--outline-variant);
 	}
 

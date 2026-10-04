@@ -301,7 +301,7 @@ impl<R: VipRecordRepository> VipService<R> {
             .collect())
     }
 
-    /// Active VIP records expiring within `days` from `today` (inclusive).
+    /// Active VIP records ending within `days` from `today` (not yet ended).
     pub async fn expiring_within(
         &self,
         today: NaiveDate,
@@ -312,7 +312,7 @@ impl<R: VipRecordRepository> VipService<R> {
         Ok(all
             .into_iter()
             .filter(|r| r.status == VipStatus::Active && r.kind == VipKind::Vip)
-            .filter(|r| r.end_date <= horizon)
+            .filter(|r| r.end_date >= today && r.end_date <= horizon)
             .collect())
     }
 
@@ -570,6 +570,16 @@ mod tests {
             VipKind::Vip,
             date("2026-10-09"),
             Some(date("2026-10-30")),
+            None,
+        ))
+        .await
+        .unwrap();
+        svc.create(NewVipRecord::new(
+            "past".to_string(),
+            None,
+            VipKind::Vip,
+            date("2026-09-01"),
+            Some(date("2026-10-05")),
             None,
         ))
         .await
