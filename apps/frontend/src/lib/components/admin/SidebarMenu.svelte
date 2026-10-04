@@ -2,6 +2,7 @@
 	import { resolve } from "$app/paths";
 	import { page } from "$app/state";
 	import IconLoaderPinwheel from "~icons/lucide/loader-pinwheel";
+	import IconListChecks from "~icons/lucide/list-checks";
 	import IconPuzzle from "~icons/lucide/puzzle";
 	import IconTv from "~icons/lucide/tv";
 	import IconUsers from "~icons/lucide/users";
@@ -12,6 +13,7 @@
 
 	const menu = [
 		{ label: "Платформы", icon: IconTv, path: panelBase },
+		{ label: "Заказы", icon: IconListChecks, path: `${panelBase}/orders` },
 		{ label: "Виджеты", icon: IconPuzzle, path: `${panelBase}/widgets` },
 		{
 			label: "Рулетка",
