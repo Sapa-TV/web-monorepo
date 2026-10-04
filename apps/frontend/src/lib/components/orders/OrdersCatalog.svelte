@@ -97,7 +97,6 @@
 	<table>
 		<thead>
 			<tr>
-				<th>№</th>
 				<th>{mode === "games" ? "Игра" : "Название"}</th>
 				<th>Заказчик</th>
 				<th>Тип</th>
@@ -112,7 +111,6 @@
 		<tbody>
 			{#each filtered as order (order.id)}
 				<tr>
-					<td class="mono cell-nowrap">{order.id}</td>
 					<td class="title cell-grow">{order.title ?? "—"}</td>
 					<td class="cell-nowrap">{order.customer_name}</td>
 					<td class="cell-nowrap">{kindLabel(order.kind)}</td>

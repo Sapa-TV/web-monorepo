@@ -1,4 +1,4 @@
-use chrono::{Days, NaiveDate};
+﻿use chrono::{Days, NaiveDate};
 
 use crate::error::OrdersServiceError;
 use crate::orders::game::{GameOrder, GameOrderId, GameOrderKind, NewGameOrder, OrderSource};
@@ -89,6 +89,7 @@ impl<R: GameOrderRepository> GameOrderService<R> {
                     matches_query(q, &[title, &o.customer_name])
                 })
             })
+            .rev()
             .collect())
     }
 
