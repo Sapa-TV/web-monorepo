@@ -13,9 +13,18 @@
 import {
   ActionResponse,
   AddAdminRequest,
+  AdminGameOrderResponse,
+  AdminMovieOrderResponse,
   AdminResponse,
   CreateSessionRequest,
+  CreateVipRecordRequest,
+  GameOrderKind,
+  GameOrderResponse,
   IngressCredentialsResponse,
+  MovieKind,
+  MovieOrderResponse,
+  OrderSource,
+  OrderStatus,
   PresenceResponse,
   RarityId,
   RarityResponse,
@@ -30,10 +39,15 @@ import {
   TwitchLoginCallbackResponse,
   TwitchLoginStartResponse,
   TwitchUserResponse,
+  UpdateVipRecordRequest,
   UpsertActionRequest,
+  UpsertGameOrderRequest,
+  UpsertMovieOrderRequest,
   UpsertRarityRequest,
   UpsertRouletteSlotRequest,
   UpsertRuleRequest,
+  VipRecordResponse,
+  VipRemindersResponse,
   VkVideoLiveAuthCallbackResponse,
   VkVideoLiveAuthStartResponse,
   WidgetAccessKeyResponse,
@@ -167,6 +181,200 @@ export class Api<
       path: `/api/admin/ingress/credentials`,
       method: "DELETE",
       query: query,
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags admin
+   * @name CreateGameOrder
+   * @request POST:/api/admin/orders/games
+   */
+  createGameOrder = (
+    data: UpsertGameOrderRequest,
+    params: RequestParams = {},
+  ) =>
+    this.request<AdminGameOrderResponse, any>({
+      path: `/api/admin/orders/games`,
+      method: "POST",
+      body: data,
+      type: ContentType.Json,
+      format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags admin
+   * @name UpdateGameOrder
+   * @request PUT:/api/admin/orders/games/{id}
+   */
+  updateGameOrder = (
+    id: number,
+    data: UpsertGameOrderRequest,
+    params: RequestParams = {},
+  ) =>
+    this.request<AdminGameOrderResponse, void>({
+      path: `/api/admin/orders/games/${id}`,
+      method: "PUT",
+      body: data,
+      type: ContentType.Json,
+      format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags admin
+   * @name DeleteGameOrder
+   * @request DELETE:/api/admin/orders/games/{id}
+   */
+  deleteGameOrder = (id: number, params: RequestParams = {}) =>
+    this.request<void, void>({
+      path: `/api/admin/orders/games/${id}`,
+      method: "DELETE",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags admin
+   * @name CreateMovieOrder
+   * @request POST:/api/admin/orders/movies
+   */
+  createMovieOrder = (
+    data: UpsertMovieOrderRequest,
+    params: RequestParams = {},
+  ) =>
+    this.request<AdminMovieOrderResponse, any>({
+      path: `/api/admin/orders/movies`,
+      method: "POST",
+      body: data,
+      type: ContentType.Json,
+      format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags admin
+   * @name UpdateMovieOrder
+   * @request PUT:/api/admin/orders/movies/{id}
+   */
+  updateMovieOrder = (
+    id: number,
+    data: UpsertMovieOrderRequest,
+    params: RequestParams = {},
+  ) =>
+    this.request<AdminMovieOrderResponse, void>({
+      path: `/api/admin/orders/movies/${id}`,
+      method: "PUT",
+      body: data,
+      type: ContentType.Json,
+      format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags admin
+   * @name DeleteMovieOrder
+   * @request DELETE:/api/admin/orders/movies/{id}
+   */
+  deleteMovieOrder = (id: number, params: RequestParams = {}) =>
+    this.request<void, void>({
+      path: `/api/admin/orders/movies/${id}`,
+      method: "DELETE",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags admin
+   * @name ListVipRecords
+   * @request GET:/api/admin/orders/vip
+   */
+  listVipRecords = (params: RequestParams = {}) =>
+    this.request<VipRecordResponse[], any>({
+      path: `/api/admin/orders/vip`,
+      method: "GET",
+      format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags admin
+   * @name CreateVipRecord
+   * @request POST:/api/admin/orders/vip
+   */
+  createVipRecord = (
+    data: CreateVipRecordRequest,
+    params: RequestParams = {},
+  ) =>
+    this.request<VipRecordResponse, any>({
+      path: `/api/admin/orders/vip`,
+      method: "POST",
+      body: data,
+      type: ContentType.Json,
+      format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags admin
+   * @name VipReminders
+   * @request GET:/api/admin/orders/vip/reminders
+   */
+  vipReminders = (
+    query?: {
+      /**
+       * @format int64
+       * @min 0
+       */
+      days?: number | null;
+    },
+    params: RequestParams = {},
+  ) =>
+    this.request<VipRemindersResponse, any>({
+      path: `/api/admin/orders/vip/reminders`,
+      method: "GET",
+      query: query,
+      format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags admin
+   * @name UpdateVipRecord
+   * @request PUT:/api/admin/orders/vip/{id}
+   */
+  updateVipRecord = (
+    id: number,
+    data: UpdateVipRecordRequest,
+    params: RequestParams = {},
+  ) =>
+    this.request<VipRecordResponse, void>({
+      path: `/api/admin/orders/vip/${id}`,
+      method: "PUT",
+      body: data,
+      type: ContentType.Json,
+      format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags admin
+   * @name DeleteVipRecord
+   * @request DELETE:/api/admin/orders/vip/{id}
+   */
+  deleteVipRecord = (id: number, params: RequestParams = {}) =>
+    this.request<void, void>({
+      path: `/api/admin/orders/vip/${id}`,
+      method: "DELETE",
       ...params,
     });
   /**
@@ -563,6 +771,52 @@ export class Api<
     this.request<string, any>({
       path: `/api/health`,
       method: "GET",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags orders
+   * @name ListGameOrders
+   * @request GET:/api/orders/games
+   */
+  listGameOrders = (
+    query?: {
+      status?: null | OrderStatus;
+      kind?: null | GameOrderKind;
+      source?: null | OrderSource;
+      q?: string | null;
+    },
+    params: RequestParams = {},
+  ) =>
+    this.request<GameOrderResponse[], any>({
+      path: `/api/orders/games`,
+      method: "GET",
+      query: query,
+      format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags orders
+   * @name ListMovieOrders
+   * @request GET:/api/orders/movies
+   */
+  listMovieOrders = (
+    query?: {
+      status?: null | OrderStatus;
+      kind?: null | MovieKind;
+      source?: null | OrderSource;
+      q?: string | null;
+    },
+    params: RequestParams = {},
+  ) =>
+    this.request<MovieOrderResponse[], any>({
+      path: `/api/orders/movies`,
+      method: "GET",
+      query: query,
+      format: "json",
       ...params,
     });
   /**

@@ -37,10 +37,8 @@
 
 		<div class="nav-actions">
 			<span class="build-sha" title="Build commit">{GIT_SHA}</span>
-			<!-- <a class="nav-link" href="/links">
-				<IconBook aria-hidden="true" />
-				Каталог
-			</a> -->
+			<a class="nav-link" href={resolve("games")}>Игры</a>
+			<a class="nav-link" href={resolve("movies")}>Фильмы</a>
 			<DonateToggle />
 			<button
 				class="theme-toggle"
@@ -141,6 +139,27 @@
 		width: 1rem;
 		height: 1rem;
 		flex-shrink: 0;
+	}
+
+	.nav-link {
+		display: inline-flex;
+		align-items: center;
+		border: 1px solid var(--outline-variant);
+		background: var(--surface-container-low);
+		color: var(--on-surface);
+		border-radius: 999px;
+		padding: 0.45rem 0.9rem;
+		font-size: 0.8rem;
+		font-weight: 600;
+		text-decoration: none;
+		transition:
+			border-color 0.15s,
+			color 0.15s;
+	}
+
+	.nav-link:hover {
+		border-color: var(--primary);
+		color: var(--primary);
 	}
 
 	.build-sha {

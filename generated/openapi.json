@@ -232,6 +232,365 @@
         }
       }
     },
+    "/api/admin/orders/games": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "create_game_order",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertGameOrderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Game order created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminGameOrderResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/orders/games/{id}": {
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "update_game_order",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertGameOrderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Game order updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminGameOrderResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Game order not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "delete_game_order",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Game order deleted"
+          },
+          "404": {
+            "description": "Game order not found"
+          }
+        }
+      }
+    },
+    "/api/admin/orders/movies": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "create_movie_order",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertMovieOrderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Movie order created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminMovieOrderResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/orders/movies/{id}": {
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "update_movie_order",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertMovieOrderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Movie order updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminMovieOrderResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Movie order not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "delete_movie_order",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Movie order deleted"
+          },
+          "404": {
+            "description": "Movie order not found"
+          }
+        }
+      }
+    },
+    "/api/admin/orders/vip": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "list_vip_records",
+        "responses": {
+          "200": {
+            "description": "All VIP records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/VipRecordResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "create_vip_record",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateVipRecordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "VIP record created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VipRecordResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/orders/vip/reminders": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "vip_reminders",
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int64",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "VIP reminders",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VipRemindersResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/orders/vip/{id}": {
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "update_vip_record",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateVipRecordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "VIP record updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VipRecordResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "VIP record not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "delete_vip_record",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "VIP record deleted"
+          },
+          "404": {
+            "description": "VIP record not found"
+          }
+        }
+      }
+    },
     "/api/admin/presence": {
       "get": {
         "tags": [
@@ -968,6 +1327,168 @@
               "text/plain": {
                 "schema": {
                   "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/orders/games": {
+      "get": {
+        "tags": [
+          "orders"
+        ],
+        "operationId": "list_game_orders",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/components/schemas/OrderStatus"
+                }
+              ]
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/components/schemas/GameOrderKind"
+                }
+              ]
+            }
+          },
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/components/schemas/OrderSource"
+                }
+              ]
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Game orders",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GameOrderResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/orders/movies": {
+      "get": {
+        "tags": [
+          "orders"
+        ],
+        "operationId": "list_movie_orders",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/components/schemas/OrderStatus"
+                }
+              ]
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/components/schemas/MovieKind"
+                }
+              ]
+            }
+          },
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/components/schemas/OrderSource"
+                }
+              ]
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Movie orders",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MovieOrderResponse"
+                  }
                 }
               }
             }
@@ -1890,6 +2411,127 @@
           }
         }
       },
+      "AdminGameOrderResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "customer_name",
+          "kind",
+          "source",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "comment": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "completed_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "customer_name": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "kind": {
+            "$ref": "#/components/schemas/GameOrderKind"
+          },
+          "source": {
+            "$ref": "#/components/schemas/OrderSource"
+          },
+          "status": {
+            "$ref": "#/components/schemas/OrderStatus"
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "AdminMovieOrderResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "customer_name",
+          "kind",
+          "source",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "comment": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "customer_name": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "kind": {
+            "$ref": "#/components/schemas/MovieKind"
+          },
+          "source": {
+            "$ref": "#/components/schemas/OrderSource"
+          },
+          "status": {
+            "$ref": "#/components/schemas/OrderStatus"
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
       "AdminResponse": {
         "type": "object",
         "required": [
@@ -1948,6 +2590,39 @@
           }
         }
       },
+      "CreateVipRecordRequest": {
+        "type": "object",
+        "required": [
+          "customer_name",
+          "kind",
+          "roulette_date"
+        ],
+        "properties": {
+          "customer_name": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/VipKind"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "roulette_date": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      },
       "EnqueueRequest": {
         "type": "object",
         "required": [
@@ -1960,6 +2635,60 @@
           },
           "user_name": {
             "type": "string"
+          }
+        }
+      },
+      "GameOrderKind": {
+        "type": "string",
+        "enum": [
+          "stream",
+          "playthrough"
+        ]
+      },
+      "GameOrderResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "customer_name",
+          "kind",
+          "source",
+          "status"
+        ],
+        "properties": {
+          "comment": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "completed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "customer_name": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "kind": {
+            "$ref": "#/components/schemas/GameOrderKind"
+          },
+          "source": {
+            "$ref": "#/components/schemas/OrderSource"
+          },
+          "status": {
+            "$ref": "#/components/schemas/OrderStatus"
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },
@@ -2023,6 +2752,56 @@
           "ends_with"
         ]
       },
+      "MovieKind": {
+        "type": "string",
+        "enum": [
+          "movie",
+          "series",
+          "anime",
+          "youtube"
+        ]
+      },
+      "MovieOrderResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "customer_name",
+          "kind",
+          "source",
+          "status"
+        ],
+        "properties": {
+          "comment": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "customer_name": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "kind": {
+            "$ref": "#/components/schemas/MovieKind"
+          },
+          "source": {
+            "$ref": "#/components/schemas/OrderSource"
+          },
+          "status": {
+            "$ref": "#/components/schemas/OrderStatus"
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "NextResponse": {
         "type": "object",
         "required": [
@@ -2037,6 +2816,23 @@
             "$ref": "#/components/schemas/RouletteSlot"
           }
         }
+      },
+      "OrderSource": {
+        "type": "string",
+        "enum": [
+          "donate",
+          "points",
+          "roulette",
+          "other"
+        ]
+      },
+      "OrderStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "completed",
+          "cancelled"
+        ]
       },
       "PlatformId": {
         "type": "integer",
@@ -2581,6 +3377,41 @@
           }
         }
       },
+      "UpdateVipRecordRequest": {
+        "type": "object",
+        "required": [
+          "customer_name",
+          "kind",
+          "roulette_date",
+          "end_date",
+          "status"
+        ],
+        "properties": {
+          "customer_name": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/VipKind"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "roulette_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "status": {
+            "$ref": "#/components/schemas/VipStatus"
+          }
+        }
+      },
       "UpsertActionRequest": {
         "type": "object",
         "required": [
@@ -2597,6 +3428,83 @@
           },
           "name": {
             "type": "string"
+          }
+        }
+      },
+      "UpsertGameOrderRequest": {
+        "type": "object",
+        "required": [
+          "customer_name",
+          "kind",
+          "source",
+          "status"
+        ],
+        "properties": {
+          "comment": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "completed_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "customer_name": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/GameOrderKind"
+          },
+          "source": {
+            "$ref": "#/components/schemas/OrderSource"
+          },
+          "status": {
+            "$ref": "#/components/schemas/OrderStatus"
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "UpsertMovieOrderRequest": {
+        "type": "object",
+        "required": [
+          "customer_name",
+          "kind",
+          "source",
+          "status"
+        ],
+        "properties": {
+          "comment": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "customer_name": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/MovieKind"
+          },
+          "source": {
+            "$ref": "#/components/schemas/OrderSource"
+          },
+          "status": {
+            "$ref": "#/components/schemas/OrderStatus"
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },
@@ -2738,6 +3646,99 @@
           }
         }
       },
+      "VipKind": {
+        "type": "string",
+        "enum": [
+          "vip",
+          "unvip"
+        ]
+      },
+      "VipRecordResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "customer_name",
+          "kind",
+          "roulette_date",
+          "end_date",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string"
+          },
+          "customer_name": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "kind": {
+            "$ref": "#/components/schemas/VipKind"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "roulette_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "status": {
+            "$ref": "#/components/schemas/VipStatus"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "VipRemindersResponse": {
+        "type": "object",
+        "required": [
+          "expiring",
+          "awaiting_return"
+        ],
+        "properties": {
+          "awaiting_return": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VipRecordResponse"
+            }
+          },
+          "expiring": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VipRecordResponse"
+            }
+          }
+        }
+      },
+      "VipStatus": {
+        "type": "string",
+        "enum": [
+          "active",
+          "done",
+          "cancelled"
+        ]
+      },
       "VkVideoLiveAuthCallbackResponse": {
         "type": "object",
         "required": [
@@ -2801,6 +3802,10 @@
     {
       "name": "stream",
       "description": "Stream status"
+    },
+    {
+      "name": "orders",
+      "description": "Game/movie order directory"
     },
     {
       "name": "auth",

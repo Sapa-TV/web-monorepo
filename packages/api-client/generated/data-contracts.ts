@@ -10,6 +10,17 @@
  * ---------------------------------------------------------------
  */
 
+export enum VipStatus {
+  Active = "active",
+  Done = "done",
+  Cancelled = "cancelled",
+}
+
+export enum VipKind {
+  Vip = "vip",
+  Unvip = "unvip",
+}
+
 /** Auto-generated discriminant enum variants */
 export enum RuleTrigger {
   ChatMessage = "chat_message",
@@ -24,11 +35,36 @@ export enum QueueStatus {
   Cancelled = "Cancelled",
 }
 
+export enum OrderStatus {
+  Pending = "pending",
+  Completed = "completed",
+  Cancelled = "cancelled",
+}
+
+export enum OrderSource {
+  Donate = "donate",
+  Points = "points",
+  Roulette = "roulette",
+  Other = "other",
+}
+
+export enum MovieKind {
+  Movie = "movie",
+  Series = "series",
+  Anime = "anime",
+  Youtube = "youtube",
+}
+
 export enum MessageMatcher {
   Contains = "contains",
   StartsWith = "starts_with",
   Equals = "equals",
   EndsWith = "ends_with",
+}
+
+export enum GameOrderKind {
+  Stream = "stream",
+  Playthrough = "playthrough",
 }
 
 /**
@@ -67,6 +103,50 @@ export interface AddAdminRequest {
   twitch_id: string;
 }
 
+export interface AdminGameOrderResponse {
+  comment?: string | null;
+  /** @format date */
+  completed_at?: string | null;
+  created_at: string;
+  customer_name: string;
+  /**
+   * @format int32
+   * @min 0
+   */
+  id: number;
+  kind: GameOrderKind;
+  source: OrderSource;
+  status: OrderStatus;
+  title?: string | null;
+  updated_at: string;
+  /**
+   * @format int32
+   * @min 0
+   */
+  user_id?: number | null;
+}
+
+export interface AdminMovieOrderResponse {
+  comment?: string | null;
+  created_at: string;
+  customer_name: string;
+  /**
+   * @format int32
+   * @min 0
+   */
+  id: number;
+  kind: MovieKind;
+  source: OrderSource;
+  status: OrderStatus;
+  title?: string | null;
+  updated_at: string;
+  /**
+   * @format int32
+   * @min 0
+   */
+  user_id?: number | null;
+}
+
 export interface AdminResponse {
   created_at: string;
   display_name?: string | null;
@@ -86,9 +166,34 @@ export interface CreateUserRequest {
   display_name: string;
 }
 
+export interface CreateVipRecordRequest {
+  customer_name: string;
+  /** @format date */
+  end_date?: string | null;
+  kind: VipKind;
+  note?: string | null;
+  /** @format date */
+  roulette_date: string;
+}
+
 export interface EnqueueRequest {
   user_id: UserId;
   user_name: string;
+}
+
+export interface GameOrderResponse {
+  comment?: string | null;
+  completed_at?: string | null;
+  customer_name: string;
+  /**
+   * @format int32
+   * @min 0
+   */
+  id: number;
+  kind: GameOrderKind;
+  source: OrderSource;
+  status: OrderStatus;
+  title?: string | null;
 }
 
 export interface IngressCredentialsResponse {
@@ -105,6 +210,20 @@ export interface LinkPlatformRequest {
 export interface MessageConditions {
   matcher: MessageMatcher;
   pattern?: string | null;
+}
+
+export interface MovieOrderResponse {
+  comment?: string | null;
+  customer_name: string;
+  /**
+   * @format int32
+   * @min 0
+   */
+  id: number;
+  kind: MovieKind;
+  source: OrderSource;
+  status: OrderStatus;
+  title?: string | null;
 }
 
 export interface NextResponse {
@@ -316,10 +435,41 @@ export interface UpdateUserRequest {
   display_name: string;
 }
 
+export interface UpdateVipRecordRequest {
+  customer_name: string;
+  /** @format date */
+  end_date: string;
+  kind: VipKind;
+  note?: string | null;
+  /** @format date */
+  roulette_date: string;
+  status: VipStatus;
+}
+
 export interface UpsertActionRequest {
   enabled: boolean;
   kind: ActionKind;
   name: string;
+}
+
+export interface UpsertGameOrderRequest {
+  comment?: string | null;
+  /** @format date */
+  completed_at?: string | null;
+  customer_name: string;
+  kind: GameOrderKind;
+  source: OrderSource;
+  status: OrderStatus;
+  title?: string | null;
+}
+
+export interface UpsertMovieOrderRequest {
+  comment?: string | null;
+  customer_name: string;
+  kind: MovieKind;
+  source: OrderSource;
+  status: OrderStatus;
+  title?: string | null;
 }
 
 export interface UpsertRarityRequest {
@@ -374,6 +524,34 @@ export interface UserResponse {
   id: UserId;
   platforms: UserPlatformResponse[];
   updated_at: string;
+}
+
+export interface VipRecordResponse {
+  created_at: string;
+  customer_name: string;
+  /** @format date */
+  end_date: string;
+  /**
+   * @format int32
+   * @min 0
+   */
+  id: number;
+  kind: VipKind;
+  note?: string | null;
+  /** @format date */
+  roulette_date: string;
+  status: VipStatus;
+  updated_at: string;
+  /**
+   * @format int32
+   * @min 0
+   */
+  user_id?: number | null;
+}
+
+export interface VipRemindersResponse {
+  awaiting_return: VipRecordResponse[];
+  expiring: VipRecordResponse[];
 }
 
 export interface VkVideoLiveAuthCallbackResponse {
