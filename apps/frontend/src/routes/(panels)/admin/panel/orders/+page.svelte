@@ -1,6 +1,7 @@
 <script lang="ts">
 	import GameOrdersCard from "#lib/components/admin/orders/GameOrdersCard.svelte";
 	import MovieOrdersCard from "#lib/components/admin/orders/MovieOrdersCard.svelte";
+	import SheetsCard from "#lib/components/admin/orders/SheetsCard.svelte";
 	import VipCard from "#lib/components/admin/orders/VipCard.svelte";
 
 	type Tab = "games" | "movies" | "vip";
@@ -40,6 +41,8 @@
 {:else}
 	<VipCard />
 {/if}
+
+<SheetsCard />
 
 <style>
 	.tabs {

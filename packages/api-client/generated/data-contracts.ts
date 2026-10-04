@@ -196,6 +196,30 @@ export interface GameOrderResponse {
   title?: string | null;
 }
 
+export interface ImportCountResponse {
+  /**
+   * @format int32
+   * @min 0
+   */
+  imported: number;
+  /**
+   * @format int32
+   * @min 0
+   */
+  skipped: number;
+}
+
+export interface ImportReportResponse {
+  games: ImportCountResponse;
+  movies: ImportCountResponse;
+  spreadsheet_id: string;
+  vip: ImportCountResponse;
+}
+
+export interface ImportRequest {
+  spreadsheet_url: string;
+}
+
 export interface IngressCredentialsResponse {
   twitch: boolean;
   vk_video_live: boolean;
@@ -396,6 +420,11 @@ export interface SessionResponse {
 
 export interface SetStreamStatusRequest {
   online: boolean;
+}
+
+export interface SheetsStatusResponse {
+  configured: boolean;
+  spreadsheet_id: string;
 }
 
 export interface StreamStatusResponse {

@@ -333,6 +333,42 @@
         }
       }
     },
+    "/api/admin/orders/import": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "import_orders",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Import report",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportReportResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Not configured or invalid url"
+          },
+          "502": {
+            "description": "Google API error"
+          }
+        }
+      }
+    },
     "/api/admin/orders/movies": {
       "post": {
         "tags": [
@@ -430,6 +466,26 @@
           },
           "404": {
             "description": "Movie order not found"
+          }
+        }
+      }
+    },
+    "/api/admin/orders/sheets": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "sheets_status",
+        "responses": {
+          "200": {
+            "description": "Sheets integration status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SheetsStatusResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -2692,6 +2748,59 @@
           }
         }
       },
+      "ImportCountResponse": {
+        "type": "object",
+        "required": [
+          "imported",
+          "skipped"
+        ],
+        "properties": {
+          "imported": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "skipped": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "ImportReportResponse": {
+        "type": "object",
+        "required": [
+          "spreadsheet_id",
+          "games",
+          "movies",
+          "vip"
+        ],
+        "properties": {
+          "games": {
+            "$ref": "#/components/schemas/ImportCountResponse"
+          },
+          "movies": {
+            "$ref": "#/components/schemas/ImportCountResponse"
+          },
+          "spreadsheet_id": {
+            "type": "string"
+          },
+          "vip": {
+            "$ref": "#/components/schemas/ImportCountResponse"
+          }
+        }
+      },
+      "ImportRequest": {
+        "type": "object",
+        "required": [
+          "spreadsheet_url"
+        ],
+        "properties": {
+          "spreadsheet_url": {
+            "type": "string"
+          }
+        }
+      },
       "IngressCredentialsResponse": {
         "type": "object",
         "required": [
@@ -3262,6 +3371,21 @@
         "properties": {
           "online": {
             "type": "boolean"
+          }
+        }
+      },
+      "SheetsStatusResponse": {
+        "type": "object",
+        "required": [
+          "configured",
+          "spreadsheet_id"
+        ],
+        "properties": {
+          "configured": {
+            "type": "boolean"
+          },
+          "spreadsheet_id": {
+            "type": "string"
           }
         }
       },

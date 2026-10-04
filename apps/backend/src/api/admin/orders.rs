@@ -14,6 +14,7 @@ use crate::orders::status::OrderStatus;
 use crate::orders::vip::{
     NewVipRecord, VipKind, VipRecord, VipRecordId, VipRecordUpdate, VipStatus,
 };
+use crate::sheets::service::{ImportCount, ImportReport};
 use crate::state::AppState;
 
 #[derive(Debug, Deserialize, IntoParams)]
@@ -422,6 +423,88 @@ pub async fn delete_vip_record(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[derive(Debug, Serialize, ToSchema)]
+#[non_exhaustive]
+pub struct SheetsStatusResponse {
+    pub configured: bool,
+    pub spreadsheet_id: String,
+    #[serde(skip)]
+    _sealed: (),
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
+#[non_exhaustive]
+pub struct ImportRequest {
+    pub spreadsheet_url: String,
+    #[serde(skip)]
+    _sealed: (),
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+#[non_exhaustive]
+pub struct ImportCountResponse {
+    pub imported: u32,
+    pub skipped: u32,
+    #[serde(skip)]
+    _sealed: (),
+}
+
+impl From<ImportCount> for ImportCountResponse {
+    fn from(count: ImportCount) -> Self {
+        Self {
+            imported: count.imported,
+            skipped: count.skipped,
+            _sealed: (),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+#[non_exhaustive]
+pub struct ImportReportResponse {
+    pub spreadsheet_id: String,
+    pub games: ImportCountResponse,
+    pub movies: ImportCountResponse,
+    pub vip: ImportCountResponse,
+    #[serde(skip)]
+    _sealed: (),
+}
+
+impl From<ImportReport> for ImportReportResponse {
+    fn from(report: ImportReport) -> Self {
+        Self {
+            spreadsheet_id: report.spreadsheet_id,
+            games: ImportCountResponse::from(report.games),
+            movies: ImportCountResponse::from(report.movies),
+            vip: ImportCountResponse::from(report.vip),
+            _sealed: (),
+        }
+    }
+}
+
+#[utoipa::path(get, path = "/admin/orders/sheets", tag = "admin",
+    responses((status = 200, description = "Sheets integration status", body = SheetsStatusResponse)))]
+pub async fn sheets_status(State(state): State<AppState>) -> Json<SheetsStatusResponse> {
+    Json(SheetsStatusResponse {
+        configured: state.sheets.configured(),
+        spreadsheet_id: state.sheets.spreadsheet_id(),
+        _sealed: (),
+    })
+}
+
+#[utoipa::path(post, path = "/admin/orders/import", tag = "admin",
+    request_body = ImportRequest,
+    responses((status = 200, description = "Import report", body = ImportReportResponse),
+        (status = 400, description = "Not configured or invalid url"),
+        (status = 502, description = "Google API error")))]
+pub async fn import_orders(
+    State(state): State<AppState>,
+    Json(body): Json<ImportRequest>,
+) -> Result<Json<ImportReportResponse>, ApiError> {
+    let report = state.sheets.import(&body.spreadsheet_url).await?;
+    Ok(Json(ImportReportResponse::from(report)))
+}
+
 pub fn session_router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
         .routes(routes!(create_game_order))
@@ -435,6 +518,8 @@ pub fn session_router() -> OpenApiRouter<AppState> {
         .routes(routes!(create_vip_record))
         .routes(routes!(update_vip_record))
         .routes(routes!(delete_vip_record))
+        .routes(routes!(sheets_status))
+        .routes(routes!(import_orders))
 }
 
 #[cfg(test)]

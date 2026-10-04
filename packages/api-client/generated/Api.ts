@@ -20,6 +20,8 @@ import {
   CreateVipRecordRequest,
   GameOrderKind,
   GameOrderResponse,
+  ImportReportResponse,
+  ImportRequest,
   IngressCredentialsResponse,
   MovieKind,
   MovieOrderResponse,
@@ -33,6 +35,7 @@ import {
   RouletteSlotResponse,
   RuleResponse,
   SessionResponse,
+  SheetsStatusResponse,
   StreamStatusResponse,
   TwitchAuthCallbackResponse,
   TwitchAuthStartResponse,
@@ -239,6 +242,22 @@ export class Api<
    * No description
    *
    * @tags admin
+   * @name ImportOrders
+   * @request POST:/api/admin/orders/import
+   */
+  importOrders = (data: ImportRequest, params: RequestParams = {}) =>
+    this.request<ImportReportResponse, void>({
+      path: `/api/admin/orders/import`,
+      method: "POST",
+      body: data,
+      type: ContentType.Json,
+      format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags admin
    * @name CreateMovieOrder
    * @request POST:/api/admin/orders/movies
    */
@@ -285,6 +304,20 @@ export class Api<
     this.request<void, void>({
       path: `/api/admin/orders/movies/${id}`,
       method: "DELETE",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags admin
+   * @name SheetsStatus
+   * @request GET:/api/admin/orders/sheets
+   */
+  sheetsStatus = (params: RequestParams = {}) =>
+    this.request<SheetsStatusResponse, any>({
+      path: `/api/admin/orders/sheets`,
+      method: "GET",
+      format: "json",
       ...params,
     });
   /**

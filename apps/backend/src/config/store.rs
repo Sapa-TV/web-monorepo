@@ -99,6 +99,20 @@ impl<R: ConfigRepository> ConfigStore<R> {
         self.static_cfg.vk_video_live.as_deref()
     }
 
+    pub fn google_service_account_key_base64(&self) -> Option<&str> {
+        self.static_cfg.google_service_account_key_base64.as_deref()
+    }
+
+    pub fn sheets_spreadsheet_id(&self) -> String {
+        self.runtime_cfg.read().sheets.spreadsheet_id.clone()
+    }
+
+    pub async fn set_sheets_spreadsheet_id(&self, spreadsheet_id: &str) -> Result<(), ConfigError> {
+        let mut next = self.runtime_cfg.read().clone();
+        next.sheets.spreadsheet_id = spreadsheet_id.to_string();
+        self.update_runtime(next).await
+    }
+
     pub async fn update_runtime(&self, next: RuntimeConfig) -> Result<(), ConfigError> {
         next.validate()?;
         self.repo.save(&next).await?;
@@ -180,6 +194,7 @@ mod tests {
             None,
             false,
             Some(Arc::new(twitch)),
+            None,
             None,
         ));
         let store = ConfigStore::new(

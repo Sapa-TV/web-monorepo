@@ -5,6 +5,7 @@ use serde::Deserialize;
 
 use crate::config::runtime::{
     QueueRuntimeConfig, RouletteRuntimeConfig, RuntimeConfig, SessionRuntimeConfig,
+    SheetsRuntimeConfig,
 };
 use crate::config::twitch::TwitchConfig;
 use crate::config::vk_video_live::VkVideoLiveConfig;
@@ -20,6 +21,7 @@ pub struct StaticConfig {
     pub cookie_secure: bool,
     pub twitch: Option<Arc<TwitchConfig>>,
     pub vk_video_live: Option<Arc<VkVideoLiveConfig>>,
+    pub google_service_account_key_base64: Option<String>,
     #[serde(skip)]
     _sealed: (),
 }
@@ -32,6 +34,7 @@ impl Default for StaticConfig {
             cookie_secure: false,
             twitch: None,
             vk_video_live: None,
+            google_service_account_key_base64: None,
             _sealed: (),
         }
     }
@@ -44,6 +47,7 @@ impl StaticConfig {
         cookie_secure: bool,
         twitch: Option<Arc<TwitchConfig>>,
         vk_video_live: Option<Arc<VkVideoLiveConfig>>,
+        google_service_account_key_base64: Option<String>,
     ) -> Self {
         Self {
             port,
@@ -51,6 +55,7 @@ impl StaticConfig {
             cookie_secure,
             twitch,
             vk_video_live,
+            google_service_account_key_base64,
             _sealed: (),
         }
     }
@@ -78,6 +83,7 @@ impl StaticConfig {
             cookie_secure: raw.cookie_secure,
             twitch: raw.twitch,
             vk_video_live: raw.vk_video_live,
+            google_service_account_key_base64: raw.google_service_account_key_base64,
             _sealed: (),
         };
         let seed = RuntimeConfig::new(
@@ -89,6 +95,7 @@ impl StaticConfig {
             ),
             SessionRuntimeConfig::new(raw.session_ttl_secs, raw.sessions_cleanup_interval_secs),
             RouletteRuntimeConfig::new(raw.roulette_timeout_secs),
+            SheetsRuntimeConfig::new(raw.google_spreadsheet_id),
         );
         (static_cfg, Some(seed))
     }
@@ -109,6 +116,8 @@ struct RawConfig {
     vk_video_live: Option<Arc<VkVideoLiveConfig>>,
     session_ttl_secs: u64,
     cookie_secure: bool,
+    google_service_account_key_base64: Option<String>,
+    google_spreadsheet_id: String,
 }
 
 impl Default for RawConfig {
@@ -127,6 +136,8 @@ impl Default for RawConfig {
             twitch: static_cfg.twitch,
             vk_video_live: static_cfg.vk_video_live,
             cookie_secure: static_cfg.cookie_secure,
+            google_service_account_key_base64: None,
+            google_spreadsheet_id: String::new(),
         }
     }
 }

@@ -98,11 +98,30 @@ impl Default for RouletteRuntimeConfig {
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 #[non_exhaustive]
+pub struct SheetsRuntimeConfig {
+    pub spreadsheet_id: String,
+    #[serde(skip)]
+    _sealed: (),
+}
+
+impl SheetsRuntimeConfig {
+    pub fn new(spreadsheet_id: String) -> Self {
+        Self {
+            spreadsheet_id,
+            _sealed: (),
+        }
+    }
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+#[non_exhaustive]
 pub struct RuntimeConfig {
     pub widget_access_key: String,
     pub queue: QueueRuntimeConfig,
     pub session: SessionRuntimeConfig,
     pub roulette: RouletteRuntimeConfig,
+    pub sheets: SheetsRuntimeConfig,
     #[serde(skip)]
     _sealed: (),
 }
@@ -113,12 +132,14 @@ impl RuntimeConfig {
         queue: QueueRuntimeConfig,
         session: SessionRuntimeConfig,
         roulette: RouletteRuntimeConfig,
+        sheets: SheetsRuntimeConfig,
     ) -> Self {
         Self {
             widget_access_key,
             queue,
             session,
             roulette,
+            sheets,
             _sealed: (),
         }
     }

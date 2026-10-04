@@ -22,6 +22,7 @@ pub mod roulette;
 pub mod rules;
 pub mod runtime;
 pub mod session;
+pub mod sheets;
 pub mod state;
 pub mod stream;
 #[cfg(test)]

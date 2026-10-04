@@ -11,6 +11,7 @@ pub mod queue;
 pub mod repository;
 pub mod rules;
 pub mod session;
+pub mod sheets;
 pub mod user;
 
 pub use actions::ActionServiceError;
@@ -22,4 +23,5 @@ pub use queue::QueueServiceError;
 pub use repository::RepositoryError;
 pub use rules::RuleServiceError;
 pub use session::SessionServiceError;
+pub use sheets::SheetsError;
 pub use user::UserServiceError;

@@ -46,6 +46,8 @@ use crate::rules::repository::RuleRepository;
 use crate::rules::service::RuleService;
 use crate::session::repository::SessionRepository;
 use crate::session::service::SessionService;
+use crate::sheets::client::GoogleSheetsClient;
+use crate::sheets::service::SheetsService;
 use crate::stream::StreamStatus;
 use crate::user::repository::UserRepository;
 use crate::user::service::UserService;
@@ -89,6 +91,8 @@ where
     pub game_order_service: Arc<GameOrderService<Arc<Go>>>,
     pub movie_order_service: Arc<MovieOrderService<Arc<Mo>>>,
     pub vip_service: Arc<VipService<Arc<V>>>,
+    #[allow(clippy::type_complexity)]
+    pub sheets: Arc<SheetsService<Arc<Go>, Arc<Mo>, Arc<V>, K>>,
 }
 
 impl<Q, R, U, P, S, A, Se, C, K, L, M, Go, Mo, V> Clone
@@ -132,6 +136,7 @@ where
             game_order_service: Arc::clone(&self.game_order_service),
             movie_order_service: Arc::clone(&self.movie_order_service),
             vip_service: Arc::clone(&self.vip_service),
+            sheets: Arc::clone(&self.sheets),
         }
     }
 }
@@ -275,9 +280,24 @@ where
     let action_service = Arc::new(ActionService::new(action_repo));
     let rule_service = Arc::new(RuleService::new(rule_repo, Arc::clone(&action_service)));
 
-    let game_order_service = Arc::new(GameOrderService::new(game_order_repo));
-    let movie_order_service = Arc::new(MovieOrderService::new(movie_order_repo));
-    let vip_service = Arc::new(VipService::new(vip_record_repo));
+    let game_order_service = Arc::new(GameOrderService::new(Arc::clone(&game_order_repo)));
+    let movie_order_service = Arc::new(MovieOrderService::new(Arc::clone(&movie_order_repo)));
+    let vip_service = Arc::new(VipService::new(Arc::clone(&vip_record_repo)));
+
+    let sheets_client = config
+        .google_service_account_key_base64()
+        .and_then(|encoded| {
+            GoogleSheetsClient::from_key_base64(encoded)
+                .map_err(|e| tracing::error!("google sheets disabled: {e}"))
+                .ok()
+        });
+    let sheets = Arc::new(SheetsService::new(
+        sheets_client,
+        game_order_repo,
+        movie_order_repo,
+        vip_record_repo,
+        Arc::clone(&config),
+    ));
 
     let twitch_api = config.twitch().map(|twitch| {
         Arc::new(TwitchAuthService::new(
@@ -308,6 +328,7 @@ where
         game_order_service,
         movie_order_service,
         vip_service,
+        sheets,
     })
 }
 

@@ -43,9 +43,12 @@ twitch_api = { workspace = true, features = [
     "twitch_oauth2",
     "reqwest",
 ] }
-reqwest = { workspace = true }
+reqwest = { workspace = true, features = ["json"] }
+jsonwebtoken = { workspace = true }
+base64 = { workspace = true }
 twitch_oauth2 = { workspace = true }
 url = { workspace = true }
+percent-encoding = { workspace = true }
 uuid = { workspace = true, features = ["v7"] }
 strum = { workspace = true, features = ["derive"] }
 axum-extra = { workspace = true, features = ["cookie"] }
