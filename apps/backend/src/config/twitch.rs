@@ -3,6 +3,12 @@ use serde::de::Error as _;
 
 use crate::error::config::ConfigError;
 
+const DEFAULT_CSRF_TTL_SECS: u64 = 600;
+
+fn default_csrf_ttl_secs() -> u64 {
+    DEFAULT_CSRF_TTL_SECS
+}
+
 #[derive(Clone)]
 #[non_exhaustive]
 pub struct TwitchConfig {
@@ -82,6 +88,7 @@ impl<'de> Deserialize<'de> for TwitchConfig {
             broadcaster_id: String,
             redirect_uri: String,
             credentials_redirect_uri: String,
+            #[serde(default = "default_csrf_ttl_secs")]
             csrf_ttl_secs: u64,
         }
 
@@ -178,13 +185,14 @@ mod tests {
     }
 
     #[test]
-    fn missing_csrf_ttl_fails_deserialization() {
+    fn missing_csrf_ttl_defaults_to_600() {
         let mut value = twitch_json();
         value
             .as_object_mut()
             .expect("object")
             .remove("csrf_ttl_secs");
-        assert!(from_value::<TwitchConfig>(value).is_err());
+        let config = from_value::<TwitchConfig>(value).expect("should deserialize");
+        assert_eq!(config.csrf_ttl_secs, DEFAULT_CSRF_TTL_SECS);
     }
 
     #[test]
