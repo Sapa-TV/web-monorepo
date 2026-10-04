@@ -14,7 +14,7 @@ use crate::orders::status::OrderStatus;
 use crate::orders::vip::{
     NewVipRecord, VipKind, VipRecord, VipRecordId, VipRecordUpdate, VipStatus,
 };
-use crate::sheets::service::{ImportCount, ImportReport};
+use crate::sheets::service::{ImportCount, ImportReport, SyncReport};
 use crate::state::AppState;
 
 #[derive(Debug, Deserialize, IntoParams)]
@@ -264,6 +264,7 @@ pub async fn create_game_order(
     Json(body): Json<UpsertGameOrderRequest>,
 ) -> Result<(StatusCode, Json<AdminGameOrderResponse>), ApiError> {
     let order = state.game_order_service.create(body.into_new()).await?;
+    state.sheets.mark_dirty();
     Ok((
         StatusCode::CREATED,
         Json(AdminGameOrderResponse::from(order)),
@@ -284,6 +285,7 @@ pub async fn update_game_order(
         .game_order_service
         .replace(GameOrderId::new(params.id), body.into_new())
         .await?;
+    state.sheets.mark_dirty();
     Ok(Json(AdminGameOrderResponse::from(order)))
 }
 
@@ -299,6 +301,7 @@ pub async fn delete_game_order(
         .game_order_service
         .delete(GameOrderId::new(params.id))
         .await?;
+    state.sheets.mark_dirty();
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -310,6 +313,7 @@ pub async fn create_movie_order(
     Json(body): Json<UpsertMovieOrderRequest>,
 ) -> Result<(StatusCode, Json<AdminMovieOrderResponse>), ApiError> {
     let order = state.movie_order_service.create(body.into_new()).await?;
+    state.sheets.mark_dirty();
     Ok((
         StatusCode::CREATED,
         Json(AdminMovieOrderResponse::from(order)),
@@ -330,6 +334,7 @@ pub async fn update_movie_order(
         .movie_order_service
         .replace(MovieOrderId::new(params.id), body.into_new())
         .await?;
+    state.sheets.mark_dirty();
     Ok(Json(AdminMovieOrderResponse::from(order)))
 }
 
@@ -345,6 +350,7 @@ pub async fn delete_movie_order(
         .movie_order_service
         .delete(MovieOrderId::new(params.id))
         .await?;
+    state.sheets.mark_dirty();
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -388,6 +394,7 @@ pub async fn create_vip_record(
     Json(body): Json<CreateVipRecordRequest>,
 ) -> Result<(StatusCode, Json<VipRecordResponse>), ApiError> {
     let record = state.vip_service.create(body.into_new()).await?;
+    state.sheets.mark_dirty();
     Ok((StatusCode::CREATED, Json(VipRecordResponse::from(record))))
 }
 
@@ -405,6 +412,7 @@ pub async fn update_vip_record(
         .vip_service
         .replace(VipRecordId::new(params.id), body.into_update())
         .await?;
+    state.sheets.mark_dirty();
     Ok(Json(VipRecordResponse::from(record)))
 }
 
@@ -420,6 +428,7 @@ pub async fn delete_vip_record(
         .vip_service
         .delete(VipRecordId::new(params.id))
         .await?;
+    state.sheets.mark_dirty();
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -428,6 +437,7 @@ pub async fn delete_vip_record(
 pub struct SheetsStatusResponse {
     pub configured: bool,
     pub spreadsheet_id: String,
+    pub last_synced_at: Option<String>,
     #[serde(skip)]
     _sealed: (),
 }
@@ -482,14 +492,49 @@ impl From<ImportReport> for ImportReportResponse {
     }
 }
 
+#[derive(Debug, Serialize, ToSchema)]
+#[non_exhaustive]
+pub struct SyncReportResponse {
+    pub games: u32,
+    pub movies: u32,
+    pub vip: u32,
+    pub synced_at: String,
+    #[serde(skip)]
+    _sealed: (),
+}
+
+impl From<SyncReport> for SyncReportResponse {
+    fn from(report: SyncReport) -> Self {
+        Self {
+            games: report.games,
+            movies: report.movies,
+            vip: report.vip,
+            synced_at: report.synced_at.to_rfc3339(),
+            _sealed: (),
+        }
+    }
+}
+
 #[utoipa::path(get, path = "/admin/orders/sheets", tag = "admin",
     responses((status = 200, description = "Sheets integration status", body = SheetsStatusResponse)))]
 pub async fn sheets_status(State(state): State<AppState>) -> Json<SheetsStatusResponse> {
     Json(SheetsStatusResponse {
         configured: state.sheets.configured(),
         spreadsheet_id: state.sheets.spreadsheet_id(),
+        last_synced_at: state.sheets.last_synced_at().map(|t| t.to_rfc3339()),
         _sealed: (),
     })
+}
+
+#[utoipa::path(post, path = "/admin/orders/sync", tag = "admin",
+    responses((status = 200, description = "Sync report", body = SyncReportResponse),
+        (status = 400, description = "Not configured or spreadsheet id missing"),
+        (status = 502, description = "Google API error")))]
+pub async fn sync_orders(
+    State(state): State<AppState>,
+) -> Result<Json<SyncReportResponse>, ApiError> {
+    let report = state.sheets.sync().await?;
+    Ok(Json(SyncReportResponse::from(report)))
 }
 
 #[utoipa::path(post, path = "/admin/orders/import", tag = "admin",
@@ -520,6 +565,7 @@ pub fn session_router() -> OpenApiRouter<AppState> {
         .routes(routes!(delete_vip_record))
         .routes(routes!(sheets_status))
         .routes(routes!(import_orders))
+        .routes(routes!(sync_orders))
 }
 
 #[cfg(test)]

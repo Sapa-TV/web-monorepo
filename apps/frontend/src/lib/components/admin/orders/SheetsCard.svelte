@@ -3,17 +3,26 @@
 	import type { ImportReportResponse } from "@sapa-tv-ru/api-client";
 	import { onMount } from "svelte";
 	import IconDownload from "~icons/lucide/download";
+	import IconRefreshCw from "~icons/lucide/refresh-cw";
 	import { Alert, Button, Card, Input, Section } from "@sapa-tv-ru/ui-kit";
 	import { describeApiError } from "#lib/api-error-text";
 
 	let configured = $state(false);
+	let lastSyncedAt = $state<string | null>(null);
 	let loaded = $state(false);
 	let error = $state("");
 	let hint = $state("");
 
 	let url = $state("");
 	let busy = $state(false);
+	let syncBusy = $state(false);
 	let report = $state<ImportReportResponse | null>(null);
+
+	const lastSyncText = $derived(
+		lastSyncedAt
+			? new Date(lastSyncedAt).toLocaleString("ru-RU")
+			: "ещё не было",
+	);
 
 	function setError(err: unknown) {
 		error = describeApiError(err);
@@ -26,6 +35,7 @@
 			return;
 		}
 		configured = res.value.configured;
+		lastSyncedAt = res.value.last_synced_at ?? null;
 		if (res.value.spreadsheet_id) {
 			url = `https://docs.google.com/spreadsheets/d/${res.value.spreadsheet_id}/edit`;
 		}
@@ -45,6 +55,19 @@
 			hint = "Импорт завершён. Обнови вкладки, чтобы увидеть новые записи.";
 		}
 		busy = false;
+	}
+
+	async function runSync() {
+		syncBusy = true;
+		error = "";
+		const res = await api.syncOrders();
+		if (res.isErr()) {
+			setError(res.error);
+		} else {
+			lastSyncedAt = res.value.synced_at;
+			hint = `Синхронизировано: игры ${res.value.games}, фильмы ${res.value.movies}, VIP ${res.value.vip}.`;
+		}
+		syncBusy = false;
 	}
 
 	onMount(() => {
@@ -90,6 +113,21 @@
 			</Button>
 		</form>
 
+		{#if loaded && configured}
+			<div class="sync-row">
+				<Button
+					size="sm"
+					type="button"
+					onclick={() => void runSync()}
+					disabled={syncBusy}
+				>
+					<IconRefreshCw aria-hidden="true" />
+					{syncBusy ? "Синхронизация..." : "Синхронизировать сейчас"}
+				</Button>
+				<span class="sync-status">Последний синк: {lastSyncText}</span>
+			</div>
+		{/if}
+
 		{#if report}
 			<div class="report">
 				<span class="report-row">
@@ -124,6 +162,19 @@
 		margin-top: 10px;
 		font-family: var(--font-mono);
 		font-size: 12px;
+		color: var(--on-surface-variant);
+	}
+
+	.sync-row {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		margin-top: 12px;
+	}
+
+	.sync-status {
+		font-family: var(--font-mono);
+		font-size: 11px;
 		color: var(--on-surface-variant);
 	}
 </style>

@@ -37,6 +37,7 @@ import {
   SessionResponse,
   SheetsStatusResponse,
   StreamStatusResponse,
+  SyncReportResponse,
   TwitchAuthCallbackResponse,
   TwitchAuthStartResponse,
   TwitchLoginCallbackResponse,
@@ -317,6 +318,20 @@ export class Api<
     this.request<SheetsStatusResponse, any>({
       path: `/api/admin/orders/sheets`,
       method: "GET",
+      format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags admin
+   * @name SyncOrders
+   * @request POST:/api/admin/orders/sync
+   */
+  syncOrders = (params: RequestParams = {}) =>
+    this.request<SyncReportResponse, void>({
+      path: `/api/admin/orders/sync`,
+      method: "POST",
       format: "json",
       ...params,
     });

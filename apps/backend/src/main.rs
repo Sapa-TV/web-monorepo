@@ -21,8 +21,9 @@ use backend::openapi;
 use backend::platform::{PlatformCredentialService, PlatformId};
 use backend::random::StandartRandomProvider;
 use backend::runtime;
+use backend::sheets;
 use backend::state::{
-    AppConfigStore, AppQueueService, AppSessionService, AppState, AppStateBuilder,
+    AppConfigStore, AppQueueService, AppSessionService, AppSheetsService, AppState, AppStateBuilder,
 };
 use backend::widget_api;
 use tokio::net::TcpListener;
@@ -199,6 +200,10 @@ fn start_background_tasks(state: &AppState, shutdown: &CancellationToken) {
         Arc::clone(&state.config),
         shutdown.child_token(),
     ));
+    tokio::spawn(sheets_sync_task(
+        Arc::clone(&state.sheets),
+        shutdown.child_token(),
+    ));
 
     runtime::start_rule_pipeline(state, shutdown);
 }
@@ -255,6 +260,20 @@ async fn queue_purge_task(
         }
         if let Err(e) = queue_service.purge_expired().await {
             tracing::error!("queue purge_expired failed: {e}");
+        }
+    }
+}
+
+async fn sheets_sync_task(sheets: Arc<AppSheetsService>, shutdown: CancellationToken) {
+    let interval = Duration::from_secs(sheets::service::SYNC_CHECK_INTERVAL_SECS);
+    loop {
+        select! {
+            biased;
+            _ = shutdown.cancelled() => break,
+            _ = time::sleep(interval) => {},
+        }
+        if let Err(e) = sheets.sync_if_due().await {
+            tracing::error!("sheets sync failed: {e}");
         }
     }
 }

@@ -424,11 +424,31 @@ export interface SetStreamStatusRequest {
 
 export interface SheetsStatusResponse {
   configured: boolean;
+  last_synced_at?: string | null;
   spreadsheet_id: string;
 }
 
 export interface StreamStatusResponse {
   online: boolean;
+}
+
+export interface SyncReportResponse {
+  /**
+   * @format int32
+   * @min 0
+   */
+  games: number;
+  /**
+   * @format int32
+   * @min 0
+   */
+  movies: number;
+  synced_at: string;
+  /**
+   * @format int32
+   * @min 0
+   */
+  vip: number;
 }
 
 export interface TwitchAuthCallbackResponse {

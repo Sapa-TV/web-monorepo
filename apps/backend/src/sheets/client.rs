@@ -163,4 +163,54 @@ impl GoogleSheetsClient {
             .map_err(|e| SheetsError::Api(format!("invalid values response: {e}")))?;
         Ok(body.values)
     }
+
+    pub async fn clear_values(&self, spreadsheet_id: &str, range: &str) -> Result<(), SheetsError> {
+        let token = self.access_token().await?;
+        let url = format!("{}:clear", Self::values_url(spreadsheet_id, range));
+        let response = self
+            .http
+            .post(url)
+            .bearer_auth(token)
+            .send()
+            .await
+            .map_err(|e| SheetsError::Api(format!("values clear failed: {e}")))?;
+        response
+            .error_for_status()
+            .map_err(|e| SheetsError::Api(format!("values clear rejected: {e}")))?;
+        Ok(())
+    }
+
+    pub async fn update_values(
+        &self,
+        spreadsheet_id: &str,
+        range: &str,
+        values: Vec<Vec<String>>,
+    ) -> Result<(), SheetsError> {
+        #[derive(serde::Serialize)]
+        struct UpdateBody {
+            range: String,
+            values: Vec<Vec<String>>,
+        }
+
+        let token = self.access_token().await?;
+        let url = format!(
+            "{}?valueInputOption=RAW",
+            Self::values_url(spreadsheet_id, range)
+        );
+        let response = self
+            .http
+            .put(url)
+            .bearer_auth(token)
+            .json(&UpdateBody {
+                range: range.to_string(),
+                values,
+            })
+            .send()
+            .await
+            .map_err(|e| SheetsError::Api(format!("values update failed: {e}")))?;
+        response
+            .error_for_status()
+            .map_err(|e| SheetsError::Api(format!("values update rejected: {e}")))?;
+        Ok(())
+    }
 }

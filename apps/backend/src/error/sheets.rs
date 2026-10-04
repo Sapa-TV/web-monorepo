@@ -10,6 +10,8 @@ use super::api::ApiError;
 pub enum SheetsError {
     #[error("google sheets is not configured")]
     NotConfigured,
+    #[error("spreadsheet id is not set; run an import first or set GOOGLE_SPREADSHEET_ID")]
+    MissingSpreadsheetId,
     #[error("invalid spreadsheet url or id")]
     InvalidSpreadsheetUrl,
     #[error("google auth failed: {0}")]
@@ -40,9 +42,9 @@ impl From<SheetsError> for ApiError {
 impl SheetsError {
     fn status_code(&self) -> StatusCode {
         match self {
-            SheetsError::NotConfigured | SheetsError::InvalidSpreadsheetUrl => {
-                StatusCode::BAD_REQUEST
-            }
+            SheetsError::NotConfigured
+            | SheetsError::MissingSpreadsheetId
+            | SheetsError::InvalidSpreadsheetUrl => StatusCode::BAD_REQUEST,
             SheetsError::Auth(_) | SheetsError::Api(_) => StatusCode::BAD_GATEWAY,
             SheetsError::Config(_) => StatusCode::INTERNAL_SERVER_ERROR,
             SheetsError::Repo(RepositoryError::Conflict(_)) => StatusCode::CONFLICT,

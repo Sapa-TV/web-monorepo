@@ -490,6 +490,32 @@
         }
       }
     },
+    "/api/admin/orders/sync": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "sync_orders",
+        "responses": {
+          "200": {
+            "description": "Sync report",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncReportResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Not configured or spreadsheet id missing"
+          },
+          "502": {
+            "description": "Google API error"
+          }
+        }
+      }
+    },
     "/api/admin/orders/vip": {
       "get": {
         "tags": [
@@ -3384,6 +3410,12 @@
           "configured": {
             "type": "boolean"
           },
+          "last_synced_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "spreadsheet_id": {
             "type": "string"
           }
@@ -3397,6 +3429,35 @@
         "properties": {
           "online": {
             "type": "boolean"
+          }
+        }
+      },
+      "SyncReportResponse": {
+        "type": "object",
+        "required": [
+          "games",
+          "movies",
+          "vip",
+          "synced_at"
+        ],
+        "properties": {
+          "games": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "movies": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "synced_at": {
+            "type": "string"
+          },
+          "vip": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
           }
         }
       },

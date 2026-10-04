@@ -148,6 +148,14 @@ pub type AppSessionService = SessionService<SqliteSessionRepository, SqliteAdmin
 
 pub type AppConfigStore = ConfigStore<SqliteConfigRepository>;
 
+#[allow(clippy::type_complexity)]
+pub type AppSheetsService = SheetsService<
+    Arc<SqliteGameOrderRepository>,
+    Arc<SqliteMovieOrderRepository>,
+    Arc<SqliteVipRecordRepository>,
+    SqliteConfigRepository,
+>;
+
 pub type AppState = UniAppState<
     SqliteQueueRepository,
     SqliteRarityRepository,
