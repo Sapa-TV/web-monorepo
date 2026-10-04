@@ -597,24 +597,24 @@ mod tests {
             "POST",
             api_path("/admin/orders/games"),
             Some(&cookie),
-            Some(r#"{"title":null,"customer_name":"Jeker3","kind":"stream","source":"roulette","status":"pending","completed_at":null,"comment":null}"#.to_string()),
+            Some(r#"{"title":null,"customer_name":"user_three","kind":"stream","source":"roulette","status":"pending","completed_at":null,"comment":null}"#.to_string()),
         )
         .await;
         assert_eq!(status, StatusCode::CREATED);
         let id = body["id"].as_u64().unwrap();
         assert_eq!(body["title"], Value::Null);
-        assert_eq!(body["customer_name"], "Jeker3");
+        assert_eq!(body["customer_name"], "user_three");
 
         let (status, body) = request(
             &app,
             "PUT",
             api_path(&format!("/admin/orders/games/{id}")),
             Some(&cookie),
-            Some(r#"{"title":"BG3","customer_name":"Jeker3","kind":"stream","source":"roulette","status":"completed","completed_at":"2026-10-04","comment":"done"}"#.to_string()),
+            Some(r#"{"title":"Test Game","customer_name":"user_three","kind":"stream","source":"roulette","status":"completed","completed_at":"2026-10-04","comment":"done"}"#.to_string()),
         )
         .await;
         assert_eq!(status, StatusCode::OK);
-        assert_eq!(body["title"], "BG3");
+        assert_eq!(body["title"], "Test Game");
         assert_eq!(body["status"], "completed");
         assert_eq!(body["completed_at"], "2026-10-04");
 
@@ -650,7 +650,7 @@ mod tests {
             "POST",
             api_path("/admin/orders/movies"),
             Some(&cookie),
-            Some(r#"{"title":"Дюна","customer_name":"Рустам Наврузов","kind":"movie","source":"donate","status":"pending","comment":null}"#.to_string()),
+            Some(r#"{"title":"Фильм тест","customer_name":"Тест Заказчиков","kind":"movie","source":"donate","status":"pending","comment":null}"#.to_string()),
         )
         .await;
         assert_eq!(status, StatusCode::CREATED);
@@ -662,7 +662,7 @@ mod tests {
             "PUT",
             api_path(&format!("/admin/orders/movies/{id}")),
             Some(&cookie),
-            Some(r#"{"title":"Дюна","customer_name":"Рустам Наврузов","kind":"movie","source":"donate","status":"completed","comment":"ok"}"#.to_string()),
+            Some(r#"{"title":"Фильм тест","customer_name":"Тест Заказчиков","kind":"movie","source":"donate","status":"completed","comment":"ok"}"#.to_string()),
         )
         .await;
         assert_eq!(status, StatusCode::OK);
@@ -690,7 +690,7 @@ mod tests {
             "POST",
             api_path("/admin/orders/vip"),
             Some(&cookie),
-            Some(r#"{"customer_name":"kasperaas","kind":"vip","roulette_date":"2026-10-01","end_date":null,"note":null}"#.to_string()),
+            Some(r#"{"customer_name":"vip_user","kind":"vip","roulette_date":"2026-10-01","end_date":null,"note":null}"#.to_string()),
         )
         .await;
         assert_eq!(status, StatusCode::CREATED);
@@ -703,7 +703,7 @@ mod tests {
             "PUT",
             api_path(&format!("/admin/orders/vip/{id}")),
             Some(&cookie),
-            Some(r#"{"customer_name":"kasperaas","kind":"vip","roulette_date":"2026-10-01","end_date":"2026-10-15","status":"done","note":null}"#.to_string()),
+            Some(r#"{"customer_name":"vip_user","kind":"vip","roulette_date":"2026-10-01","end_date":"2026-10-15","status":"done","note":null}"#.to_string()),
         )
         .await;
         assert_eq!(status, StatusCode::OK);

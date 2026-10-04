@@ -215,8 +215,8 @@ mod tests {
         state
             .game_order_service
             .create(game(
-                Some("Noita"),
-                "Rikrims",
+                Some("Test Game"),
+                "user_one",
                 GameOrderKind::Stream,
                 OrderSource::Roulette,
                 OrderStatus::Pending,
@@ -226,8 +226,8 @@ mod tests {
         state
             .game_order_service
             .create(game(
-                Some("Starcraft 2"),
-                "filneyner",
+                Some("Strategy Game"),
+                "user_two",
                 GameOrderKind::Stream,
                 OrderSource::Donate,
                 OrderStatus::Completed,
@@ -238,7 +238,7 @@ mod tests {
             .game_order_service
             .create(game(
                 None,
-                "Jeker3",
+                "user_three",
                 GameOrderKind::Playthrough,
                 OrderSource::Roulette,
                 OrderStatus::Pending,
@@ -250,8 +250,9 @@ mod tests {
         let (status, body) = get_json(&app, api_path("/orders/games")).await;
         assert_eq!(status, StatusCode::OK);
         assert_eq!(body.as_array().unwrap().len(), 3);
-        assert_eq!(body[0]["customer_name"], "Rikrims");
-        assert_eq!(body[2]["title"], Value::Null);
+        assert_eq!(body[0]["customer_name"], "user_three");
+        assert_eq!(body[0]["title"], Value::Null);
+        assert_eq!(body[2]["customer_name"], "user_one");
 
         let (_, body) = get_json(&app, api_path("/orders/games?status=pending")).await;
         assert_eq!(body.as_array().unwrap().len(), 2);
@@ -266,11 +267,11 @@ mod tests {
         .await;
         assert_eq!(body.as_array().unwrap().len(), 2);
 
-        let (_, body) = get_json(&app, api_path("/orders/games?q=star")).await;
+        let (_, body) = get_json(&app, api_path("/orders/games?q=strateg")).await;
         assert_eq!(body.as_array().unwrap().len(), 1);
-        assert_eq!(body[0]["customer_name"], "filneyner");
+        assert_eq!(body[0]["customer_name"], "user_two");
 
-        let (_, body) = get_json(&app, api_path("/orders/games?q=JEKER")).await;
+        let (_, body) = get_json(&app, api_path("/orders/games?q=USER_THREE")).await;
         assert_eq!(body.as_array().unwrap().len(), 1);
     }
 
@@ -280,8 +281,8 @@ mod tests {
         state
             .movie_order_service
             .create(NewMovieOrder::new(
-                Some("Большой куш".to_string()),
-                "ViyScar".to_string(),
+                Some("Тестовый фильм".to_string()),
+                "user_four".to_string(),
                 None,
                 MovieKind::Movie,
                 OrderSource::Donate,
@@ -293,8 +294,8 @@ mod tests {
         state
             .movie_order_service
             .create(NewMovieOrder::new(
-                Some("Ре-зеро".to_string()),
-                "Jeker3".to_string(),
+                Some("Аниме тест".to_string()),
+                "user_three".to_string(),
                 None,
                 MovieKind::Anime,
                 OrderSource::Roulette,
@@ -315,7 +316,11 @@ mod tests {
         let (_, body) = get_json(&app, api_path("/orders/movies?status=completed")).await;
         assert_eq!(body.as_array().unwrap().len(), 1);
 
-        let (_, body) = get_json(&app, api_path("/orders/movies?q=куш")).await;
+        let (_, body) = get_json(
+            &app,
+            api_path("/orders/movies?q=%D1%82%D0%B5%D1%81%D1%82%D0%BE%D0%B2%D1%8B%D0%B9"),
+        )
+        .await;
         assert_eq!(body.as_array().unwrap().len(), 1);
         assert_eq!(body[0]["kind"], "movie");
     }

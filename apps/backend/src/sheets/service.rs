@@ -258,21 +258,21 @@ mod tests {
     #[test]
     fn dedup_games_by_title_and_customer() {
         let existing: Vec<GameOrder> = vec![];
-        let parsed = vec![game(Some("Noita"), "Rikrims"), game(None, "Rikrims")];
+        let parsed = vec![game(Some("Test Game"), "user_one"), game(None, "user_one")];
         assert_eq!(new_games_only(&existing, parsed).len(), 2);
     }
 
     #[tokio::test]
     async fn import_games_counts_skipped_duplicates() {
         let svc = test_service();
-        svc.import_games(vec![game(Some("Noita"), "Rikrims")])
+        svc.import_games(vec![game(Some("Test Game"), "user_one")])
             .await
             .unwrap();
 
         let count = svc
             .import_games(vec![
-                game(Some("Noita"), "Rikrims"),
-                game(Some("Noita"), "Jeker3"),
+                game(Some("Test Game"), "user_one"),
+                game(Some("Test Game"), "user_three"),
             ])
             .await
             .unwrap();
@@ -283,16 +283,8 @@ mod tests {
     async fn import_vip_dedupes_by_customer_kind_and_date() {
         let svc = test_service();
         let date = NaiveDate::from_ymd_opt(2026, 10, 1).unwrap();
-        let record = || {
-            NewVipRecord::new(
-                "kasperaas".to_string(),
-                None,
-                VipKind::Vip,
-                date,
-                None,
-                None,
-            )
-        };
+        let record =
+            || NewVipRecord::new("vip_user".to_string(), None, VipKind::Vip, date, None, None);
 
         let first = svc.import_vip(vec![record()]).await.unwrap();
         assert_eq!(first, ImportCount::new(1, 0));

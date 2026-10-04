@@ -189,7 +189,7 @@ mod tests {
             row(&[
                 "",
                 "1",
-                "Subnautica",
+                "Game Alpha",
                 "Аноним",
                 "Прохождение",
                 "22.10.2023",
@@ -198,30 +198,30 @@ mod tests {
             row(&[
                 "",
                 "18",
-                "Untitled goose game",
-                "rondos767 (рулетка)",
+                "Game Beta",
+                "user_five (рулетка)",
                 "Стрим",
                 "18.01.2024",
                 "",
             ]),
-            row(&["", "99", "Мир танков", "СкуфБюджет", "30ч (донат)", "", ""]),
+            row(&["", "99", "Игра Гамма", "user_eight", "30ч (донат)", "", ""]),
             row(&[
                 "",
                 "101",
-                "SnowRunner",
-                "Th0rN13",
+                "Game Delta",
+                "user_nine",
                 "стрим (баллы)",
                 "---------",
                 "",
             ]),
-            row(&["", "102", "", "vzbzdnuvshiy", "прохождение (донат)", "", ""]),
+            row(&["", "102", "", "user_ten", "прохождение (донат)", "", ""]),
             row(&["", "", "", "", "", "", ""]),
         ];
 
         let games = parse_game_rows(&values);
         assert_eq!(games.len(), 5);
 
-        assert_eq!(games[0].title.as_deref(), Some("Subnautica"));
+        assert_eq!(games[0].title.as_deref(), Some("Game Alpha"));
         assert_eq!(games[0].kind, GameOrderKind::Playthrough);
         assert_eq!(games[0].source, OrderSource::Other);
         assert_eq!(games[0].status, OrderStatus::Completed);
@@ -244,15 +244,15 @@ mod tests {
     fn movie_rows_parse_customer_and_title() {
         let values = vec![
             row(&["", "№", "Фильм", "ЗАКАЗЧИК", "Фильм\\Сериал"]),
-            row(&["", "341", "", "kor_win_", "Зеркальная маска"]),
-            row(&["", "423", "", "nikolay_m_91 (Jeker3)", ""]),
+            row(&["", "341", "", "user_six", "Фильм тест"]),
+            row(&["", "423", "", "user_seven (user_three)", ""]),
             row(&["", "424", "", "", ""]),
         ];
 
         let movies = parse_movie_rows(&values);
         assert_eq!(movies.len(), 2);
-        assert_eq!(movies[0].customer_name, "kor_win_");
-        assert_eq!(movies[0].title.as_deref(), Some("Зеркальная маска"));
+        assert_eq!(movies[0].customer_name, "user_six");
+        assert_eq!(movies[0].title.as_deref(), Some("Фильм тест"));
         assert_eq!(movies[0].kind, MovieKind::Movie);
         assert_eq!(movies[1].title, None);
     }
@@ -260,15 +260,8 @@ mod tests {
     #[test]
     fn vip_rows_parse_kind_and_dates() {
         let values = vec![
-            row(&["", "447", "VIP", "kasperaas", "08.06.2026", "22.06.2026"]),
-            row(&[
-                "",
-                "457",
-                "UnVIP",
-                "JackTheRizer",
-                "17.07.2026",
-                "24.07.2026",
-            ]),
+            row(&["", "447", "VIP", "vip_user", "08.06.2026", "22.06.2026"]),
+            row(&["", "457", "UnVIP", "unvip_user", "17.07.2026", "24.07.2026"]),
             row(&["", "480", "VIP", "", "13.01.1900", ""]),
             row(&["", "481", "VIP", "broken", "not-a-date", ""]),
         ];

@@ -797,8 +797,8 @@ async fn suite_game_order_lifecycle<G: GameOrderRepository>(repo: &G) {
 
     let created = repo
         .create(NewGameOrder::new(
-            Some("Noita".to_string()),
-            "Rikrims".to_string(),
+            Some("Test Game".to_string()),
+            "user_one".to_string(),
             None,
             GameOrderKind::Stream,
             OrderSource::Roulette,
@@ -812,7 +812,7 @@ async fn suite_game_order_lifecycle<G: GameOrderRepository>(repo: &G) {
     assert_eq!(created.created_at, created.updated_at);
 
     let fetched = repo.get_by_id(created.id).await.unwrap().unwrap();
-    assert_eq!(fetched.title.as_deref(), Some("Noita"));
+    assert_eq!(fetched.title.as_deref(), Some("Test Game"));
     assert_eq!(fetched.kind, GameOrderKind::Stream);
     assert_eq!(fetched.source, OrderSource::Roulette);
     assert_eq!(fetched.status, OrderStatus::Pending);
@@ -820,7 +820,7 @@ async fn suite_game_order_lifecycle<G: GameOrderRepository>(repo: &G) {
     let second = repo
         .create(NewGameOrder::new(
             None,
-            "Jeker3".to_string(),
+            "user_three".to_string(),
             None,
             GameOrderKind::Playthrough,
             OrderSource::Donate,
@@ -869,8 +869,8 @@ async fn suite_movie_order_lifecycle<M: MovieOrderRepository>(repo: &M) {
 
     let created = repo
         .create(NewMovieOrder::new(
-            Some("Большой куш".to_string()),
-            "ViyScar".to_string(),
+            Some("Тестовый фильм".to_string()),
+            "user_four".to_string(),
             None,
             MovieKind::Movie,
             OrderSource::Donate,
@@ -919,7 +919,7 @@ async fn suite_vip_record_lifecycle<V: VipRecordRepository>(repo: &V) {
     let created = repo
         .create(
             NewVipRecord::new(
-                "kasperaas".to_string(),
+                "vip_user".to_string(),
                 None,
                 VipKind::Vip,
                 date("2026-10-01"),
@@ -941,7 +941,7 @@ async fn suite_vip_record_lifecycle<V: VipRecordRepository>(repo: &V) {
     let unvip = repo
         .create(
             NewVipRecord::new(
-                "JackTheRizer".to_string(),
+                "unvip_user".to_string(),
                 None,
                 VipKind::Unvip,
                 date("2026-10-02"),

@@ -189,6 +189,7 @@ impl<R: MovieOrderRepository> MovieOrderService<R> {
                     matches_query(q, &[title, &o.customer_name])
                 })
             })
+            .rev()
             .collect())
     }
 
@@ -299,6 +300,7 @@ impl<R: VipRecordRepository> VipService<R> {
                     .as_ref()
                     .is_none_or(|q| matches_query(q, &[&r.customer_name]))
             })
+            .rev()
             .collect())
     }
 
@@ -415,11 +417,11 @@ mod tests {
         let svc = GameOrderService::new(InMemoryGameOrderRepository::new());
 
         let created = svc
-            .create(new_game(Some("  "), "  ninja_number_one  "))
+            .create(new_game(Some("  "), "  test_user  "))
             .await
             .unwrap();
         assert_eq!(created.title, None);
-        assert_eq!(created.customer_name, "ninja_number_one");
+        assert_eq!(created.customer_name, "test_user");
 
         let err = svc.create(new_game(Some("x"), "   ")).await.unwrap_err();
         assert!(matches!(err, OrdersServiceError::Invalid(_)));
@@ -428,14 +430,14 @@ mod tests {
     #[tokio::test]
     async fn game_list_filters_and_searches() {
         let svc = GameOrderService::new(InMemoryGameOrderRepository::new());
-        svc.create(new_game(Some("Noita"), "Rikrims"))
+        svc.create(new_game(Some("Test Game"), "user_one"))
             .await
             .unwrap();
-        let mut second = new_game(Some("Starcraft 2"), "filneyner");
+        let mut second = new_game(Some("Strategy Game"), "user_two");
         second.kind = GameOrderKind::Playthrough;
         second.source = OrderSource::Donate;
         svc.create(second).await.unwrap();
-        let mut third = new_game(None, "Jeker3");
+        let mut third = new_game(None, "user_three");
         third.status = OrderStatus::Cancelled;
         svc.create(third).await.unwrap();
 
@@ -456,11 +458,11 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(playthroughs.len(), 1);
-        assert_eq!(playthroughs[0].customer_name, "filneyner");
+        assert_eq!(playthroughs[0].customer_name, "user_two");
 
         let found = svc
             .list(GameOrderFilter {
-                query: Some("star".to_string()),
+                query: Some("strateg".to_string()),
                 ..Default::default()
             })
             .await
@@ -469,7 +471,7 @@ mod tests {
 
         let by_customer = svc
             .list(GameOrderFilter {
-                query: Some("JEKER".to_string()),
+                query: Some("USER_THREE".to_string()),
                 ..Default::default()
             })
             .await
@@ -483,8 +485,8 @@ mod tests {
         let svc = MovieOrderService::new(InMemoryMovieOrderRepository::new());
         let created = svc
             .create(NewMovieOrder::new(
-                Some("Большой куш".to_string()),
-                "ViyScar".to_string(),
+                Some("Тестовый фильм".to_string()),
+                "user_four".to_string(),
                 None,
                 MovieKind::Movie,
                 OrderSource::Donate,
@@ -511,7 +513,7 @@ mod tests {
 
         let vip = svc
             .create(NewVipRecord::new(
-                "kasperaas".to_string(),
+                "vip_user".to_string(),
                 None,
                 VipKind::Vip,
                 start,
@@ -525,7 +527,7 @@ mod tests {
 
         let unvip = svc
             .create(NewVipRecord::new(
-                "JackTheRizer".to_string(),
+                "unvip_user".to_string(),
                 None,
                 VipKind::Unvip,
                 start,
