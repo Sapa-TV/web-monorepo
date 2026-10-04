@@ -260,6 +260,11 @@ where
         tracing::info!("seeding root admin: twitch_user_id={admin_id}");
         admin_service.seed(admin_id).await?;
     }
+    if let Some(extra_ids) = config.admin_twitch_ids() {
+        for admin_id in extra_ids {
+            admin_service.seed_non_root(admin_id).await?;
+        }
+    }
     let session_service = Arc::new(SessionService::new(
         session_repo,
         Arc::clone(&admin_service),

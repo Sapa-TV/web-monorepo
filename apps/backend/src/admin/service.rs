@@ -35,6 +35,15 @@ where
         Ok(())
     }
 
+    /// Idempotent non-root seed: creates a regular admin, never demotes an
+    /// existing (root) admin. Used for env-provided extra admins.
+    pub async fn seed_non_root(&self, twitch_id: &str) -> Result<(), RepositoryError> {
+        if self.repo.get_by_twitch_id(twitch_id).await?.is_none() {
+            self.repo.create(twitch_id, None, false).await?;
+        }
+        Ok(())
+    }
+
     pub async fn is_admin(&self, twitch_id: &str) -> Result<bool, AdminServiceError> {
         Ok(self.repo.get_by_twitch_id(twitch_id).await?.is_some())
     }
@@ -151,6 +160,31 @@ mod tests {
         svc.seed("100").await.unwrap();
         svc.seed("100").await.unwrap();
         assert_eq!(svc.list().await.unwrap().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn seed_non_root_creates_regular_admin() {
+        let svc = test_service();
+        svc.seed_non_root("200").await.unwrap();
+
+        let admin = svc.get("200").await.unwrap().unwrap();
+        assert!(!admin.is_root);
+    }
+
+    #[tokio::test]
+    async fn seed_non_root_is_idempotent() {
+        let svc = test_service();
+        svc.seed_non_root("200").await.unwrap();
+        svc.seed_non_root("200").await.unwrap();
+        assert_eq!(svc.list().await.unwrap().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn seed_non_root_keeps_existing_root() {
+        let svc = test_service();
+        svc.seed("100").await.unwrap();
+        svc.seed_non_root("100").await.unwrap();
+        assert!(svc.is_root("100").await.unwrap());
     }
 
     #[tokio::test]

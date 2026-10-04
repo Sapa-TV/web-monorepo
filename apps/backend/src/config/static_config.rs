@@ -16,12 +16,14 @@ use crate::consts::server;
 #[non_exhaustive]
 pub struct StaticConfig {
     pub port: u16,
-    #[serde(deserialize_with = "deserialize_cors_origins")]
+    #[serde(deserialize_with = "deserialize_comma_string_list")]
     pub cors_origins: Option<Vec<String>>,
     pub cookie_secure: bool,
     pub twitch: Option<Arc<TwitchConfig>>,
     pub vk_video_live: Option<Arc<VkVideoLiveConfig>>,
     pub google_service_account_key_base64: Option<String>,
+    #[serde(deserialize_with = "deserialize_comma_string_list")]
+    pub admin_twitch_ids: Option<Vec<String>>,
     #[serde(skip)]
     _sealed: (),
 }
@@ -35,6 +37,7 @@ impl Default for StaticConfig {
             twitch: None,
             vk_video_live: None,
             google_service_account_key_base64: None,
+            admin_twitch_ids: None,
             _sealed: (),
         }
     }
@@ -48,6 +51,7 @@ impl StaticConfig {
         twitch: Option<Arc<TwitchConfig>>,
         vk_video_live: Option<Arc<VkVideoLiveConfig>>,
         google_service_account_key_base64: Option<String>,
+        admin_twitch_ids: Option<Vec<String>>,
     ) -> Self {
         Self {
             port,
@@ -56,6 +60,7 @@ impl StaticConfig {
             twitch,
             vk_video_live,
             google_service_account_key_base64,
+            admin_twitch_ids,
             _sealed: (),
         }
     }
@@ -84,6 +89,7 @@ impl StaticConfig {
             twitch: raw.twitch,
             vk_video_live: raw.vk_video_live,
             google_service_account_key_base64: raw.google_service_account_key_base64,
+            admin_twitch_ids: raw.admin_twitch_ids,
             _sealed: (),
         };
         let seed = RuntimeConfig::new(
@@ -110,7 +116,7 @@ struct RawConfig {
     sessions_cleanup_interval_secs: u64,
     queue_default_limit: usize,
     port: u16,
-    #[serde(deserialize_with = "deserialize_cors_origins")]
+    #[serde(deserialize_with = "deserialize_comma_string_list")]
     cors_origins: Option<Vec<String>>,
     twitch: Option<Arc<TwitchConfig>>,
     vk_video_live: Option<Arc<VkVideoLiveConfig>>,
@@ -118,6 +124,8 @@ struct RawConfig {
     cookie_secure: bool,
     google_service_account_key_base64: Option<String>,
     google_spreadsheet_id: String,
+    #[serde(deserialize_with = "deserialize_comma_string_list")]
+    admin_twitch_ids: Option<Vec<String>>,
 }
 
 impl Default for RawConfig {
@@ -138,11 +146,12 @@ impl Default for RawConfig {
             cookie_secure: static_cfg.cookie_secure,
             google_service_account_key_base64: None,
             google_spreadsheet_id: String::new(),
+            admin_twitch_ids: None,
         }
     }
 }
 
-fn deserialize_cors_origins<'de, D>(deserializer: D) -> Result<Option<Vec<String>>, D::Error>
+fn deserialize_comma_string_list<'de, D>(deserializer: D) -> Result<Option<Vec<String>>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
@@ -251,6 +260,19 @@ mod tests {
         assert_eq!(
             static_cfg.cors_origins.as_deref().unwrap(),
             &["https://a.com", "https://b.com"]
+        );
+    }
+
+    #[test]
+    fn admin_twitch_ids_accept_comma_string() {
+        let raw: RawConfig =
+            serde_json::from_str(r#"{ "admin_twitch_ids": " 111 , 222 ,, " }"#).unwrap();
+
+        let (static_cfg, _) = StaticConfig::split(raw);
+
+        assert_eq!(
+            static_cfg.admin_twitch_ids.as_deref(),
+            Some(&["111".to_string(), "222".to_string()][..])
         );
     }
 

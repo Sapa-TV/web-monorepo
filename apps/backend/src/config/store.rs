@@ -87,6 +87,10 @@ impl<R: ConfigRepository> ConfigStore<R> {
             .map(|twitch| twitch.broadcaster_id.as_str())
     }
 
+    pub fn admin_twitch_ids(&self) -> Option<&[String]> {
+        self.static_cfg.admin_twitch_ids.as_deref()
+    }
+
     pub fn cors_origins(&self) -> Option<&[String]> {
         self.static_cfg.cors_origins.as_deref()
     }
@@ -194,6 +198,7 @@ mod tests {
             None,
             false,
             Some(Arc::new(twitch)),
+            None,
             None,
             None,
         ));
