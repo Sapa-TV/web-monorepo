@@ -1,14 +1,25 @@
-import { ApiError, ApiErrorKind } from "#lib/internal/api-error";
+import { ApiErrorKind, normalizeApiError } from "#lib/internal/api-error";
+
+function serverMessage(body: unknown): string | null {
+	if (
+		body !== null &&
+		typeof body === "object" &&
+		"error" in body &&
+		typeof (body as { error: unknown }).error === "string"
+	) {
+		return (body as { error: string }).error;
+	}
+	return null;
+}
 
 /**
  * UI-facing error formatting: maps ApiError kinds to human-readable texts.
  * Lives outside internal/ on purpose — it contains product copy.
  */
 export function describeApiError(err: unknown): string {
-	if (!(err instanceof ApiError)) {
-		return err instanceof Error ? err.message : String(err);
-	}
-	switch (err.kind) {
+	const apiErr = normalizeApiError(err);
+	const upstream = serverMessage(apiErr.body);
+	switch (apiErr.kind) {
 		case ApiErrorKind.Unauthorized:
 			return "Сессия истекла. Перелогинься.";
 		case ApiErrorKind.Forbidden:
@@ -20,14 +31,17 @@ export function describeApiError(err: unknown): string {
 		case ApiErrorKind.RateLimited:
 			return "Слишком много запросов. Подожди немного и попробуй снова.";
 		case ApiErrorKind.BadRequest:
-			return "Запрос отклонён сервером — проверь заполненные поля.";
+			return upstream ?? "Запрос отклонён сервером — проверь заполненные поля.";
 		case ApiErrorKind.Server:
-			return "Ошибка на сервере. Попробуй позже.";
+		case ApiErrorKind.HttpOther:
+			return (
+				upstream ?? `Ошибка на сервере (${apiErr.status ?? "нет статуса"}).`
+			);
 		case ApiErrorKind.Timeout:
 			return "Сервер не ответил вовремя. Попробуй ещё раз.";
 		case ApiErrorKind.Network:
 			return "Нет связи с сервером. Проверь соединение.";
 		default:
-			return "Что-то пошло не так. Попробуй ещё раз.";
+			return upstream ?? "Что-то пошло не так. Попробуй ещё раз.";
 	}
 }
