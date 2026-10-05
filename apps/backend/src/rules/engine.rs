@@ -10,6 +10,7 @@ use crate::actions::repository::ActionRepository;
 use crate::actions::service::ActionService;
 use crate::error::RuleServiceError;
 use crate::ingress::event::{PlatformEvent, PlatformEventPayload};
+use crate::platform::PlatformId;
 use crate::rules::repository::RuleRepository;
 use crate::rules::rule::{
     MessageConditions, MessageMatcher, RewardConditions, Rule, RuleConditions,
@@ -100,7 +101,9 @@ where
     ) {
         let trigger = event.payload.discriminant();
         for rule in &active.rules {
-            if rule.trigger != trigger || !conditions_match(&rule.conditions, &event.payload) {
+            if rule.trigger != trigger
+                || !conditions_match(&rule.conditions, &event.payload, event.platform)
+            {
                 continue;
             }
             let Some((_, action)) = active.actions.iter().find(|(id, _)| *id == rule.action_id)
@@ -116,7 +119,11 @@ where
     }
 }
 
-pub fn conditions_match(conditions: &RuleConditions, payload: &PlatformEventPayload) -> bool {
+pub fn conditions_match(
+    conditions: &RuleConditions,
+    payload: &PlatformEventPayload,
+    platform: PlatformId,
+) -> bool {
     match (conditions, payload) {
         (
             RuleConditions::ChatMessage(MessageConditions {
@@ -135,12 +142,16 @@ pub fn conditions_match(conditions: &RuleConditions, payload: &PlatformEventPayl
             }
         }
         (
-            RuleConditions::RewardRedemption(RewardConditions { reward_id, .. }),
+            RuleConditions::RewardRedemption(RewardConditions {
+                reward_ids,
+                platform: rule_platform,
+                ..
+            }),
             PlatformEventPayload::RewardRedemption(red),
-        ) => match reward_id {
-            Some(id) => &red.reward_id == id,
-            None => true,
-        },
+        ) => {
+            rule_platform.is_none_or(|p| p == platform)
+                && (reward_ids.is_empty() || reward_ids.contains(&red.reward_id))
+        }
         _ => false,
     }
 }

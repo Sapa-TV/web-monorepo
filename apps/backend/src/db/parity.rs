@@ -1,4 +1,4 @@
-//! Shared behavioral suites run against both repository implementations.
+﻿//! Shared behavioral suites run against both repository implementations.
 //! A suite may only use trait methods: it is the executable specification
 //! of the contract both impls must satisfy.
 //!
@@ -364,7 +364,7 @@ async fn suite_rule_lifecycle<R: RuleRepository>(repo: &R, action_id: ActionId) 
         MessageMatcher::Contains,
         Some("!spin".to_string()),
     ));
-    let reward = RuleConditions::RewardRedemption(RewardConditions::new(None));
+    let reward = RuleConditions::RewardRedemption(RewardConditions::new(Vec::new(), None));
 
     let r1 = repo
         .create(
@@ -869,7 +869,7 @@ async fn suite_movie_order_lifecycle<M: MovieOrderRepository>(repo: &M) {
 
     let created = repo
         .create(NewMovieOrder::new(
-            Some("Тестовый фильм".to_string()),
+            Some("РўРµСЃС‚РѕРІС‹Р№ С„РёР»СЊРј".to_string()),
             "user_four".to_string(),
             None,
             MovieKind::Movie,

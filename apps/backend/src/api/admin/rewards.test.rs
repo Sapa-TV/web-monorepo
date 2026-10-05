@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use axum::body::Body;
+use axum::body::{Body, to_bytes};
 use axum::http::header;
 use axum::http::{Request, StatusCode};
 use tower::ServiceExt;
@@ -59,7 +59,7 @@ async fn rewards_require_session() {
 }
 
 #[tokio::test]
-async fn rewards_without_twitch_config_is_bad_request() {
+async fn rewards_without_platforms_returns_empty_list() {
     let state = test_state().await;
     state.admin_service.add("123", None).await.unwrap();
     let app = test_router(state.clone());
@@ -76,7 +76,12 @@ async fn rewards_without_twitch_config_is_bad_request() {
         )
         .await
         .unwrap();
-    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+    assert_eq!(
+        serde_json::from_slice::<serde_json::Value>(&body).unwrap(),
+        serde_json::json!([])
+    );
 }
 
 #[tokio::test]

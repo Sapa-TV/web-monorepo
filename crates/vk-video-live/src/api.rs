@@ -127,6 +127,60 @@ pub async fn channel<T: Transport>(
     parse(&body)
 }
 
+#[derive(Debug, Clone, Deserialize)]
+#[non_exhaustive]
+pub struct RewardInfo {
+    pub id: String,
+    pub name: String,
+    pub price: u64,
+    pub is_disabled: bool,
+    #[serde(skip)]
+    _sealed: (),
+}
+
+pub async fn rewards<T: Transport>(
+    transport: &T,
+    bearer: &str,
+    channel_url: &str,
+) -> Result<Vec<RewardInfo>> {
+    let url = append_query(
+        &format!("{API_BASE}/v1/channel_point/rewards"),
+        &[("channel_url", channel_url)],
+    );
+    let body = transport.get(&url, bearer).await?;
+    let value: serde_json::Value = parse(&body)?;
+    let rewards = value
+        .pointer("/data/rewards")
+        .and_then(serde_json::Value::as_array)
+        .ok_or_else(|| Error::Protocol("rewards missing".to_string()))?;
+    rewards
+        .iter()
+        .map(|r| {
+            Ok(RewardInfo {
+                id: r
+                    .get("id")
+                    .and_then(serde_json::Value::as_str)
+                    .ok_or_else(|| Error::Protocol("reward.id missing".to_string()))?
+                    .to_string(),
+                name: r
+                    .get("name")
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or_default()
+                    .to_string(),
+                price: r
+                    .get("price")
+                    .and_then(serde_json::Value::as_u64)
+                    .unwrap_or(0),
+                is_disabled: r
+                    .get("is_disabled")
+                    .and_then(serde_json::Value::as_bool)
+                    .unwrap_or(false),
+                _sealed: (),
+            })
+        })
+        .collect()
+}
+
 pub async fn ws_token<T: Transport>(transport: &T, bearer: &str) -> Result<String> {
     let body = transport
         .get(&format!("{API_BASE}/v1/websocket/token"), bearer)

@@ -6,6 +6,7 @@
 		id?: string;
 		name?: string;
 		disabled?: boolean;
+		onchange?: (_e: Event & { currentTarget: HTMLInputElement }) => void;
 		children?: Snippet;
 	}
 

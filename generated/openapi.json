@@ -701,7 +701,7 @@
         "operationId": "list_rewards",
         "responses": {
           "200": {
-            "description": "List custom rewards from Twitch",
+            "description": "List custom rewards from configured platforms",
             "content": {
               "application/json": {
                 "schema": {
@@ -713,14 +713,8 @@
               }
             }
           },
-          "400": {
-            "description": "Twitch is not configured"
-          },
-          "401": {
-            "description": "No valid user token"
-          },
           "502": {
-            "description": "Twitch API request failed"
+            "description": "Platform API request failed"
           }
         }
       }
@@ -3162,12 +3156,25 @@
       },
       "RewardConditions": {
         "type": "object",
+        "required": [
+          "reward_ids"
+        ],
         "properties": {
-          "reward_id": {
-            "type": [
-              "string",
-              "null"
+          "platform": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PlatformId"
+              }
             ]
+          },
+          "reward_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -3175,6 +3182,7 @@
         "type": "object",
         "required": [
           "id",
+          "platform",
           "title",
           "cost",
           "is_enabled",
@@ -3195,6 +3203,9 @@
           },
           "is_paused": {
             "type": "boolean"
+          },
+          "platform": {
+            "$ref": "#/components/schemas/PlatformId"
           },
           "title": {
             "type": "string"

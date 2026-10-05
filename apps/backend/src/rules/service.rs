@@ -78,8 +78,8 @@ where
         Ok(self
             .list()
             .await?
-            .into_iter()
-            .filter_map(|rule| rule.referenced_reward_id().map(str::to_string))
+            .iter()
+            .flat_map(|rule| rule.referenced_reward_ids().into_iter().map(str::to_string))
             .collect())
     }
 

@@ -1,4 +1,4 @@
-use std::time::Duration;
+﻿use std::time::Duration;
 
 use tokio::time::sleep;
 
@@ -58,7 +58,10 @@ async fn create_and_get_roundtrip_both_triggers() {
         (
             "reward",
             RuleTrigger::RewardRedemption,
-            RuleConditions::RewardRedemption(RewardConditions::new(Some("rew-1".to_string()))),
+            RuleConditions::RewardRedemption(RewardConditions::new(
+                vec!["rew-1".to_string()],
+                None,
+            )),
         ),
     ] {
         let saved = repo
@@ -96,7 +99,7 @@ async fn list_returns_in_insertion_order() {
         "r2",
         false,
         RuleTrigger::RewardRedemption,
-        RuleConditions::RewardRedemption(RewardConditions::new(None)),
+        RuleConditions::RewardRedemption(RewardConditions::new(Vec::new(), None)),
         action.id,
     )
     .await
@@ -127,13 +130,13 @@ async fn update_preserves_created_at_and_missing_is_none() {
 
     let mut next = saved.clone();
     next.name = "renamed".to_string();
-    next.conditions = RuleConditions::RewardRedemption(RewardConditions::new(None));
+    next.conditions = RuleConditions::RewardRedemption(RewardConditions::new(Vec::new(), None));
     let updated = repo.update(next).await.unwrap().unwrap();
 
     assert_eq!(updated.name, "renamed");
     assert_eq!(
         updated.conditions,
-        RuleConditions::RewardRedemption(RewardConditions::new(None))
+        RuleConditions::RewardRedemption(RewardConditions::new(Vec::new(), None))
     );
     assert_eq!(updated.created_at, saved.created_at);
     assert!(updated.updated_at > saved.updated_at);

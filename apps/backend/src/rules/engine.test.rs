@@ -65,11 +65,13 @@ fn chat_matcher_contains() {
     let conditions = chat_conditions();
     assert!(conditions_match(
         &conditions,
-        &chat_event("1", "hey !spin please").payload
+        &chat_event("1", "hey !spin please").payload,
+        PlatformId::TWITCH,
     ));
     assert!(!conditions_match(
         &conditions,
-        &chat_event("1", "hey").payload
+        &chat_event("1", "hey").payload,
+        PlatformId::TWITCH
     ));
 }
 
@@ -81,11 +83,13 @@ fn chat_matcher_equals() {
     ));
     assert!(conditions_match(
         &conditions,
-        &chat_event("1", "!spin").payload
+        &chat_event("1", "!spin").payload,
+        PlatformId::TWITCH
     ));
     assert!(!conditions_match(
         &conditions,
-        &chat_event("1", "!spin ").payload
+        &chat_event("1", "!spin ").payload,
+        PlatformId::TWITCH
     ));
 }
 
@@ -95,23 +99,52 @@ fn chat_matcher_missing_pattern_matches_nothing() {
         RuleConditions::ChatMessage(MessageConditions::new(MessageMatcher::Contains, None));
     assert!(!conditions_match(
         &conditions,
-        &chat_event("1", "!spin").payload
+        &chat_event("1", "!spin").payload,
+        PlatformId::TWITCH
     ));
 }
 
 #[test]
 fn reward_conditions_match_by_id() {
-    let expected = RuleConditions::RewardRedemption(RewardConditions::new(Some("reward-9".into())));
-    let wildcard = RuleConditions::RewardRedemption(RewardConditions::new(None));
-    assert!(conditions_match(&expected, &reward_event().payload));
-    assert!(conditions_match(&wildcard, &reward_event().payload));
+    let expected =
+        RuleConditions::RewardRedemption(RewardConditions::new(vec!["reward-9".into()], None));
+    let wildcard = RuleConditions::RewardRedemption(RewardConditions::new(Vec::new(), None));
+    assert!(conditions_match(
+        &expected,
+        &reward_event().payload,
+        PlatformId::TWITCH
+    ));
+    assert!(conditions_match(
+        &wildcard,
+        &reward_event().payload,
+        PlatformId::TWITCH
+    ));
+}
+
+#[test]
+fn reward_conditions_match_by_platform() {
+    let vk_only = RuleConditions::RewardRedemption(RewardConditions::new(
+        Vec::new(),
+        Some(PlatformId::VK_VIDEO_LIVE),
+    ));
+    assert!(!conditions_match(
+        &vk_only,
+        &reward_event().payload,
+        PlatformId::TWITCH
+    ));
+    assert!(conditions_match(
+        &vk_only,
+        &reward_event().payload,
+        PlatformId::VK_VIDEO_LIVE
+    ));
 }
 
 #[test]
 fn mismatched_trigger_never_matches() {
     assert!(!conditions_match(
         &chat_conditions(),
-        &reward_event().payload
+        &reward_event().payload,
+        PlatformId::TWITCH
     ));
 }
 

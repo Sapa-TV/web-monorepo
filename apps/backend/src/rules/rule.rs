@@ -1,4 +1,5 @@
 use crate::actions::ActionId;
+use crate::platform::PlatformId;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::fmt::{self, Display};
@@ -66,13 +67,12 @@ impl Rule {
         }
     }
 
-    pub fn referenced_reward_id(&self) -> Option<&str> {
+    pub fn referenced_reward_ids(&self) -> Vec<&str> {
         match &self.conditions {
-            RuleConditions::RewardRedemption(RewardConditions {
-                reward_id: Some(id),
-                ..
-            }) => Some(id),
-            _ => None,
+            RuleConditions::RewardRedemption(RewardConditions { reward_ids, .. }) => {
+                reward_ids.iter().map(String::as_str).collect()
+            }
+            _ => Vec::new(),
         }
     }
 
@@ -130,20 +130,49 @@ pub enum MessageMatcher {
 }
 
 impl RewardConditions {
-    pub fn new(reward_id: Option<String>) -> Self {
+    pub fn new(reward_ids: Vec<String>, platform: Option<PlatformId>) -> Self {
         Self {
-            reward_id,
+            reward_ids,
+            platform,
             _sealed: (),
         }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Serialize, ToSchema)]
 #[non_exhaustive]
 pub struct RewardConditions {
-    pub reward_id: Option<String>,
+    pub reward_ids: Vec<String>,
+    pub platform: Option<PlatformId>,
     #[serde(skip)]
     _sealed: (),
+}
+
+impl<'de> Deserialize<'de> for RewardConditions {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        struct Raw {
+            reward_id: Option<String>,
+            #[serde(default)]
+            reward_ids: Vec<String>,
+            platform: Option<PlatformId>,
+        }
+        let raw = Raw::deserialize(deserializer)?;
+        let mut reward_ids = raw.reward_ids;
+        if let Some(legacy) = raw.reward_id
+            && !reward_ids.contains(&legacy)
+        {
+            reward_ids.push(legacy);
+        }
+        Ok(RewardConditions {
+            reward_ids,
+            platform: raw.platform,
+            _sealed: (),
+        })
+    }
 }
 
 #[cfg(test)]

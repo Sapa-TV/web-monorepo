@@ -337,7 +337,8 @@ export interface RarityResponse {
 }
 
 export interface RewardConditions {
-  reward_id?: string | null;
+  platform?: null | PlatformId;
+  reward_ids: string[];
 }
 
 export interface RewardResponse {
@@ -349,6 +350,7 @@ export interface RewardResponse {
   id: string;
   is_enabled: boolean;
   is_paused: boolean;
+  platform: PlatformId;
   title: string;
   used_in_rules: boolean;
 }

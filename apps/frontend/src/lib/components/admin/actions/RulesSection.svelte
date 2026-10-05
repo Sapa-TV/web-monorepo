@@ -87,9 +87,13 @@
 				conditions.pattern ? ` «${conditions.pattern}»` : ""
 			}`;
 		}
-		return conditions.reward_id
-			? `награда ${conditions.reward_id}`
-			: "любая награда";
+		if (conditions.reward_ids.length === 0) {
+			return "любая награда";
+		}
+		const titles = conditions.reward_ids.map(
+			(id) => rewards.find((r) => r.id === id)?.title ?? id,
+		);
+		return `награды: ${titles.join(", ")}`;
 	}
 
 	function matcherLabel(value: MessageMatcher): string {

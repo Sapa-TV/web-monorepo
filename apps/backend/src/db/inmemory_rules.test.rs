@@ -1,4 +1,4 @@
-use super::*;
+﻿use super::*;
 use crate::rules::rule::{MessageConditions, MessageMatcher, RewardConditions};
 
 fn conditions(trigger: RuleTrigger) -> RuleConditions {
@@ -8,7 +8,7 @@ fn conditions(trigger: RuleTrigger) -> RuleConditions {
             Some("!spin".to_string()),
         )),
         RuleTrigger::RewardRedemption => {
-            RuleConditions::RewardRedemption(RewardConditions::new(None))
+            RuleConditions::RewardRedemption(RewardConditions::new(Vec::new(), None))
         }
     }
 }

@@ -1,4 +1,4 @@
-use crate::actions::action::ActionKind;
+﻿use crate::actions::action::ActionKind;
 use crate::db::inmemory_actions::InMemoryActionRepository;
 use crate::db::inmemory_rules::InMemoryRuleRepository;
 use crate::rules::rule::{MessageConditions, RewardConditions};
@@ -128,7 +128,7 @@ fn rule_fixture(action_id: ActionId) -> Rule {
         "x".to_string(),
         true,
         RuleTrigger::RewardRedemption,
-        RuleConditions::RewardRedemption(RewardConditions::new(None)),
+        RuleConditions::RewardRedemption(RewardConditions::new(Vec::new(), None)),
         action_id,
         chrono::Utc::now(),
         chrono::Utc::now(),

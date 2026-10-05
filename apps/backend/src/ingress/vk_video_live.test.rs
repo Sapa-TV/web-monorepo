@@ -1,6 +1,6 @@
 use super::*;
 use crate::ingress::event::PlatformEventPayload;
-use vk_video_live::events::{PushEvent, RewardDemandEvent};
+use vk_video_live::events::{ChatMessageEvent, PushEvent, RewardDemandEvent};
 
 fn chat(id: u64, nick: &str, text: &str) -> PushEvent {
     PushEvent::ChatMessage(ChatMessageEvent::new(

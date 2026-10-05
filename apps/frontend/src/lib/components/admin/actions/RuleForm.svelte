@@ -35,10 +35,32 @@
 	let trigger = $state<RuleTrigger>(RuleTrigger.ChatMessage);
 	let matcher = $state<MessageMatcher>(MessageMatcher.Contains);
 	let pattern = $state("");
-	let rewardId = $state("");
+	let rewardIds = $state<string[]>([]);
+	let rewardPlatform = $state<number | null>(null);
 	let actionId = $state<number | null>(null);
 	let busy = $state(false);
 	let formError = $state("");
+
+	const PLATFORM_LABELS: Record<number, string> = {
+		1: "Twitch",
+		3: "VK Video Live",
+	};
+
+	let filteredRewards = $derived(
+		rewardPlatform === null
+			? rewards
+			: rewards.filter((r) => r.platform === rewardPlatform),
+	);
+
+	function platformLabel(id: number): string {
+		return PLATFORM_LABELS[id] ?? `Платформа ${id}`;
+	}
+
+	function toggleReward(id: string, checked: boolean) {
+		rewardIds = checked
+			? [...rewardIds, id]
+			: rewardIds.filter((r) => r !== id);
+	}
 
 	export function openNew() {
 		editId = null;
@@ -47,7 +69,8 @@
 		trigger = RuleTrigger.ChatMessage;
 		matcher = MessageMatcher.Contains;
 		pattern = "";
-		rewardId = "";
+		rewardIds = [];
+		rewardPlatform = null;
 		actionId = null;
 		formError = "";
 		formOpen = true;
@@ -62,11 +85,13 @@
 		if (rule.conditions.trigger === "chat_message") {
 			matcher = rule.conditions.matcher;
 			pattern = rule.conditions.pattern ?? "";
-			rewardId = "";
+			rewardIds = [];
+			rewardPlatform = null;
 		} else {
 			matcher = MessageMatcher.Contains;
 			pattern = "";
-			rewardId = rule.conditions.reward_id ?? "";
+			rewardIds = rule.conditions.reward_ids;
+			rewardPlatform = rule.conditions.platform ?? null;
 		}
 		formError = "";
 		formOpen = true;
@@ -86,7 +111,8 @@
 		}
 		return {
 			trigger: "reward_redemption",
-			reward_id: rewardId || null,
+			reward_ids: rewardIds,
+			platform: rewardPlatform,
 		};
 	}
 
@@ -164,23 +190,35 @@
 				</Field>
 			</div>
 		{:else}
-			<Field label="Награда">
-				<Select bind:value={rewardId}>
-					{#if rewardsError}
-						<option value="">Награды недоступны: {rewardsError}</option>
-					{:else if rewards.length === 0}
-						<option value="">Наград не найдено</option>
-					{:else}
-						<option value="">Любая награда</option>
-						{#each rewards as reward (reward.id)}
-							<option value={reward.id}>
-								{reward.title} ({reward.cost}){reward.used_in_rules
-									? " • в правилах"
-									: ""}
-							</option>
-						{/each}
-					{/if}
+			<Field label="Платформа">
+				<Select bind:value={rewardPlatform}>
+					<option value={null}>Любая платформа</option>
+					{#each Object.entries(PLATFORM_LABELS) as [id, label] (id)}
+						<option value={Number(id)}>{label}</option>
+					{/each}
 				</Select>
+			</Field>
+
+			<Field label="Награды (пусто — любая награда)">
+				{#if rewardsError}
+					<Alert tone="error">Награды недоступны: {rewardsError}</Alert>
+				{:else if filteredRewards.length === 0}
+					<p class="empty-rewards">Наград не найдено</p>
+				{:else}
+					<div class="rewards-list">
+						{#each filteredRewards as reward (reward.id)}
+							<Checkbox
+								checked={rewardIds.includes(reward.id)}
+								onchange={(e) =>
+									toggleReward(reward.id, e.currentTarget.checked)}
+							>
+								{reward.title} ({reward.cost}) · {platformLabel(
+									reward.platform,
+								)}{reward.used_in_rules ? " • в правилах" : ""}
+							</Checkbox>
+						{/each}
+					</div>
+				{/if}
 			</Field>
 		{/if}
 
@@ -218,5 +256,20 @@
 	.field-row :global(.field) {
 		flex: 1;
 		min-width: 160px;
+	}
+
+	.rewards-list {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		max-height: 240px;
+		overflow-y: auto;
+		padding: 4px 0;
+	}
+
+	.empty-rewards {
+		margin: 0;
+		font-size: 13px;
+		color: var(--on-surface-variant);
 	}
 </style>

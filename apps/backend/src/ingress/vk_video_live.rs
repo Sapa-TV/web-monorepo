@@ -5,7 +5,7 @@ use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
 use vk_video_live::api;
 use vk_video_live::error::Error as VkError;
-use vk_video_live::events::{self, ChatMessageEvent};
+use vk_video_live::events;
 use vk_video_live::pubsub::{PUBSUB_URL, PubSub};
 use vk_video_live::transport::Transport;
 
