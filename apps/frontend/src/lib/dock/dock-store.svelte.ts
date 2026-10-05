@@ -17,6 +17,17 @@ const WS_RETRY_BASE_MS = 1_000;
 const WS_RETRY_MAX_MS = 15_000;
 const DEFAULT_POLL_INTERVAL_MS = 10_000;
 
+const PLATFORM_NAMES: Record<number, string> = {
+	1: "Twitch",
+	2: "YouTube",
+	3: "VKVL",
+};
+
+function platformSuffix(platform: number | null): string {
+	if (platform === null) return "";
+	return ` (${PLATFORM_NAMES[platform] ?? platform})`;
+}
+
 export interface WsMessage {
 	type:
 		| "auth_ok"
@@ -49,7 +60,8 @@ export interface DockStoreOptions {
 export class DockStore {
 	entries = $state<QueueEntry[]>([]);
 	nextUser = $state("");
-	dequeueLabel = $state("▶ Dequeue");
+	nextPlatform = $state<number | null>(null);
+	dequeueLabel = $state("Крутить");
 	keyState = $state<KeyState | null>(null);
 	connState = $state<ConnState>("disconnected");
 	widgetOnline = $state(false);
@@ -112,35 +124,31 @@ export class DockStore {
 	}
 
 	async loadAll(): Promise<void> {
-		const [listRes, statsRes] = await Promise.all([
-			wapi.list(undefined, this.wapiAuth),
-			wapi.stats(this.wapiAuth),
-		]);
+		const listRes = await wapi.list(undefined, this.wapiAuth);
 
 		listRes.match(
 			(data) => {
 				this.setKeyState("ok");
 				this.entries = data.entries;
 				const hasSpinning = this.entries.some((e) => e.status === "Spinning");
-				if (!hasSpinning) {
-					const next = this.entries.find(
-						(e) => e.status === "Error" || e.status === "Pending",
-					);
-					this.nextUser = next ? next.user_name || "" : "";
+				if (hasSpinning) {
+					this.dequeueLabel = "Крутится...";
+					return;
 				}
+				const next = this.entries.find(
+					(e) => e.status === "Error" || e.status === "Pending",
+				);
+				this.nextUser = next ? next.user_name || "" : "";
+				this.nextPlatform = next?.platform ?? null;
+				this.dequeueLabel = next
+					? `Крутить для: ${this.nextUser}${platformSuffix(this.nextPlatform)}`
+					: "Крутить: очередь пуста";
 			},
 			(err) => {
 				if (normalizeApiError(err).kind === ApiErrorKind.Unauthorized) {
 					this.setKeyState(this.accessKey ? "bad" : "missing");
 				}
 			},
-		);
-
-		statsRes.match(
-			(s) => {
-				this.dequeueLabel = `▶ Dequeue (${s.pending + s.error})`;
-			},
-			() => {},
 		);
 	}
 

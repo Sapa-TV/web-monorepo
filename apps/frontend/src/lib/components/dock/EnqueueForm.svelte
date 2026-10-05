@@ -12,14 +12,26 @@
 </script>
 
 <Section title="Добавить в очередь">
-	<div class="inline-form">
+	<form
+		class="inline-form"
+		onsubmit={(e) => {
+			e.preventDefault();
+			onsubmit();
+		}}
+	>
 		<label class="visually-hidden" for="enq-name">Имя зрителя</label>
-		<Input id="enq-name" type="text" placeholder="Имя зрителя" bind:value />
-		<Button variant="primary" type="button" onclick={onsubmit} disabled={busy}>
+		<Input
+			id="enq-name"
+			type="text"
+			placeholder="Имя зрителя"
+			bind:value
+			autofocus
+		/>
+		<Button variant="primary" type="submit" disabled={busy}>
 			<IconPlus aria-hidden="true" />
 			Добавить
 		</Button>
-	</div>
+	</form>
 </Section>
 
 <style>

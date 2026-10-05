@@ -3021,6 +3021,16 @@
           "id": {
             "$ref": "#/components/schemas/QueueEntryId"
           },
+          "platform": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PlatformId"
+              }
+            ]
+          },
           "result_slot_id": {
             "oneOf": [
               {

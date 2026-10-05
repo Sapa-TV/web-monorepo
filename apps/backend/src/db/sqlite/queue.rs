@@ -4,6 +4,7 @@ use sqlx::{FromRow, SqlitePool};
 
 use crate::db::sqlite::map_err;
 use crate::error::RepositoryError;
+use crate::platform::PlatformId;
 use crate::queue::entry::{QueueEntry, QueueEntryId, QueueStats, QueueStatus};
 use crate::queue::repository::{DequeueOutcome, QueueRepository, StatusUpdateOutcome};
 use crate::roulette::slot_service::RouletteSlotId;
@@ -36,6 +37,7 @@ struct EntryRow {
     user_name: String,
     status: String,
     result_slot_id: Option<i64>,
+    platform_id: Option<i64>,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
 }
@@ -50,7 +52,8 @@ impl EntryRow {
             self.result_slot_id.map(|id| RouletteSlotId::new(id as u32)),
             self.created_at,
             self.updated_at,
-        ))
+        )
+        .with_platform(self.platform_id.map(|id| PlatformId::new(id as u32))))
     }
 }
 
@@ -95,7 +98,8 @@ impl QueueRepository for SqliteQueueRepository {
     async fn peek_next(&self) -> Result<Option<QueueEntry>, RepositoryError> {
         let row = sqlx::query_as!(
             EntryRow,
-            r#"SELECT id AS "id!: i64", user_id AS "user_id!: i64", user_name, status, result_slot_id, created_at AS "created_at: DateTime<Utc>", updated_at AS "updated_at: DateTime<Utc>"
+            r#"SELECT id AS "id!: i64", user_id AS "user_id!: i64", user_name, status, result_slot_id, created_at AS "created_at: DateTime<Utc>", updated_at AS "updated_at: DateTime<Utc>",
+                   (SELECT up.platform_id FROM user_platforms up WHERE up.user_id = queue_entries.user_id ORDER BY up.platform_id LIMIT 1) AS platform_id
                FROM queue_entries
                WHERE status IN ('error', 'pending')
                ORDER BY CASE status WHEN 'error' THEN 0 ELSE 1 END, id
@@ -127,7 +131,8 @@ impl QueueRepository for SqliteQueueRepository {
                    ORDER BY CASE status WHEN 'error' THEN 0 ELSE 1 END, id
                    LIMIT 1
                )
-               RETURNING id AS "id!: i64", user_id AS "user_id!: i64", user_name, status, result_slot_id, created_at AS "created_at: DateTime<Utc>", updated_at AS "updated_at: DateTime<Utc>""#,
+               RETURNING id AS "id!: i64", user_id AS "user_id!: i64", user_name, status, result_slot_id, created_at AS "created_at: DateTime<Utc>", updated_at AS "updated_at: DateTime<Utc>",
+                   (SELECT up.platform_id FROM user_platforms up WHERE up.user_id = queue_entries.user_id ORDER BY up.platform_id LIMIT 1) AS platform_id"#,
             slot_id.get(),
             Utc::now()
         )
@@ -159,7 +164,8 @@ impl QueueRepository for SqliteQueueRepository {
         limit: usize,
     ) -> Result<Vec<QueueEntry>, RepositoryError> {
         let rows = sqlx::query(
-            "SELECT id, user_id, user_name, status, result_slot_id, created_at, updated_at
+            "SELECT id, user_id, user_name, status, result_slot_id, created_at, updated_at,
+                    (SELECT up.platform_id FROM user_platforms up WHERE up.user_id = queue_entries.user_id ORDER BY up.platform_id LIMIT 1) AS platform_id
              FROM queue_entries
              WHERE (?1 IS NULL OR id > ?1) AND (?2 IS NULL OR status = ?2)
              ORDER BY id ASC LIMIT ?3",
@@ -177,7 +183,8 @@ impl QueueRepository for SqliteQueueRepository {
     async fn get_by_id(&self, id: QueueEntryId) -> Result<Option<QueueEntry>, RepositoryError> {
         let row = sqlx::query_as!(
             EntryRow,
-            r#"SELECT id AS "id!: i64", user_id AS "user_id!: i64", user_name, status, result_slot_id, created_at AS "created_at: DateTime<Utc>", updated_at AS "updated_at: DateTime<Utc>"
+            r#"SELECT id AS "id!: i64", user_id AS "user_id!: i64", user_name, status, result_slot_id, created_at AS "created_at: DateTime<Utc>", updated_at AS "updated_at: DateTime<Utc>",
+                   (SELECT up.platform_id FROM user_platforms up WHERE up.user_id = queue_entries.user_id ORDER BY up.platform_id LIMIT 1) AS platform_id
                FROM queue_entries WHERE id = ?"#,
             id.get()
         )
@@ -258,7 +265,8 @@ impl QueueRepository for SqliteQueueRepository {
             EntryRow,
             r#"UPDATE queue_entries SET status = 'error', updated_at = ?1
                WHERE status = 'spinning' AND updated_at < ?2
-               RETURNING id AS "id!: i64", user_id AS "user_id!: i64", user_name, status, result_slot_id, created_at AS "created_at: DateTime<Utc>", updated_at AS "updated_at: DateTime<Utc>""#,
+               RETURNING id AS "id!: i64", user_id AS "user_id!: i64", user_name, status, result_slot_id, created_at AS "created_at: DateTime<Utc>", updated_at AS "updated_at: DateTime<Utc>",
+                   CAST(NULL AS INTEGER) AS platform_id"#,
             Utc::now(),
             cutoff
         )

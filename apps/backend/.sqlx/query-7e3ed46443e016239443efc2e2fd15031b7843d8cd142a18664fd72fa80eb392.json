@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id AS \"id!: i64\", user_id AS \"user_id!: i64\", user_name, status, result_slot_id, created_at AS \"created_at: DateTime<Utc>\", updated_at AS \"updated_at: DateTime<Utc>\"\n               FROM queue_entries WHERE id = ?",
+  "query": "UPDATE queue_entries\n               SET status = 'spinning', result_slot_id = ?1, updated_at = ?2\n               WHERE id = (\n                   SELECT id FROM queue_entries\n                   WHERE status IN ('error', 'pending')\n                     AND NOT EXISTS (SELECT 1 FROM queue_entries WHERE status = 'spinning')\n                   ORDER BY CASE status WHEN 'error' THEN 0 ELSE 1 END, id\n                   LIMIT 1\n               )\n               RETURNING id AS \"id!: i64\", user_id AS \"user_id!: i64\", user_name, status, result_slot_id, created_at AS \"created_at: DateTime<Utc>\", updated_at AS \"updated_at: DateTime<Utc>\",\n                   (SELECT up.platform_id FROM user_platforms up WHERE up.user_id = queue_entries.user_id ORDER BY up.platform_id LIMIT 1) AS platform_id",
   "describe": {
     "columns": [
       {
@@ -79,10 +79,21 @@
             "name": "updated_at"
           }
         }
+      },
+      {
+        "name": "platform_id",
+        "ordinal": 7,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "user_platforms",
+            "name": "platform_id"
+          }
+        }
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 2
     },
     "nullable": [
       false,
@@ -91,8 +102,9 @@
       false,
       true,
       false,
-      false
+      false,
+      true
     ]
   },
-  "hash": "ce040dccaecb87e9f8dddf4d2bb1ea338e56a50cf8e931f81be75d61cbf0b8d0"
+  "hash": "7e3ed46443e016239443efc2e2fd15031b7843d8cd142a18664fd72fa80eb392"
 }

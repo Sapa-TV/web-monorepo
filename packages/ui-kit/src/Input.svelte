@@ -10,6 +10,7 @@
 		min?: number;
 		step?: number;
 		title?: string;
+		autofocus?: boolean;
 	}
 
 	let {

@@ -281,6 +281,7 @@ export type QueueEntryId = number;
 export interface QueueEntryResponse {
   created_at: string;
   id: QueueEntryId;
+  platform?: null | PlatformId;
   result_slot_id?: null | RouletteSlotId;
   slot_name?: string | null;
   status: QueueStatus;

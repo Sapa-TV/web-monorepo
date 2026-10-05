@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id AS \"id!: i64\", user_id AS \"user_id!: i64\", user_name, status, result_slot_id, created_at AS \"created_at: DateTime<Utc>\", updated_at AS \"updated_at: DateTime<Utc>\"\n               FROM queue_entries\n               WHERE status IN ('error', 'pending')\n               ORDER BY CASE status WHEN 'error' THEN 0 ELSE 1 END, id\n               LIMIT 1",
+  "query": "SELECT id AS \"id!: i64\", user_id AS \"user_id!: i64\", user_name, status, result_slot_id, created_at AS \"created_at: DateTime<Utc>\", updated_at AS \"updated_at: DateTime<Utc>\",\n                   (SELECT up.platform_id FROM user_platforms up WHERE up.user_id = queue_entries.user_id ORDER BY up.platform_id LIMIT 1) AS platform_id\n               FROM queue_entries WHERE id = ?",
   "describe": {
     "columns": [
       {
@@ -79,10 +79,21 @@
             "name": "updated_at"
           }
         }
+      },
+      {
+        "name": "platform_id",
+        "ordinal": 7,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "user_platforms",
+            "name": "platform_id"
+          }
+        }
       }
     ],
     "parameters": {
-      "Right": 0
+      "Right": 1
     },
     "nullable": [
       false,
@@ -91,8 +102,9 @@
       false,
       true,
       false,
-      false
+      false,
+      true
     ]
   },
-  "hash": "af50faeda08705ba8570d0891669caf25c2c1aa46e1c27b7383e3d746c861568"
+  "hash": "c508c64aaaa62d1e276fb03b0cffece7a79327033633ad802100a777aaa0f940"
 }

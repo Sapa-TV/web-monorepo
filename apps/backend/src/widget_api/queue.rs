@@ -9,6 +9,7 @@ use utoipa_axum::routes;
 
 use crate::error::QueueServiceError;
 use crate::error::api::ApiError;
+use crate::platform::PlatformId;
 use crate::queue::entry::{QueueEntry, QueueEntryId, QueueStats, QueueStatus};
 use crate::roulette::slot_service::{RouletteSlot, RouletteSlotId};
 use crate::state::AppState;
@@ -37,6 +38,7 @@ pub struct QueueEntryResponse {
     pub id: QueueEntryId,
     pub user_id: UserId,
     pub user_name: String,
+    pub platform: Option<PlatformId>,
     pub status: QueueStatus,
     pub result_slot_id: Option<RouletteSlotId>,
     pub slot_name: Option<String>,
@@ -52,6 +54,7 @@ impl From<&QueueEntry> for QueueEntryResponse {
             id: entry.id,
             user_id: entry.user_id,
             user_name: entry.user_name.clone(),
+            platform: entry.platform,
             status: entry.status,
             result_slot_id: entry.result_slot_id,
             slot_name: None,

@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "UPDATE queue_entries SET status = 'error', updated_at = ?1\n               WHERE status = 'spinning' AND updated_at < ?2\n               RETURNING id AS \"id!: i64\", user_id AS \"user_id!: i64\", user_name, status, result_slot_id, created_at AS \"created_at: DateTime<Utc>\", updated_at AS \"updated_at: DateTime<Utc>\"",
+  "query": "UPDATE queue_entries SET status = 'error', updated_at = ?1\n               WHERE status = 'spinning' AND updated_at < ?2\n               RETURNING id AS \"id!: i64\", user_id AS \"user_id!: i64\", user_name, status, result_slot_id, created_at AS \"created_at: DateTime<Utc>\", updated_at AS \"updated_at: DateTime<Utc>\",\n                   CAST(NULL AS INTEGER) AS platform_id",
   "describe": {
     "columns": [
       {
@@ -79,6 +79,12 @@
             "name": "updated_at"
           }
         }
+      },
+      {
+        "name": "platform_id",
+        "ordinal": 7,
+        "type_info": "Integer",
+        "origin": "Expression"
       }
     ],
     "parameters": {
@@ -91,8 +97,9 @@
       false,
       true,
       false,
-      false
+      false,
+      true
     ]
   },
-  "hash": "41f078900dacf4919c459b2e1e70bf82bd87e44e58936b9ed1eb450c335cfbe8"
+  "hash": "aa13115a70977fe64bbbf218f971def0675eae5b33ec83b75a76b0289f98aac4"
 }

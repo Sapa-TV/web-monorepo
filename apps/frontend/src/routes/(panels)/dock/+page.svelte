@@ -8,7 +8,6 @@
 	import IconKeyRound from "~icons/lucide/key-round";
 	import IconList from "~icons/lucide/list";
 	import IconPlay from "~icons/lucide/play";
-	import IconPlus from "~icons/lucide/plus";
 	import IconRefreshCw from "~icons/lucide/refresh-cw";
 
 	const widgetAccessKey =
@@ -19,7 +18,6 @@
 
 	const dock = new DockStore(widgetAccessKey);
 
-	let showEnqueue = $state(false);
 	let showLog = $state(false);
 	let enqName = $state("");
 
@@ -72,19 +70,11 @@
 		variant="primary"
 		type="button"
 		onclick={() => void dock.dequeueNext()}
-		disabled={dock.dequeueBusy}
+		disabled={dock.dequeueBusy || !dock.widgetOnline}
+		title={dock.widgetOnline ? "" : "Виджет офлайн"}
 	>
 		<IconPlay aria-hidden="true" />
 		{dock.dequeueLabel}
-	</Button>
-	<span class="next-user">{dock.nextUser}</span>
-	<Button
-		size="sm"
-		type="button"
-		onclick={() => void (showEnqueue = !showEnqueue)}
-	>
-		<IconPlus aria-hidden="true" />
-		{showEnqueue ? "Закрыть" : "Добавить"}
 	</Button>
 	<span class="spacer"></span>
 	<Button size="sm" type="button" onclick={() => void (showLog = !showLog)}>
@@ -93,13 +83,11 @@
 	</Button>
 </div>
 
-{#if showEnqueue}
-	<EnqueueForm
-		bind:value={enqName}
-		busy={dock.enqueueBusy}
-		onsubmit={enqueueEntry}
-	/>
-{/if}
+<EnqueueForm
+	bind:value={enqName}
+	busy={dock.enqueueBusy}
+	onsubmit={enqueueEntry}
+/>
 
 <QueueTables
 	active={dock.active}
@@ -149,12 +137,6 @@
 		margin-bottom: 20px;
 		flex-wrap: wrap;
 		align-items: center;
-	}
-
-	.next-user {
-		font-size: 12px;
-		color: var(--on-surface-variant);
-		min-width: 80px;
 	}
 
 	.spacer {

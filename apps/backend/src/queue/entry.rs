@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt::{self, Display};
 use utoipa::ToSchema;
 
+use crate::platform::PlatformId;
 use crate::roulette::slot_service::RouletteSlotId;
 use crate::user::UserId;
 
@@ -64,6 +65,7 @@ pub struct QueueEntry {
     pub id: QueueEntryId,
     pub user_id: UserId,
     pub user_name: String,
+    pub platform: Option<PlatformId>,
     pub status: QueueStatus,
     pub result_slot_id: Option<RouletteSlotId>,
     pub created_at: DateTime<Utc>,
@@ -85,12 +87,18 @@ impl QueueEntry {
             id,
             user_id,
             user_name: user_name.into(),
+            platform: None,
             status,
             result_slot_id,
             created_at,
             updated_at,
             _sealed: (),
         }
+    }
+
+    pub fn with_platform(mut self, platform: Option<PlatformId>) -> Self {
+        self.platform = platform;
+        self
     }
 }
 
