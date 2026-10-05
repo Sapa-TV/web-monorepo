@@ -7,15 +7,25 @@ vi.mock("#lib/api", () => ({
 	wapi: {
 		list: vi.fn(),
 		complete: vi.fn(),
+		listSlots: vi.fn(),
+		listRarities: vi.fn(),
 	},
 }));
 
 import { wapi } from "#lib/api";
-import { RouletteStore, type WsMessageLike } from "./roulette-store.svelte";
+import {
+	buildTrack,
+	RouletteStore,
+	TRACK_LENGTH,
+	TRACK_WIN_INDEX,
+	type WsMessageLike,
+} from "./roulette-store.svelte";
 
 type MockedWapi = {
 	list: ReturnType<typeof vi.fn>;
 	complete: ReturnType<typeof vi.fn>;
+	listSlots: ReturnType<typeof vi.fn>;
+	listRarities: ReturnType<typeof vi.fn>;
 };
 
 const mocked = wapi as unknown as MockedWapi;
@@ -63,6 +73,7 @@ function spinMessage(overrides: Partial<WsMessageLike> = {}) {
 		type: "spin_started",
 		entry_id: 7,
 		user_name: "viewer",
+		slot_id: 2,
 		slot_name: "Джекпот",
 		slot_rarity: "legendary",
 		...overrides,
@@ -75,7 +86,11 @@ describe("RouletteStore", () => {
 		FakeWebSocket.instances = [];
 		mocked.list.mockReset();
 		mocked.complete.mockReset();
+		mocked.listSlots.mockReset();
+		mocked.listRarities.mockReset();
 		mocked.list.mockReturnValue(okAsync({ entries: [] }));
+		mocked.listSlots.mockReturnValue(okAsync([]));
+		mocked.listRarities.mockReturnValue(okAsync([]));
 	});
 
 	afterEach(() => {
@@ -253,5 +268,53 @@ describe("RouletteStore", () => {
 		await vi.advanceTimersByTimeAsync(60_000);
 
 		expect(FakeWebSocket.instances.length).toBe(1);
+	});
+
+	it("spin_started builds a track ending on the winning slot", async () => {
+		mocked.listSlots.mockReturnValue(
+			okAsync([
+				{ id: 1, name: "Обычное", rarity_id: 1, weight: 9, action: "" },
+				{ id: 2, name: "Джекпот", rarity_id: 2, weight: 1, action: "" },
+			]),
+		);
+
+		const store = await startConnected();
+		await vi.advanceTimersByTimeAsync(0);
+		lastSocket().emit(spinMessage());
+
+		expect(store.track.length).toBe(TRACK_LENGTH);
+		expect(store.track[TRACK_WIN_INDEX].slot_id).toBe(2);
+	});
+
+	it("spin without matching slot leaves the track empty", async () => {
+		const store = await startConnected();
+		await vi.advanceTimersByTimeAsync(0);
+		lastSocket().emit(spinMessage());
+
+		expect(store.phase).toBe("spinning");
+		expect(store.track).toEqual([]);
+	});
+});
+
+describe("buildTrack", () => {
+	const slots = [
+		{ id: 1, name: "A", rarity_id: 1, weight: 1, action: "" },
+		{ id: 2, name: "B", rarity_id: 2, weight: 3, action: "" },
+	];
+
+	it("returns empty track for empty slots", () => {
+		expect(buildTrack([], 1)).toEqual([]);
+	});
+
+	it("places the winning slot at TRACK_WIN_INDEX", () => {
+		const track = buildTrack(slots, 1, () => 0.99);
+		expect(track.length).toBe(TRACK_LENGTH);
+		expect(track[TRACK_WIN_INDEX].name).toBe("A");
+	});
+
+	it("picks slots weighted by weight", () => {
+		const track = buildTrack(slots, 1, () => 0.5);
+		const filler = track.filter((_, i) => i !== TRACK_WIN_INDEX);
+		expect(filler.every((item) => item.slot_id === 2)).toBe(true);
 	});
 });

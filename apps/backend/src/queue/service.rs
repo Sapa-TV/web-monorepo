@@ -92,6 +92,7 @@ where
             .event_publisher
             .publish_spin(SpinEvent::Started {
                 entry_id: entry.id,
+                slot_id: slot.id,
                 slot_name: slot.name.clone(),
                 slot_rarity,
                 user_name: entry.user_name.clone(),

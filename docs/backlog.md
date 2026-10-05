@@ -33,3 +33,5 @@
 - [ ] Правила/движок: Плагины экшенов без кода (скрипты/UI-редактор)
 - [ ] Автоматизация справочника заказов (см. `docs/archive/plan-orders-directory.md`, раздел «Автоматизация»): новые экшены движка правил — `add_order_entry { list: games|movies, customer, source: 'roulette' }` создаёт запись с `title = NULL` по событию `PlatformEvent::reward_redemption`; `add_vip_record { kind: vip|unvip }`. Зависит от пунктов «Админка управления наградами» и «Новые матчеры/экшены»
 - [ ] Импорт заказов: опция матчить `customer_name` на `user_platforms.platform_username` (case-insensitive) и заполнять `user_id` при импорте из Google Sheets
+- [ ] не работает подключение vk video live - Не удалось сохранить credentials. Попробуй ещё раз., [backend] 2026-10-05T02:55:11.856762Z ERROR backend::admin::vk_auth: vk token exchange failed: authentication failed: vk oauth: status 404 Not Found:
+- [ ] переделать дизайн рулетки, закрепить шрифты для виджетов - должны быть круглые милые скрипты

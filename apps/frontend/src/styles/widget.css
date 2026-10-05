@@ -24,6 +24,7 @@
 	--widget-bad: oklch(0.75 0.18 25);
 	--widget-bad-dim: oklch(0.65 0.2 25 / 0.14);
 	--widget-bad-dot: oklch(0.65 0.2 25);
+	--widget-mask-solid: #000;
 }
 
 html {

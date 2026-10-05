@@ -1,5 +1,11 @@
 import { WS_URL, wapi } from "#lib/api";
-import { HttpError, NetworkError, TimeoutError } from "@sapa-tv-ru/api-client";
+import {
+	HttpError,
+	NetworkError,
+	TimeoutError,
+	type RarityResponse,
+	type RouletteSlotResponse,
+} from "@sapa-tv-ru/api-client";
 
 export type RoulettePhase =
 	"idle" | "spinning" | "completed" | "error" | "denied";
@@ -9,8 +15,49 @@ type ConnState = "connected" | "disconnected";
 export interface SpinInfo {
 	entry_id: number;
 	user_name: string;
+	slot_id: number | null;
 	slot_name: string;
 	slot_rarity: string;
+}
+
+export interface TrackItem {
+	key: number;
+	slot_id: number;
+	name: string;
+	rarity_id: number;
+}
+
+export const TRACK_LENGTH = 56;
+const TRACK_TAIL_ITEMS = 8;
+export const TRACK_WIN_INDEX = TRACK_LENGTH - TRACK_TAIL_ITEMS;
+
+export function buildTrack(
+	slots: RouletteSlotResponse[],
+	winningSlotId: number,
+	rng: () => number = Math.random,
+): TrackItem[] {
+	if (slots.length === 0) return [];
+	const totalWeight = slots.reduce((sum, s) => sum + s.weight, 0);
+	const pick = (): RouletteSlotResponse => {
+		if (totalWeight <= 0) return slots[Math.floor(rng() * slots.length)];
+		let roll = rng() * totalWeight;
+		for (const slot of slots) {
+			roll -= slot.weight;
+			if (roll < 0) return slot;
+		}
+		return slots[slots.length - 1];
+	};
+	const winner =
+		slots.find((s) => s.id === winningSlotId) ?? slots[slots.length - 1];
+	return Array.from({ length: TRACK_LENGTH }, (_, i) => {
+		const slot = i === TRACK_WIN_INDEX ? winner : pick();
+		return {
+			key: i,
+			slot_id: slot.id,
+			name: slot.name,
+			rarity_id: slot.rarity_id,
+		};
+	});
 }
 
 export interface WsMessageLike {
@@ -18,6 +65,7 @@ export interface WsMessageLike {
 		"auth_ok" | "auth_err" | "spin_started" | "spin_completed" | "spin_error";
 	entry_id?: number;
 	user_name?: string;
+	slot_id?: number;
 	slot_name?: string;
 	slot_rarity?: string;
 }
@@ -32,7 +80,7 @@ interface SocketLike {
 }
 
 const AUTO_COMPLETE_MS = 10_000;
-const IDLE_AFTER_MS = 4_000;
+const IDLE_AFTER_MS = 7_000;
 const WS_RETRY_BASE_MS = 1_000;
 const WS_RETRY_MAX_MS = 15_000;
 const HTTP_UNAUTHORIZED = 401;
@@ -57,6 +105,9 @@ export class RouletteStore {
 		visible: boolean;
 	}>({ cls: "missing", label: "", visible: false });
 	spin = $state<SpinInfo | null>(null);
+	slots = $state<RouletteSlotResponse[]>([]);
+	rarities = $state<RarityResponse[]>([]);
+	track = $state<TrackItem[]>([]);
 
 	private readonly accessKey: string;
 	private readonly wapiAuth: { headers: Record<string, string> };
@@ -115,6 +166,7 @@ export class RouletteStore {
 					this.setSpinning({
 						entry_id: d.entry_id,
 						user_name: d.user_name,
+						slot_id: d.slot_id ?? null,
 						slot_name: d.slot_name,
 						slot_rarity: d.slot_rarity,
 					});
@@ -135,6 +187,7 @@ export class RouletteStore {
 		this.idleText = "Ожидание следующего спина...";
 		this.phase = "idle";
 		this.spin = null;
+		this.track = [];
 	}
 
 	failAuth(): void {
@@ -169,6 +222,11 @@ export class RouletteStore {
 		this.stateLabel = "Крутится!";
 		this.phase = "spinning";
 		this.spin = data;
+		const winning =
+			data.slot_id != null
+				? this.slots.find((s) => s.id === data.slot_id)
+				: this.slots.find((s) => s.name === data.slot_name);
+		this.track = winning ? buildTrack(this.slots, winning.id) : [];
 		this.idleTimer = setTimeout(() => {
 			if (this.currentEntryId === data.entry_id) {
 				void wapi.complete(data.entry_id, this.wapiAuth);
@@ -196,6 +254,7 @@ export class RouletteStore {
 		res.match(
 			() => {
 				this.keyOk = true;
+				void this.loadSlots();
 				this.connectSocket();
 			},
 			(err) => {
@@ -214,6 +273,25 @@ export class RouletteStore {
 				this.stateLabel = "Ошибка подключения виджета";
 				this.idleText = "Ошибка подключения виджета.";
 			},
+		);
+	}
+
+	private async loadSlots(): Promise<void> {
+		const [slotsRes, raritiesRes] = await Promise.all([
+			wapi.listSlots(this.wapiAuth),
+			wapi.listRarities(this.wapiAuth),
+		]);
+		slotsRes.match(
+			(slots) => {
+				this.slots = slots;
+			},
+			() => {},
+		);
+		raritiesRes.match(
+			(rarities) => {
+				this.rarities = rarities;
+			},
+			() => {},
 		);
 	}
 

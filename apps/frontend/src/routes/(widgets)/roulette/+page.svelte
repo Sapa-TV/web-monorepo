@@ -24,6 +24,8 @@
 	stateLabel={roulette.stateLabel}
 	idleText={roulette.idleText}
 	spin={roulette.spin}
+	track={roulette.track}
+	rarities={roulette.rarities}
 	conn={roulette.conn}
 	badge={roulette.badge}
 />

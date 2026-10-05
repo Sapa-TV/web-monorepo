@@ -4,6 +4,7 @@ use serde::Serialize;
 
 use crate::error::event::EventError;
 use crate::queue::entry::QueueEntryId;
+use crate::roulette::slot_service::RouletteSlotId;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type")]
@@ -12,6 +13,7 @@ pub enum SpinEvent {
     #[serde(rename = "spin_started")]
     Started {
         entry_id: QueueEntryId,
+        slot_id: RouletteSlotId,
         slot_name: String,
         slot_rarity: String,
         user_name: String,
