@@ -37,96 +37,119 @@ impl ChatMessageEvent {
     }
 }
 
-pub fn parse_push(frame: &str) -> Result<Option<ChatMessageEvent>> {
+#[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
+pub struct RewardDemandEvent {
+    pub id: u64,
+    pub user_id: u64,
+    pub user_nick: String,
+    pub reward_id: String,
+    pub status: String,
+    pub created_at: i64,
+}
+
+impl RewardDemandEvent {
+    pub fn new(
+        id: u64,
+        user_id: u64,
+        user_nick: impl Into<String>,
+        reward_id: impl Into<String>,
+        status: impl Into<String>,
+        created_at: i64,
+    ) -> Self {
+        Self {
+            id,
+            user_id,
+            user_nick: user_nick.into(),
+            reward_id: reward_id.into(),
+            status: status.into(),
+            created_at,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum PushEvent {
+    ChatMessage(ChatMessageEvent),
+    RewardDemand(RewardDemandEvent),
+}
+
+pub fn parse_push(frame: &str) -> Result<Option<PushEvent>> {
     let value: Value =
         serde_json::from_str(frame).map_err(|e| Error::Protocol(format!("ws frame: {e}")))?;
-    let Some(channel) = value.pointer("/push/channel").and_then(Value::as_str) else {
-        return Ok(None);
-    };
-    if !channel.starts_with("channel-chat:") {
-        return Ok(None);
-    }
     let Some(data) = value.pointer("/push/pub/data") else {
         return Ok(None);
     };
     match data.get("type").and_then(Value::as_str) {
-        Some("message") => parse_legacy(data),
-        Some("message_v8") => parse_v8(data),
+        Some("channel_chat_message_send") => parse_chat_message(data),
+        Some("channel_points_reward_demand_create") => parse_reward_demand(data),
         _ => Ok(None),
     }
 }
 
-fn parse_legacy(data: &Value) -> Result<Option<ChatMessageEvent>> {
-    let Some(msg) = data.get("data") else {
-        return Ok(None);
-    };
-    let author = msg.get("author").or_else(|| msg.get("user"));
-    Ok(Some(ChatMessageEvent {
-        id: required_u64(msg, "id")?,
-        author_id: author
-            .and_then(|a| a.get("id"))
-            .and_then(Value::as_u64)
-            .ok_or_else(|| Error::Protocol("author.id missing".to_string()))?,
-        author_nick: author
-            .and_then(|a| a.get("nick").or_else(|| a.get("displayName")))
-            .and_then(Value::as_str)
-            .unwrap_or_default()
-            .to_string(),
-        created_at: required_i64(msg, "createdAt")?,
-        text: blocks_text(msg.get("data")),
-        is_deleted: flag(msg, "isDeleted"),
-        is_private: flag(msg, "isPrivate"),
-    }))
-}
-
-fn parse_v8(data: &Value) -> Result<Option<ChatMessageEvent>> {
-    let Some(msg) = data.pointer("/data/chatMessageSend/message") else {
+fn parse_chat_message(data: &Value) -> Result<Option<PushEvent>> {
+    let Some(msg) = data.pointer("/data/chat_message") else {
         return Ok(None);
     };
     let text = msg
-        .get("text")
-        .and_then(Value::as_str)
-        .map(str::to_string)
-        .unwrap_or_else(|| blocks_text(msg.get("textData")));
-    Ok(Some(ChatMessageEvent {
+        .get("parts")
+        .and_then(Value::as_array)
+        .map(|parts| {
+            parts
+                .iter()
+                .filter_map(|p| p.pointer("/text/content").and_then(Value::as_str))
+                .collect::<Vec<_>>()
+                .join("")
+        })
+        .unwrap_or_default();
+    Ok(Some(PushEvent::ChatMessage(ChatMessageEvent {
         id: required_u64(msg, "id")?,
         author_id: msg
             .pointer("/author/id")
-            .and_then(Value::as_u64)
+            .and_then(as_id)
             .ok_or_else(|| Error::Protocol("author.id missing".to_string()))?,
         author_nick: msg
             .pointer("/author/nick")
             .and_then(Value::as_str)
             .unwrap_or_default()
             .to_string(),
-        created_at: required_i64(msg, "createdAt")?,
+        created_at: required_i64(msg, "created_at")?,
         text,
-        is_deleted: flag(msg, "isDeleted"),
-        is_private: flag(msg, "isPrivate"),
-    }))
+        is_deleted: false,
+        is_private: msg
+            .get("is_private")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+    })))
 }
 
-fn blocks_text(blocks: Option<&Value>) -> String {
-    let Some(blocks) = blocks.and_then(Value::as_array) else {
-        return String::new();
+fn parse_reward_demand(data: &Value) -> Result<Option<PushEvent>> {
+    let Some(demand) = data.pointer("/data/demand") else {
+        return Ok(None);
     };
-    blocks
-        .iter()
-        .filter(|block| block.get("type").and_then(Value::as_str) == Some("text"))
-        .filter_map(|block| block.get("content").and_then(Value::as_str))
-        .map(decode_content)
-        .filter(|text| !text.is_empty())
-        .collect()
-}
-
-fn decode_content(content: &str) -> String {
-    let Ok(parsed) = serde_json::from_str::<Value>(content) else {
-        return content.to_string();
-    };
-    match parsed.as_array().and_then(|items| items.first()) {
-        Some(Value::String(text)) => text.clone(),
-        _ => content.to_string(),
-    }
+    Ok(Some(PushEvent::RewardDemand(RewardDemandEvent {
+        id: required_u64(demand, "id")?,
+        user_id: demand
+            .pointer("/user/id")
+            .and_then(as_id)
+            .ok_or_else(|| Error::Protocol("user.id missing".to_string()))?,
+        user_nick: demand
+            .pointer("/user/nick")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string(),
+        reward_id: demand
+            .pointer("/reward/id")
+            .and_then(Value::as_str)
+            .ok_or_else(|| Error::Protocol("reward.id missing".to_string()))?
+            .to_string(),
+        status: demand
+            .get("status")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string(),
+        created_at: required_i64(demand, "created_at")?,
+    })))
 }
 
 fn required_u64(value: &Value, key: &str) -> Result<u64> {
@@ -149,13 +172,6 @@ fn required_i64(value: &Value, key: &str) -> Result<i64> {
         .get(key)
         .and_then(Value::as_i64)
         .ok_or_else(|| Error::Protocol(format!("{key} missing")))
-}
-
-fn flag(value: &Value, key: &str) -> bool {
-    value
-        .pointer(&format!("/flags/{key}"))
-        .and_then(Value::as_bool)
-        .unwrap_or(false)
 }
 
 #[cfg(test)]

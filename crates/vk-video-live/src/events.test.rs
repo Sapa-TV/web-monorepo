@@ -1,36 +1,54 @@
 use super::*;
 
-const LEGACY_FRAME: &str = r#"{"push":{"channel":"channel-chat:4242","pub":{"data":{"type":"message","data":{"parent":null,"id":9001,"createdAt":1787682950,"styles":[],"flags":{"isParentDeleted":false,"isFirstMessage":false},"author":{"id":555,"nick":"tester","name":"tester","displayName":"tester","nickColor":13,"isChannelModerator":true,"roles":[]},"isDeleted":false,"isPrivate":false,"data":[{"type":"text","content":"[\"ку\",\"unstyled\",[]]","modificator":"","donation":false},{"type":"text","content":"","modificator":"BLOCK_END","donation":false}],"threadId":null,"streamSlot":null,"user":{"id":555,"nick":"tester"}}}}}}"#;
+const CHAT_FRAME: &str = r#"{"push":{"channel":"api-channel-chat:4242","pub":{"data":{"type":"channel_chat_message_send","data":{"chat_message":{"id":9001,"created_at":1787682950,"is_private":false,"author":{"id":555,"nick":"tester"},"parts":[{"text":{"content":"ку"}}]}}}}}}"#;
 
-const V8_FRAME: &str = r#"{"push":{"channel":"channel-chat:4242","pub":{"data":{"type":"message_v8","data":{"chatMessageSend":{"message":{"id":"9001","author":{"id":555,"nick":"tester","nickColor":13,"roles":[]},"createdAt":1787682950,"textData":[{"text":{"type":"text","content":"[\"ку\",\"unstyled\",[]]","modificator":"","donation":false}},{"text":{"type":"text","content":"","modificator":"BLOCK_END","donation":false}}],"text":"ку","styles":[],"flags":{"isDeleted":false,"isParentDeleted":false,"isFirstMessage":false,"isPrivate":false}}}}}}}}"#;
+const DEMAND_FRAME: &str = r#"{"push":{"channel":"api-channel-points:4242#555","pub":{"data":{"type":"channel_points_reward_demand_create","data":{"demand":{"id":9179,"user":{"id":555,"nick":"tester"},"message_parts":[],"status":"pending","created_at":1787682950,"reward":{"id":"bc211809-1e52-4180-8dbc-e106649ef78a"}}}}}}}"#;
 
-fn expected() -> ChatMessageEvent {
-    ChatMessageEvent {
-        id: 9001,
-        author_id: 555,
-        author_nick: "tester".to_string(),
-        created_at: 1_787_682_950,
-        text: "ку".to_string(),
-        is_deleted: false,
-        is_private: false,
-    }
+#[test]
+fn chat_message_frame_parses() {
+    let event = parse_push(CHAT_FRAME).unwrap().unwrap();
+    assert_eq!(
+        event,
+        PushEvent::ChatMessage(ChatMessageEvent {
+            id: 9001,
+            author_id: 555,
+            author_nick: "tester".to_string(),
+            created_at: 1_787_682_950,
+            text: "ку".to_string(),
+            is_deleted: false,
+            is_private: false,
+        })
+    );
 }
 
 #[test]
-fn legacy_message_frame_parses() {
-    let event = parse_push(LEGACY_FRAME).unwrap().unwrap();
-    assert_eq!(event, expected());
+fn private_chat_message_flag_is_parsed() {
+    let frame = r#"{"push":{"channel":"api-channel-chat:4242#555","pub":{"data":{"type":"channel_chat_message_send","data":{"chat_message":{"id":1,"created_at":10,"is_private":true,"author":{"id":2,"nick":"n"},"parts":[]}}}}}}"#;
+    let Some(PushEvent::ChatMessage(event)) = parse_push(frame).unwrap() else {
+        panic!("expected chat message");
+    };
+    assert!(event.is_private);
 }
 
 #[test]
-fn v8_message_frame_parses() {
-    let event = parse_push(V8_FRAME).unwrap().unwrap();
-    assert_eq!(event, expected());
+fn reward_demand_frame_parses() {
+    let event = parse_push(DEMAND_FRAME).unwrap().unwrap();
+    assert_eq!(
+        event,
+        PushEvent::RewardDemand(RewardDemandEvent {
+            id: 9179,
+            user_id: 555,
+            user_nick: "tester".to_string(),
+            reward_id: "bc211809-1e52-4180-8dbc-e106649ef78a".to_string(),
+            status: "pending".to_string(),
+            created_at: 1_787_682_950,
+        })
+    );
 }
 
 #[test]
-fn non_chat_channel_is_ignored() {
-    let frame = r#"{"push":{"channel":"channel-info:4242","pub":{"data":{"type":"stream_status","data":{}}}}}"#;
+fn unknown_push_type_is_ignored() {
+    let frame = r#"{"push":{"channel":"api-channel-info:1","pub":{"data":{"type":"stream_status","data":{}}}}}"#;
     assert_eq!(parse_push(frame).unwrap(), None);
 }
 
@@ -40,35 +58,12 @@ fn non_push_frame_is_ignored() {
 }
 
 #[test]
-fn unknown_message_type_is_ignored() {
-    let frame =
-        r#"{"push":{"channel":"channel-chat:1","pub":{"data":{"type":"future_thing","data":{}}}}}"#;
-    assert_eq!(parse_push(frame).unwrap(), None);
-}
-
-#[test]
-fn deleted_flag_is_parsed() {
-    let frame = r#"{"push":{"channel":"channel-chat:1","pub":{"data":{"type":"message","data":{"id":1,"createdAt":10,"author":{"id":2,"nick":"n"},"flags":{"isDeleted":true,"isPrivate":true},"data":[]}}}}}"#;
-    let event = parse_push(frame).unwrap().unwrap();
-    assert!(event.is_deleted);
-    assert!(event.is_private);
-    assert_eq!(event.text, "");
-}
-
-#[test]
-fn plain_content_stays_untouched() {
-    let frame = r#"{"push":{"channel":"channel-chat:1","pub":{"data":{"type":"message","data":{"id":1,"createdAt":10,"author":{"id":2,"nick":"n"},"data":[{"type":"text","content":"plain"}]}}}}}"#;
-    let event = parse_push(frame).unwrap().unwrap();
-    assert_eq!(event.text, "plain");
-}
-
-#[test]
 fn malformed_frame_is_protocol_error() {
     assert!(matches!(parse_push("not json"), Err(Error::Protocol(_))));
 }
 
 #[test]
 fn missing_id_is_protocol_error() {
-    let frame = r#"{"push":{"channel":"channel-chat:1","pub":{"data":{"type":"message","data":{"createdAt":10,"author":{"id":2,"nick":"n"}}}}}}"#;
+    let frame = r#"{"push":{"channel":"api-channel-chat:1","pub":{"data":{"type":"channel_chat_message_send","data":{"chat_message":{"created_at":10,"author":{"id":2,"nick":"n"},"parts":[]}}}}}}"#;
     assert!(matches!(parse_push(frame), Err(Error::Protocol(_))));
 }

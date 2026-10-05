@@ -50,8 +50,13 @@ pub struct ChannelInfo {
 #[non_exhaustive]
 pub struct WsChannels {
     pub chat: Option<String>,
+    pub private_chat: Option<String>,
+    pub limited_chat: Option<String>,
+    pub limited_private_chat: Option<String>,
     pub info: Option<String>,
+    pub private_info: Option<String>,
     pub channel_points: Option<String>,
+    pub private_channel_points: Option<String>,
     #[serde(skip)]
     _sealed: (),
 }

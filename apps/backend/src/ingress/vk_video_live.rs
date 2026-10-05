@@ -44,13 +44,24 @@ where
         let channel = api::channel(self.auth.transport(), &bearer, &channel_url)
             .await
             .map_err(|e| PlatformError::VkApi(e.to_string()))?;
-        let chat_channel = channel
-            .data
-            .channel
-            .web_socket_channels
-            .chat
-            .filter(|c| !c.is_empty())
-            .ok_or_else(|| PlatformError::VkApi("chat ws channel missing".to_string()))?;
+        let ws_channels = channel.data.channel.web_socket_channels;
+        let channels = [
+            ws_channels.chat,
+            ws_channels.private_chat,
+            ws_channels.limited_chat,
+            ws_channels.channel_points,
+            ws_channels.private_channel_points,
+            ws_channels.info,
+        ]
+        .into_iter()
+        .flatten()
+        .filter(|c| !c.is_empty())
+        .collect::<Vec<_>>();
+        if channels.is_empty() {
+            return Err(PlatformError::VkApi(
+                "no ws channels in channel info".to_string(),
+            ));
+        }
         let ws_token = api::ws_token(self.auth.transport(), &bearer)
             .await
             .map_err(|e| PlatformError::VkApi(e.to_string()))?;
@@ -58,8 +69,12 @@ where
         let mut pubsub = PubSub::connect(PUBSUB_URL, &ws_token)
             .await
             .map_err(map_ws)?;
-        pubsub.subscribe(&chat_channel).await.map_err(map_ws)?;
-        tracing::info!("vk video live subscribed to {chat_channel}");
+        for channel in &channels {
+            match pubsub.subscribe(channel).await {
+                Ok(()) => tracing::info!("vk video live subscribed to {channel}"),
+                Err(e) => tracing::warn!("vk video live subscribe to {channel} rejected: {e}"),
+            }
+        }
 
         loop {
             let frame = select! {
@@ -71,9 +86,10 @@ where
                 frame = pubsub.next_push() => frame,
             };
             let frame = frame.map_err(map_ws)?;
+            tracing::debug!(%frame, "vk pubsub push");
             let parsed =
                 events::parse_push(&frame).map_err(|e| PlatformError::Parse(e.to_string()))?;
-            let Some(event) = parsed.and_then(|e| chat_event_from(PlatformId::VK_VIDEO_LIVE, &e))
+            let Some(event) = parsed.and_then(|e| push_event_from(PlatformId::VK_VIDEO_LIVE, e))
             else {
                 continue;
             };
@@ -124,17 +140,32 @@ where
     }
 }
 
-fn chat_event_from(platform: PlatformId, event: &ChatMessageEvent) -> Option<PlatformEvent> {
-    if event.is_deleted || event.is_private {
-        return None;
+fn push_event_from(platform: PlatformId, event: events::PushEvent) -> Option<PlatformEvent> {
+    match event {
+        events::PushEvent::ChatMessage(chat) => {
+            if chat.is_deleted || chat.is_private {
+                return None;
+            }
+            Some(PlatformEvent::chat_message(
+                platform,
+                chat.id.to_string(),
+                chat.author_id.to_string(),
+                chat.author_nick,
+                chat.text,
+            ))
+        }
+        events::PushEvent::RewardDemand(demand) => Some(PlatformEvent::reward_redemption(
+            platform,
+            demand.id.to_string(),
+            demand.user_id.to_string(),
+            demand.user_nick,
+            demand.reward_id,
+            String::new(),
+            0,
+            String::new(),
+            demand.status,
+        )),
     }
-    Some(PlatformEvent::chat_message(
-        platform,
-        event.id.to_string(),
-        event.author_id.to_string(),
-        event.author_nick.clone(),
-        event.text.clone(),
-    ))
 }
 
 fn map_ws(e: VkError) -> PlatformError {
