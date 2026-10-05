@@ -6,7 +6,10 @@ const config = {
 	printWidth: 80,
 	endOfLine: "lf",
 	plugins: ["prettier-plugin-svelte"],
-	overrides: [{ files: "*.svelte", options: { parser: "svelte" } }],
+	overrides: [
+		{ files: "*.svelte", options: { parser: "svelte" } },
+		{ files: "*.md", options: { proseWrap: "always", useTabs: false } },
+	],
 };
 
 export default config;
