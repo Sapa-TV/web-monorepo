@@ -45,18 +45,31 @@ use utoipa_swagger_ui::SwaggerUi;
 
 #[tokio::main]
 async fn main() {
-    let file_appender = rolling::daily("logs", "backend.log");
-    let (file_writer, _log_guard) = tracing_appender::non_blocking(file_appender);
     let console_filter = EnvFilter::try_from_default_env().unwrap_or(EnvFilter::new("info"));
     let file_filter = EnvFilter::try_from_env("RUST_LOG_FILE").unwrap_or(EnvFilter::new("debug"));
+
+    let file_logging = rolling::Builder::new()
+        .rotation(rolling::Rotation::DAILY)
+        .filename_prefix("backend.log")
+        .build("logs")
+        .map(tracing_appender::non_blocking)
+        .map(|(writer, guard)| {
+            let layer = fmt::layer()
+                .with_writer(writer)
+                .with_ansi(false)
+                .with_filter(file_filter);
+            (layer, guard)
+        })
+        .map_err(|e| eprintln!("file logging disabled: {e}"))
+        .ok();
+    let (file_layer, _log_guard) = match file_logging {
+        Some((layer, guard)) => (Some(layer), Some(guard)),
+        None => (None, None),
+    };
+
     tracing_subscriber::registry()
         .with(fmt::layer().with_filter(console_filter))
-        .with(
-            fmt::layer()
-                .with_writer(file_writer)
-                .with_ansi(false)
-                .with_filter(file_filter),
-        )
+        .with(file_layer)
         .init();
 
     dotenvy::dotenv().ok();
