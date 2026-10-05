@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+﻿use std::sync::{Arc, Mutex};
 
 use crate::config::vk_video_live::VkVideoLiveConfig;
 use crate::db::inmemory_platform_credential::InMemoryPlatformCredentialRepository;
@@ -78,12 +78,15 @@ fn credentials() -> Arc<PlatformCredentialService<InMemoryPlatformCredentialRepo
 
 const TOKEN_JSON: &str =
     r#"{"access_token":"at1","refresh_token":"rt1","expires_in":3600,"token_type":"Bearer"}"#;
+const CURRENT_USER_JSON: &str =
+    r#"{"data":{"user":{"id":555,"nick":"tester"},"channel":{"url":"test_channel"}}}"#;
 const CHANNEL_JSON: &str = r#"{"data":{"channel":{"id":4242,"url":"test_channel","nick":"TestChannel","web_socket_channels":{"chat":"channel-chat:4242"}},"owner":{"id":555,"nick":"tester"},"stream":null}}"#;
 
 #[tokio::test]
 async fn complete_connect_exchanges_saves_and_resolves_channel() {
     let transport = FakeTransport::new(vec![
         Ok(TOKEN_JSON.to_string()),
+        Ok(CURRENT_USER_JSON.to_string()),
         Ok(CHANNEL_JSON.to_string()),
     ]);
     let credentials = credentials();
@@ -202,6 +205,7 @@ async fn clear_removes_credentials() {
 async fn platform_auth_trait_reports_status_connect_and_revoke() {
     let transport = FakeTransport::new(vec![
         Ok(TOKEN_JSON.to_string()),
+        Ok(CURRENT_USER_JSON.to_string()),
         Ok(CHANNEL_JSON.to_string()),
     ]);
     let credentials = credentials();
@@ -221,4 +225,20 @@ async fn exercise_platform_auth<A: PlatformAuth>(auth: &A) {
 
     auth.revoke().await.unwrap();
     assert!(!auth.is_configured().await.unwrap());
+}
+
+#[test]
+fn redact_tokens_masks_token_values() {
+    let body = r#"{"access_token":"secret-access","expires_in":2592000,"refresh_token":"secret-refresh","token_type":"Bearer"}"#;
+    let redacted = redact_tokens(body);
+    assert_eq!(
+        redacted,
+        r#"{"access_token":"***","expires_in":2592000,"refresh_token":"***","token_type":"Bearer"}"#
+    );
+}
+
+#[test]
+fn redact_tokens_leaves_other_bodies_untouched() {
+    let body = r#"{"error":"invalid_grant","error_description":"Invalid grant_type parameters"}"#;
+    assert_eq!(redact_tokens(body), body);
 }

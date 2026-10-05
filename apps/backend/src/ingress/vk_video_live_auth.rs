@@ -1,5 +1,6 @@
 use chrono::Utc;
 use std::sync::Arc;
+use std::time::Duration;
 
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
@@ -55,7 +56,10 @@ pub struct VkTransport {
 impl VkTransport {
     pub fn new() -> Self {
         Self {
-            http: reqwest::Client::new(),
+            http: reqwest::Client::builder()
+                .timeout(Duration::from_secs(15))
+                .build()
+                .unwrap_or_else(|_| reqwest::Client::new()),
         }
     }
 }
@@ -67,18 +71,39 @@ impl Default for VkTransport {
 }
 
 impl VkTransport {
-    async fn body(resp: reqwest::Response) -> Result<String, VkError> {
+    async fn body(method: &str, url: &str, resp: reqwest::Response) -> Result<String, VkError> {
         let status = resp.status();
         let text = resp
             .text()
             .await
             .map_err(|e| VkError::Http(format!("body read: {e}")))?;
+        let redacted = redact_tokens(&text);
         if status.is_success() {
+            tracing::debug!(%method, %url, %status, body = %redacted, "vk api response");
             Ok(text)
         } else {
-            Err(VkError::Http(format!("status {status}: {text}")))
+            tracing::warn!(%method, %url, %status, body = %redacted, "vk api error");
+            Err(VkError::Http(format!(
+                "{method} {url}: status {status}: {redacted}"
+            )))
         }
     }
+}
+
+fn redact_tokens(body: &str) -> String {
+    let mut out = body.to_string();
+    for field in ["\"access_token\":\"", "\"refresh_token\":\""] {
+        let mut search_from = 0;
+        while let Some(rel) = out[search_from..].find(field) {
+            let value_start = search_from + rel + field.len();
+            let Some(end) = out[value_start..].find('"').map(|i| value_start + i) else {
+                break;
+            };
+            out.replace_range(value_start..end, "***");
+            search_from = value_start + 3;
+        }
+    }
+    out
 }
 
 impl Transport for VkTransport {
@@ -88,6 +113,7 @@ impl Transport for VkTransport {
         basic_auth: &str,
         encoded_body: &str,
     ) -> Result<String, VkError> {
+        tracing::info!(url, "vk api post form");
         let resp = self
             .http
             .post(url)
@@ -97,10 +123,11 @@ impl Transport for VkTransport {
             .send()
             .await
             .map_err(|e| VkError::Http(format!("post form: {e}")))?;
-        Self::body(resp).await
+        Self::body("POST", url, resp).await
     }
 
     async fn get(&self, url: &str, bearer: &str) -> Result<String, VkError> {
+        tracing::info!(url, "vk api get");
         let resp = self
             .http
             .get(url)
@@ -108,10 +135,11 @@ impl Transport for VkTransport {
             .send()
             .await
             .map_err(|e| VkError::Http(format!("get: {e}")))?;
-        Self::body(resp).await
+        Self::body("GET", url, resp).await
     }
 
     async fn post_json(&self, url: &str, bearer: &str, body: &str) -> Result<String, VkError> {
+        tracing::info!(url, "vk api post json");
         let resp = self
             .http
             .post(url)
@@ -121,7 +149,7 @@ impl Transport for VkTransport {
             .send()
             .await
             .map_err(|e| VkError::Http(format!("post json: {e}")))?;
-        Self::body(resp).await
+        Self::body("POST", url, resp).await
     }
 }
 
@@ -223,19 +251,33 @@ where
     }
 
     pub async fn complete_connect(&self, code: &str) -> Result<VkCreds, PlatformError> {
+        tracing::info!("vk connect: exchanging code");
         let token = self
             .oauth
             .exchange_code(&self.transport, code, &self.config.credentials_redirect_uri)
             .await
             .map_err(map_vk)?;
+        tracing::info!("vk connect: token exchanged, resolving channel");
         let creds = self.resolve_creds(token).await?;
+        tracing::info!(
+            channel_id = creds.channel_id,
+            "vk connect: channel resolved"
+        );
         self.save(&creds).await?;
         Ok(creds)
     }
 
     async fn resolve_creds(&self, token: TokenResponse) -> Result<VkCreds, PlatformError> {
         let bearer = format!("Bearer {}", token.access_token);
-        let channel = api::channel(&self.transport, &bearer, &self.config.channel_url)
+        let user = api::current_user(&self.transport, &bearer)
+            .await
+            .map_err(map_vk)?;
+        let channel_url = user
+            .data
+            .channel
+            .map(|c| c.url)
+            .ok_or_else(|| PlatformError::Auth("vk account has no channel".to_string()))?;
+        let channel = api::channel(&self.transport, &bearer, &channel_url)
             .await
             .map_err(map_vk)?;
         let (owner_id, owner_nick) = match channel.data.owner.as_ref() {
@@ -285,6 +327,13 @@ where
             .await?
             .ok_or_else(|| PlatformError::Auth("vk credentials are not configured".to_string()))
             .map(|creds| creds.channel_id)
+    }
+
+    pub async fn channel_url(&self) -> Result<String, PlatformError> {
+        self.load()
+            .await?
+            .ok_or_else(|| PlatformError::Auth("vk credentials are not configured".to_string()))
+            .map(|creds| creds.channel_url)
     }
 }
 

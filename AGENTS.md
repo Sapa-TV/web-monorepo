@@ -30,6 +30,17 @@ cargo nextest run --package backend --test-threads=1 --slow-timeout=600s
 Проверка компиляции короче: `cargo check --package backend`. Линт/мойка:
 `cargo clippy --all-targets` и `cargo fmt --check`.
 
+## Запуск dev
+
+- `pnpm dev` — обычный запуск (backend + frontend, логи от `info`).
+- `pnpm dev:debug` — то же самое, но backend с `RUST_LOG=debug` (переменная
+  подмешивается из `.env.debug` через dotenv; backend читает `RUST_LOG` в
+  `main.rs` через `EnvFilter`).
+- Backend дублирует логи в файл: `logs/backend.log.<дата>` (rolling по дням,
+  tracing-appender, настраивается в `main.rs`). Консоль и файл с разными
+  фильтрами: консоль — `RUST_LOG` (дефолт `info`), файл — `RUST_LOG_FILE`
+  (дефолт `debug`).
+
 ## Комментарии
 
 - Комментарии в коде почти не нужны — не пиши их без необходимости.

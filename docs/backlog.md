@@ -2,10 +2,6 @@
 
 ## Баги, мелочи и UX
 
-- [ ] не работает подключение vk video live - Не удалось сохранить credentials.
-      Попробуй ещё раз., [backend] 2026-10-05T02:55:11.856762Z ERROR
-      backend::admin::vk_auth: vk token exchange failed: authentication failed:
-      vk oauth: status 404 Not Found:
 - [ ] переделать дизайн рулетки, закрепить шрифты для виджетов - должны быть
       круглые милые шрифты
 - [ ] Статус стрима по платформам: сейчас `StreamStatus` — один глобальный булев

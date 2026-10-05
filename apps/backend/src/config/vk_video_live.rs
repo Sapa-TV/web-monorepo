@@ -14,7 +14,6 @@ fn default_csrf_ttl_secs() -> u64 {
 pub struct VkVideoLiveConfig {
     pub client_id: String,
     pub client_secret: String,
-    pub channel_url: String,
     pub redirect_uri: String,
     pub credentials_redirect_uri: String,
     pub csrf_ttl_secs: u64,
@@ -25,7 +24,6 @@ impl VkVideoLiveConfig {
     pub fn build(
         client_id: String,
         client_secret: String,
-        channel_url: String,
         redirect_uri: String,
         credentials_redirect_uri: String,
         csrf_ttl_secs: u64,
@@ -33,7 +31,6 @@ impl VkVideoLiveConfig {
         let required = [
             ("client_id", client_id.as_str()),
             ("client_secret", client_secret.as_str()),
-            ("channel_url", channel_url.as_str()),
             ("redirect_uri", redirect_uri.as_str()),
             (
                 "credentials_redirect_uri",
@@ -51,7 +48,6 @@ impl VkVideoLiveConfig {
         Ok(Self {
             client_id,
             client_secret,
-            channel_url,
             redirect_uri,
             credentials_redirect_uri,
             csrf_ttl_secs,
@@ -67,7 +63,6 @@ impl VkVideoLiveConfig {
         Self {
             client_id: "cid".to_string(),
             client_secret: "cs".to_string(),
-            channel_url: "test_channel".to_string(),
             redirect_uri: "https://localhost/login-callback/vk-video-live".to_string(),
             credentials_redirect_uri: "https://localhost/creds-callback/vk-video-live".to_string(),
             csrf_ttl_secs: 600,
@@ -85,7 +80,6 @@ impl<'de> Deserialize<'de> for VkVideoLiveConfig {
         struct Raw {
             client_id: String,
             client_secret: String,
-            channel_url: String,
             redirect_uri: String,
             credentials_redirect_uri: String,
             #[serde(default = "default_csrf_ttl_secs")]
@@ -96,7 +90,6 @@ impl<'de> Deserialize<'de> for VkVideoLiveConfig {
         VkVideoLiveConfig::build(
             raw.client_id,
             raw.client_secret,
-            raw.channel_url,
             raw.redirect_uri,
             raw.credentials_redirect_uri,
             raw.csrf_ttl_secs,

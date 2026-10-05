@@ -3,6 +3,7 @@
 /db/
 .env
 .env.dev
+/logs/
 /.VSCodeCounter/
 /data/
 secrets/

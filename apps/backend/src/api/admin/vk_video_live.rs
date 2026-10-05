@@ -69,10 +69,12 @@ pub async fn vk_video_live_auth_callback(
     State(state): State<AppState>,
     Query(query): Query<VkVideoLiveAuthCallbackQuery>,
 ) -> Result<Json<VkVideoLiveAuthCallbackResponse>, StatusCode> {
+    tracing::info!("vk auth callback: handler entered");
     let identity = state
         .vk_admin_auth
         .complete(&query.code, &query.state)
         .await?;
+    tracing::info!(user_id = %identity.user_id, "vk auth callback: completed");
     Ok(Json(VkVideoLiveAuthCallbackResponse {
         user_id: identity.user_id,
         user_name: identity.user_name,

@@ -39,8 +39,18 @@ where
         sink: EventSink,
         shutdown: &CancellationToken,
     ) -> Result<(), PlatformError> {
-        let channel_id = self.auth.channel_id().await?;
+        let channel_url = self.auth.channel_url().await?;
         let bearer = self.auth.bearer().await?;
+        let channel = api::channel(self.auth.transport(), &bearer, &channel_url)
+            .await
+            .map_err(|e| PlatformError::VkApi(e.to_string()))?;
+        let chat_channel = channel
+            .data
+            .channel
+            .web_socket_channels
+            .chat
+            .filter(|c| !c.is_empty())
+            .ok_or_else(|| PlatformError::VkApi("chat ws channel missing".to_string()))?;
         let ws_token = api::ws_token(self.auth.transport(), &bearer)
             .await
             .map_err(|e| PlatformError::VkApi(e.to_string()))?;
@@ -48,11 +58,8 @@ where
         let mut pubsub = PubSub::connect(PUBSUB_URL, &ws_token)
             .await
             .map_err(map_ws)?;
-        pubsub
-            .subscribe(&format!("channel-chat:{channel_id}"))
-            .await
-            .map_err(map_ws)?;
-        tracing::info!("vk video live subscribed to channel-chat:{channel_id}");
+        pubsub.subscribe(&chat_channel).await.map_err(map_ws)?;
+        tracing::info!("vk video live subscribed to {chat_channel}");
 
         loop {
             let frame = select! {

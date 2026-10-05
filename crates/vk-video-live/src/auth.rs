@@ -8,7 +8,16 @@ pub const AUTHORIZE_URL: &str = "https://auth.live.vkvideo.ru/app/oauth2/authori
 pub const TOKEN_URL: &str = "https://api.live.vkvideo.ru/oauth/server/token";
 pub const REVOKE_URL: &str = "https://api.live.vkvideo.ru/oauth/server/revoke";
 
-pub const INGRESS_SCOPES: &[&str] = &["chat:message:send"];
+pub const INGRESS_SCOPES: &[&str] = &[
+    "chat:message:send",
+    "chat:settings",
+    "channel:credentials",
+    "channel:roles",
+    "channel:points",
+    "channel:points:rewards",
+    "channel:points:rewards:demands",
+    "channel:stream:settings",
+];
 
 const BASE64_TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 

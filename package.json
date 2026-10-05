@@ -4,6 +4,7 @@
 	"description": "",
 	"scripts": {
 		"dev": "cargo run -p gen-openapi -- generated/openapi.json && dotenv -e .env.dev -- concurrently -k -n backend,frontend \"cargo run -p backend\" \"pnpm --filter frontend dev\"",
+		"dev:debug": "cargo run -p gen-openapi -- generated/openapi.json && dotenv -e .env.debug -e .env.dev -- concurrently -k -n backend,frontend \"cargo run -p backend\" \"pnpm --filter frontend dev\"",
 		"format": "prettier --write . --log-level warn && cargo fmt",
 		"format:check": "prettier --check . && cargo fmt --check"
 	},

@@ -53,7 +53,7 @@ fn executor(transport: FakeTransport) -> Executor {
         credentials,
         transport,
     ));
-    VkVideoLiveActionExecutor::new("test_channel", auth)
+    VkVideoLiveActionExecutor::new(auth)
 }
 
 fn ctx() -> ActionContext {
@@ -91,10 +91,7 @@ async fn executor_with_creds(
         Arc::clone(&credentials),
         transport,
     ));
-    (
-        VkVideoLiveActionExecutor::new("test_channel", auth),
-        credentials,
-    )
+    (VkVideoLiveActionExecutor::new(auth), credentials)
 }
 
 #[test]

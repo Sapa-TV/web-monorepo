@@ -1,4 +1,4 @@
-﻿use std::sync::Arc;
+use std::sync::Arc;
 use std::time::Duration;
 
 use vk_video_live::auth::{INGRESS_SCOPES, OAuthClient};
@@ -56,7 +56,10 @@ where
             return Err(AdminAuthError::CsrfMismatch);
         }
         auth.connect(code).await.map_err(|e| {
-            tracing::error!("vk token exchange failed: {e}");
+            tracing::error!(
+                "vk token exchange failed (redirect_uri={}): {e}",
+                auth.credentials_redirect_uri()
+            );
             AdminAuthError::Exchange
         })
     }

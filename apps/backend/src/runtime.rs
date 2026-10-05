@@ -24,14 +24,9 @@ pub fn start_rule_pipeline(state: &AppState, shutdown: &CancellationToken) {
         platform_actions =
             platform_actions.with_twitch(TwitchActionExecutor::new(config, twitch_api));
     }
-    if let (Some(config), Some(vk_api)) = (
-        state.config.vk_video_live().map(|vk| Arc::new(vk.clone())),
-        state.vk_api.clone(),
-    ) {
-        platform_actions = platform_actions.with_vk_video_live(VkVideoLiveActionExecutor::new(
-            config.channel_url.clone(),
-            vk_api,
-        ));
+    if let Some(vk_api) = state.vk_api.clone() {
+        platform_actions =
+            platform_actions.with_vk_video_live(VkVideoLiveActionExecutor::new(vk_api));
     }
 
     let executor = Arc::new(ActionExecutor::new(

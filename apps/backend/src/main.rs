@@ -35,15 +35,27 @@ use tokio_util::sync::CancellationToken;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 use tracing::info;
+use tracing_appender::rolling;
+use tracing_subscriber::layer::Layer;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::{EnvFilter, fmt};
 use utoipa_redoc::{Redoc, Servable};
 use utoipa_swagger_ui::SwaggerUi;
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or(tracing_subscriber::EnvFilter::new("info")),
+    let file_appender = rolling::daily("logs", "backend.log");
+    let (file_writer, _log_guard) = tracing_appender::non_blocking(file_appender);
+    let console_filter = EnvFilter::try_from_default_env().unwrap_or(EnvFilter::new("info"));
+    let file_filter = EnvFilter::try_from_env("RUST_LOG_FILE").unwrap_or(EnvFilter::new("debug"));
+    tracing_subscriber::registry()
+        .with(fmt::layer().with_filter(console_filter))
+        .with(
+            fmt::layer()
+                .with_writer(file_writer)
+                .with_ansi(false)
+                .with_filter(file_filter),
         )
         .init();
 
@@ -82,9 +94,8 @@ async fn main() {
     match config_store.vk_video_live() {
         Some(vk) => {
             tracing::info!(
-                "vk video live config ready: client_id={}, channel_url={}, redirect_uri={}, credentials_redirect_uri={}",
+                "vk video live config ready: client_id={}, redirect_uri={}, credentials_redirect_uri={}",
                 vk.client_id,
-                vk.channel_url,
                 vk.redirect_uri,
                 vk.credentials_redirect_uri
             );

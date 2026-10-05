@@ -6,7 +6,7 @@ use crate::events::ChatMessageEvent;
 use crate::transport::Transport;
 use crate::url::append_query;
 
-pub const API_BASE: &str = "https://api.live.vkvideo.ru";
+pub const API_BASE: &str = "https://apidev.live.vkvideo.ru";
 
 #[derive(Debug, Clone, Deserialize)]
 #[non_exhaustive]
@@ -73,6 +73,40 @@ pub struct StreamCounters {
     pub viewers: Option<u64>,
     #[serde(skip)]
     _sealed: (),
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[non_exhaustive]
+pub struct CurrentUserResponse {
+    pub data: CurrentUserData,
+    #[serde(skip)]
+    _sealed: (),
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[non_exhaustive]
+pub struct CurrentUserData {
+    pub channel: Option<CurrentUserChannel>,
+    #[serde(skip)]
+    _sealed: (),
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[non_exhaustive]
+pub struct CurrentUserChannel {
+    pub url: String,
+    #[serde(skip)]
+    _sealed: (),
+}
+
+pub async fn current_user<T: Transport>(
+    transport: &T,
+    bearer: &str,
+) -> Result<CurrentUserResponse> {
+    let body = transport
+        .get(&format!("{API_BASE}/v1/current_user"), bearer)
+        .await?;
+    parse(&body)
 }
 
 pub async fn channel<T: Transport>(

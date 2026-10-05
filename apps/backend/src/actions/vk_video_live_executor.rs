@@ -18,7 +18,6 @@ where
     R: PlatformCredentialRepository,
     T: Transport,
 {
-    channel_url: String,
     auth: Arc<VkVideoLiveAuthService<R, T>>,
     last_send: Mutex<Option<Instant>>,
 }
@@ -28,9 +27,8 @@ where
     R: PlatformCredentialRepository,
     T: Transport,
 {
-    pub fn new(channel_url: impl Into<String>, auth: Arc<VkVideoLiveAuthService<R, T>>) -> Self {
+    pub fn new(auth: Arc<VkVideoLiveAuthService<R, T>>) -> Self {
         Self {
-            channel_url: channel_url.into(),
             auth,
             last_send: Mutex::new(None),
         }
@@ -73,8 +71,13 @@ where
             .bearer()
             .await
             .map_err(|e| ActionError::Api(e.to_string()))?;
+        let channel_url = self
+            .auth
+            .channel_url()
+            .await
+            .map_err(|e| ActionError::Api(e.to_string()))?;
         let transport = self.auth.transport();
-        let channel = api::channel(transport, &bearer, &self.channel_url)
+        let channel = api::channel(transport, &bearer, &channel_url)
             .await
             .map_err(map_vk)?;
         let stream_id = channel
@@ -83,7 +86,7 @@ where
             .map(|stream| stream.id)
             .ok_or_else(|| ActionError::Api("vk stream is offline".to_string()))?;
 
-        api::send_chat_message(transport, &bearer, &self.channel_url, &stream_id, text)
+        api::send_chat_message(transport, &bearer, &channel_url, &stream_id, text)
             .await
             .map_err(map_vk)
     }

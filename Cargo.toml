@@ -54,3 +54,4 @@ axum-extra = "0.12.6"
 time = "0.3.55"
 tokio-util = "0.7.19"
 vk-video-live = { path = 'crates/vk-video-live' }
+tracing-appender = "0.2.5"

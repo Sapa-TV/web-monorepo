@@ -9,7 +9,7 @@ use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 use crate::error::{Error, Result};
 
 pub const PUBSUB_URL: &str =
-    "wss://pubsub.live.vkvideo.ru/connection/websocket?format=json&cf_protocol_version=v2";
+    "wss://pubsub-dev.live.vkvideo.ru/connection/websocket?format=json&cf_protocol_version=v2";
 
 pub struct PubSub {
     ws: WebSocketStream<MaybeTlsStream<TcpStream>>,
@@ -61,9 +61,9 @@ impl PubSub {
         loop {
             let text = self.read_text().await?;
             let value = parse_frame(&text)?;
-            if let Some(ping) = value.get("ping") {
+            if let Some(pong) = pong_reply(&value) {
                 self.ws
-                    .send(Message::text(json!({ "pong": ping }).to_string()))
+                    .send(Message::text(pong.to_string()))
                     .await
                     .map_err(|e| Error::Protocol(format!("ws send: {e}")))?;
                 continue;
@@ -96,9 +96,9 @@ impl PubSub {
             if value.get("id").and_then(Value::as_u64) == Some(id) {
                 return Ok(value);
             }
-            if let Some(ping) = value.get("ping") {
+            if let Some(pong) = pong_reply(&value) {
                 self.ws
-                    .send(Message::text(json!({ "pong": ping }).to_string()))
+                    .send(Message::text(pong.to_string()))
                     .await
                     .map_err(|e| Error::Protocol(format!("ws send: {e}")))?;
                 continue;
@@ -129,6 +129,16 @@ impl PubSub {
 
 fn parse_frame(text: &str) -> Result<Value> {
     serde_json::from_str(text).map_err(|e| Error::Protocol(format!("ws frame: {e}")))
+}
+
+fn pong_reply(value: &Value) -> Option<Value> {
+    if let Some(ping) = value.get("ping") {
+        return Some(json!({ "pong": ping }));
+    }
+    if value.as_object().is_some_and(|o| o.is_empty()) {
+        return Some(json!({ "pong": {} }));
+    }
+    None
 }
 
 #[cfg(test)]

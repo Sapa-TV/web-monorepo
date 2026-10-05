@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+﻿use std::sync::{Arc, Mutex};
 
 use vk_video_live::error::Error as VkError;
 use vk_video_live::transport::Transport;
@@ -64,6 +64,8 @@ fn service(config: Option<Arc<VkVideoLiveConfig>>, transport: FakeTransport) -> 
 
 const TOKEN_JSON: &str =
     r#"{"access_token":"at1","refresh_token":"rt1","expires_in":3600,"token_type":"Bearer"}"#;
+const CURRENT_USER_JSON: &str =
+    r#"{"data":{"user":{"id":555,"nick":"tester"},"channel":{"url":"test_channel"}}}"#;
 const CHANNEL_JSON: &str = r#"{"data":{"channel":{"id":4242,"url":"test_channel","nick":"TestChannel","web_socket_channels":{"chat":"channel-chat:4242"}},"owner":{"id":555,"nick":"tester"},"stream":null}}"#;
 
 #[test]
@@ -91,6 +93,7 @@ async fn complete_rejects_unknown_state() {
         Some(config()),
         FakeTransport::new(vec![
             Ok(TOKEN_JSON.to_string()),
+            Ok(CURRENT_USER_JSON.to_string()),
             Ok(CHANNEL_JSON.to_string()),
         ]),
     );
@@ -107,6 +110,7 @@ async fn complete_exchanges_connects_and_marks_configured() {
         Some(config()),
         FakeTransport::new(vec![
             Ok(TOKEN_JSON.to_string()),
+            Ok(CURRENT_USER_JSON.to_string()),
             Ok(CHANNEL_JSON.to_string()),
         ]),
     );
@@ -130,6 +134,7 @@ async fn revoke_clears_credentials() {
         Some(config()),
         FakeTransport::new(vec![
             Ok(TOKEN_JSON.to_string()),
+            Ok(CURRENT_USER_JSON.to_string()),
             Ok(CHANNEL_JSON.to_string()),
         ]),
     );
