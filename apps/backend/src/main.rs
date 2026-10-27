@@ -35,6 +35,7 @@ use tokio_util::sync::CancellationToken;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 use tracing::info;
+use tracing::warn;
 use tracing_appender::rolling;
 use tracing_subscriber::layer::Layer;
 use tracing_subscriber::layer::SubscriberExt;
@@ -178,19 +179,31 @@ async fn main() {
     tokio::spawn(supervisor.run(build_ingress, shutdown.clone()));
     let cors = match config_store.cors_origins() {
         Some(origins) => {
-            let origins: Vec<HeaderValue> = origins.iter().filter_map(|o| o.parse().ok()).collect();
-            CorsLayer::new()
-                .allow_origin(origins)
-                .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
-                .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION])
+            let parsed: Vec<HeaderValue> = origins.iter().filter_map(|o| o.parse().ok()).collect();
+            let skipped = origins.len() - parsed.len();
+            if skipped > 0 {
+                warn!("{skipped} invalid origin(s) in CORS_ORIGINS were skipped");
+            }
+            Some(
+                CorsLayer::new()
+                    .allow_origin(parsed)
+                    .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
+                    .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION]),
+            )
         }
-        None => CorsLayer::permissive(),
+        None => {
+            warn!("CORS_ORIGINS is not set: cross-origin browser access is disabled");
+            None
+        }
     };
 
     let spec = openapi();
-    let app = api::router(state.clone())
-        .merge(widget_api::router(state.clone()))
-        .layer(cors)
+    let app = api::router(state.clone()).merge(widget_api::router(state.clone()));
+    let app = match cors {
+        Some(cors) => app.layer(cors),
+        None => app,
+    };
+    let app = app
         .layer(TraceLayer::new_for_http())
         .merge(SwaggerUi::new("/docs").url("/api-doc/openapi.json", spec.clone()))
         .merge(Redoc::with_url("/redoc", spec));
