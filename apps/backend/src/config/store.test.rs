@@ -22,7 +22,7 @@ fn accessors_return_configured_values() {
     assert_eq!(store.queue_default_limit(), 20);
     assert_eq!(store.session_ttl_secs(), 24 * 60 * 60);
     assert_eq!(store.port(), 3000);
-    assert!(!store.cookie_secure());
+    assert!(store.cookie_secure());
     assert_eq!(store.admin_twitch_id(), None);
     assert_eq!(store.cors_origins(), None);
     assert!(store.twitch().is_none());

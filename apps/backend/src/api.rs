@@ -18,6 +18,7 @@ use utoipa_axum::routes;
 
 use crate::api::auth::require_admin;
 use crate::api::auth::require_root;
+use crate::api::auth::require_same_origin;
 use crate::api::auth::require_session;
 use crate::state::AppState;
 
@@ -70,6 +71,7 @@ pub fn router(state: AppState) -> Router {
     let session_layer = from_fn_with_state(state.clone(), require_session);
     let admin_layer = from_fn_with_state(state.clone(), require_admin);
     let root_layer = from_fn_with_state(state.clone(), require_root);
+    let csrf_layer = from_fn_with_state(state.clone(), require_same_origin);
 
     let admin_protected = admin::session_router().route_layer(admin_layer);
     let root_protected = admin::root_router().route_layer(root_layer);
@@ -79,6 +81,7 @@ pub fn router(state: AppState) -> Router {
         .route_layer(session_layer);
 
     assemble(public_router().merge(session_protected))
+        .layer(csrf_layer)
         .with_state(state)
         .into()
 }

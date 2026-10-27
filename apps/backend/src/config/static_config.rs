@@ -33,7 +33,7 @@ impl Default for StaticConfig {
         Self {
             port: server::PORT,
             cors_origins: None,
-            cookie_secure: false,
+            cookie_secure: true,
             twitch: None,
             vk_video_live: None,
             google_service_account_key_base64: None,

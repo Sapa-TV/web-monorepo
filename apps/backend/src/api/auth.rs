@@ -13,6 +13,73 @@ use crate::state::AppState;
 pub const SESSION_COOKIE: &str = "sapa_session";
 pub const LOGIN_COOKIE: &str = "sapa_login";
 
+pub async fn require_same_origin(
+    State(state): State<AppState>,
+    req: Request<Body>,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    if !is_mutating(req.method()) {
+        return Ok(next.run(req).await);
+    }
+    let headers = req.headers();
+    let has_auth_cookie = read_cookie(headers, SESSION_COOKIE).is_some()
+        || read_cookie(headers, LOGIN_COOKIE).is_some();
+    if !has_auth_cookie {
+        return Ok(next.run(req).await);
+    }
+    let allowed: Vec<String> = state
+        .config
+        .cors_origins()
+        .map(<[String]>::to_vec)
+        .unwrap_or_default();
+    let host = headers.get(header::HOST).and_then(|v| v.to_str().ok());
+    let origin = headers.get(header::ORIGIN).and_then(|v| v.to_str().ok());
+    let referer = headers.get(header::REFERER).and_then(|v| v.to_str().ok());
+    if mutating_request_origin_allowed(origin, referer, host, &allowed) {
+        Ok(next.run(req).await)
+    } else {
+        Err(StatusCode::FORBIDDEN)
+    }
+}
+
+fn is_mutating(method: &Method) -> bool {
+    matches!(
+        *method,
+        Method::POST | Method::PUT | Method::PATCH | Method::DELETE
+    )
+}
+
+fn mutating_request_origin_allowed(
+    origin: Option<&str>,
+    referer: Option<&str>,
+    host: Option<&str>,
+    allowed_origins: &[String],
+) -> bool {
+    let presented = origin.or(referer);
+    let Some(presented) = presented else {
+        return true;
+    };
+    let Some(presented) = url_authority(presented) else {
+        return false;
+    };
+    if host.and_then(url_authority).is_some_and(|h| h == presented) {
+        return true;
+    }
+    allowed_origins
+        .iter()
+        .filter_map(|o| url_authority(o))
+        .any(|a| a == presented)
+}
+
+fn url_authority(value: &str) -> Option<String> {
+    let without_scheme = match value.split_once("://") {
+        Some((_, rest)) => rest,
+        None => value,
+    };
+    let authority = without_scheme.split(['/', '?', '#']).next()?.trim();
+    (!authority.is_empty()).then(|| authority.to_ascii_lowercase())
+}
+
 pub async fn require_session(
     State(state): State<AppState>,
     mut req: Request<Body>,
@@ -126,3 +193,7 @@ pub fn auth_cookie(name: &str, value: &str, max_age_secs: i64, secure: bool) -> 
     }
     builder.build()
 }
+
+#[cfg(test)]
+#[path = "auth.test.rs"]
+mod tests;
