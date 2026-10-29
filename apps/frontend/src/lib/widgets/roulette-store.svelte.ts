@@ -6,6 +6,12 @@ import {
 	type RarityResponse,
 	type RouletteSlotResponse,
 } from "@sapa-tv-ru/api-client";
+import {
+	connectWs,
+	type SocketLike,
+	type WsClient,
+	type WsServerMessage,
+} from "@sapa-tv-ru/ws-client";
 
 export type RoulettePhase =
 	"idle" | "spinning" | "completed" | "error" | "denied";
@@ -60,29 +66,8 @@ export function buildTrack(
 	});
 }
 
-export interface WsMessageLike {
-	type:
-		"auth_ok" | "auth_err" | "spin_started" | "spin_completed" | "spin_error";
-	entry_id?: number;
-	user_name?: string;
-	slot_id?: number;
-	slot_name?: string;
-	slot_rarity?: string;
-}
-
-interface SocketLike {
-	send(_data: string): void;
-	close(): void;
-	onopen: () => void;
-	onclose: () => void;
-	onerror: () => void;
-	onmessage: (_e: { data: string }) => void;
-}
-
 const AUTO_COMPLETE_MS = 10_000;
 const IDLE_AFTER_MS = 7_000;
-const WS_RETRY_BASE_MS = 1_000;
-const WS_RETRY_MAX_MS = 15_000;
 const HTTP_UNAUTHORIZED = 401;
 
 export interface RouletteStoreOptions {
@@ -113,12 +98,9 @@ export class RouletteStore {
 	private readonly wapiAuth: { headers: Record<string, string> };
 	private readonly autoCompleteMs: number;
 	private readonly idleAfterMs: number;
-	private readonly socketFactory: new (_url: string) => SocketLike;
+	private readonly socketFactory?: new (_url: string) => SocketLike;
 
-	private socket: SocketLike | null = null;
-	private socketConnecting = false;
-	private socketRejected = false;
-	private socketRetryMs = WS_RETRY_BASE_MS;
+	private ws: WsClient | null = null;
 	private keyOk = false;
 	private currentEntryId: number | null = null;
 	private idleTimer: ReturnType<typeof setTimeout> | undefined;
@@ -127,9 +109,7 @@ export class RouletteStore {
 		this.accessKey = accessKey;
 		this.autoCompleteMs = options.autoCompleteMs ?? AUTO_COMPLETE_MS;
 		this.idleAfterMs = options.idleAfterMs ?? IDLE_AFTER_MS;
-		this.socketFactory =
-			options.websocket ??
-			(globalThis.WebSocket as unknown as new (_url: string) => SocketLike);
+		this.socketFactory = options.websocket;
 		this.wapiAuth = { headers: { Authorization: `Bearer ${accessKey}` } };
 	}
 
@@ -143,24 +123,12 @@ export class RouletteStore {
 
 	stop(): void {
 		clearTimeout(this.idleTimer);
-		if (this.socket) {
-			const socket = this.socket;
-			socket.onclose = () => {};
-			socket.close();
-			this.socket = null;
-		}
+		this.ws?.close();
+		this.ws = null;
 	}
 
-	handleMessage(raw: string): void {
-		const d = JSON.parse(raw) as WsMessageLike;
+	handleMessage(d: WsServerMessage): void {
 		switch (d.type) {
-			case "auth_ok":
-				this.socketRetryMs = WS_RETRY_BASE_MS;
-				break;
-			case "auth_err":
-				this.socketRejected = true;
-				this.failAuth();
-				break;
 			case "spin_started":
 				if (d.entry_id != null && d.user_name && d.slot_name && d.slot_rarity) {
 					this.setSpinning({
@@ -191,12 +159,8 @@ export class RouletteStore {
 	}
 
 	failAuth(): void {
-		if (this.socket) {
-			const socket = this.socket;
-			socket.onclose = () => {};
-			socket.close();
-			this.socket = null;
-		}
+		this.ws?.close();
+		this.ws = null;
 		clearTimeout(this.idleTimer);
 		this.setConn("disconnected", "не авторизован");
 		this.setKeyBadge(
@@ -296,36 +260,16 @@ export class RouletteStore {
 	}
 
 	private connectSocket() {
-		if (!this.keyOk || this.socketConnecting || this.socketRejected) return;
-		this.socketConnecting = true;
-		const socket = new this.socketFactory(WS_URL);
-		this.socket = socket;
-
-		socket.onopen = () => {
-			this.setConn("connected", "подключено");
-			if (this.accessKey) {
-				socket.send(
-					JSON.stringify({
-						type: "auth",
-						token: this.accessKey,
-						role: "widget",
-					}),
-				);
-			}
-		};
-
-		socket.onmessage = (e) => this.handleMessage(e.data);
-
-		socket.onclose = () => {
-			this.socketConnecting = false;
-			this.socket = null;
-			this.setConn("disconnected", "отключено");
-			if (this.keyOk && !this.socketRejected) {
-				setTimeout(() => this.connectSocket(), this.socketRetryMs);
-				this.socketRetryMs = Math.min(this.socketRetryMs * 2, WS_RETRY_MAX_MS);
-			}
-		};
-
-		socket.onerror = () => socket.close();
+		if (!this.keyOk || this.ws) return;
+		this.ws = connectWs({
+			url: WS_URL,
+			token: this.accessKey,
+			role: "widget",
+			onMessage: (m) => this.handleMessage(m),
+			onState: (state) =>
+				this.setConn(state, state === "connected" ? "подключено" : "отключено"),
+			onAuthError: () => this.failAuth(),
+			socketFactory: this.socketFactory,
+		});
 	}
 }

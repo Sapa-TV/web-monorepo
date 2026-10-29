@@ -18,8 +18,10 @@ import {
 	RouletteStore,
 	TRACK_LENGTH,
 	TRACK_WIN_INDEX,
-	type WsMessageLike,
 } from "./roulette-store.svelte";
+import type { WsServerMessage } from "@sapa-tv-ru/ws-client";
+
+type SpinMessage = Extract<WsServerMessage, { type: "spin_started" }>;
 
 type MockedWapi = {
 	list: ReturnType<typeof vi.fn>;
@@ -57,7 +59,7 @@ class FakeWebSocket {
 		this.onopen();
 	}
 
-	emit(msg: WsMessageLike) {
+	emit(msg: WsServerMessage) {
 		this.onmessage({ data: JSON.stringify(msg) });
 	}
 }
@@ -68,7 +70,7 @@ function lastSocket(): FakeWebSocket {
 	return socket as FakeWebSocket;
 }
 
-function spinMessage(overrides: Partial<WsMessageLike> = {}) {
+function spinMessage(overrides: Partial<SpinMessage> = {}): SpinMessage {
 	return {
 		type: "spin_started",
 		entry_id: 7,
@@ -77,7 +79,7 @@ function spinMessage(overrides: Partial<WsMessageLike> = {}) {
 		slot_name: "Джекпот",
 		slot_rarity: "legendary",
 		...overrides,
-	} as WsMessageLike;
+	};
 }
 
 describe("RouletteStore", () => {

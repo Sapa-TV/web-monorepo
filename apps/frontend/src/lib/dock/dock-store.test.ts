@@ -15,7 +15,8 @@ vi.mock("#lib/api", () => ({
 }));
 
 import { wapi } from "#lib/api";
-import { DockStore, type WsMessage } from "./dock-store.svelte";
+import { DockStore } from "./dock-store.svelte";
+import type { WsServerMessage } from "@sapa-tv-ru/ws-client";
 
 type MockedWapi = {
 	list: ReturnType<typeof vi.fn>;
@@ -71,7 +72,7 @@ class FakeWebSocket {
 		this.onopen();
 	}
 
-	emit(msg: WsMessage) {
+	emit(msg: WsServerMessage) {
 		this.onmessage({ data: JSON.stringify(msg) });
 	}
 }

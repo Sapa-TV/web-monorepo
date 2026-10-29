@@ -35,6 +35,9 @@ importers:
       '@sapa-tv-ru/ui-kit':
         specifier: workspace:*
         version: link:../../packages/ui-kit
+      '@sapa-tv-ru/ws-client':
+        specifier: workspace:*
+        version: link:../../packages/ws-client
       neverthrow:
         specifier: ^8.2.0
         version: 8.2.0

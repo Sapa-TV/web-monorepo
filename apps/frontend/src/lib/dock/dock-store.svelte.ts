@@ -1,6 +1,12 @@
 import { WS_URL, wapi, type QueueEntry } from "#lib/api";
 import { describeApiError } from "#lib/api-error-text";
 import { ApiErrorKind, normalizeApiError } from "#lib/internal/api-error";
+import {
+	connectWs,
+	type SocketLike,
+	type WsClient,
+	type WsServerMessage,
+} from "@sapa-tv-ru/ws-client";
 import { SvelteDate } from "svelte/reactivity";
 
 export type DockEvent = {
@@ -13,8 +19,6 @@ type KeyState = "ok" | "missing" | "bad";
 type ConnState = "connected" | "disconnected";
 
 const LOG_LIMIT = 50;
-const WS_RETRY_BASE_MS = 1_000;
-const WS_RETRY_MAX_MS = 15_000;
 const DEFAULT_POLL_INTERVAL_MS = 10_000;
 
 const PLATFORM_NAMES: Record<number, string> = {
@@ -26,30 +30,6 @@ const PLATFORM_NAMES: Record<number, string> = {
 function platformSuffix(platform: number | null): string {
 	if (platform === null) return "";
 	return ` (${PLATFORM_NAMES[platform] ?? platform})`;
-}
-
-export interface WsMessage {
-	type:
-		| "auth_ok"
-		| "auth_err"
-		| "spin_started"
-		| "spin_completed"
-		| "spin_error"
-		| "presence";
-	entry_id?: number;
-	user_name?: string;
-	slot_name?: string;
-	dock?: boolean;
-	widget_count?: number;
-}
-
-interface SocketLike {
-	send(_data: string): void;
-	close(): void;
-	onopen: () => void;
-	onclose: () => void;
-	onerror: () => void;
-	onmessage: (_e: { data: string }) => void;
 }
 
 export interface DockStoreOptions {
@@ -86,20 +66,16 @@ export class DockStore {
 	private readonly accessKey: string;
 	private readonly wapiAuth: { headers: Record<string, string> };
 	private readonly pollIntervalMs: number;
-	private readonly socketFactory: new (_url: string) => SocketLike;
+	private readonly socketFactory?: new (_url: string) => SocketLike;
 
-	private socket: SocketLike | null = null;
-	private socketRejected = false;
-	private socketRetryMs = WS_RETRY_BASE_MS;
+	private ws: WsClient | null = null;
 	private pollTimer: ReturnType<typeof setInterval> | undefined;
 	private started = false;
 
 	constructor(accessKey: string, options: DockStoreOptions = {}) {
 		this.accessKey = accessKey;
 		this.pollIntervalMs = options.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
-		this.socketFactory =
-			options.websocket ??
-			(globalThis.WebSocket as unknown as new (_url: string) => SocketLike);
+		this.socketFactory = options.websocket;
 		this.wapiAuth = { headers: { Authorization: `Bearer ${accessKey}` } };
 	}
 
@@ -116,11 +92,8 @@ export class DockStore {
 
 	stop(): void {
 		clearInterval(this.pollTimer);
-		if (this.socket) {
-			this.socket.onclose = () => {};
-			this.socket.close();
-			this.socket = null;
-		}
+		this.ws?.close();
+		this.ws = null;
 	}
 
 	async loadAll(): Promise<void> {
@@ -217,42 +190,22 @@ export class DockStore {
 	}
 
 	private connectSocket() {
-		if (this.socketRejected) return;
-		this.socket = new this.socketFactory(WS_URL);
-		this.socket.onopen = () => {
-			this.connState = "connected";
-			if (this.accessKey) {
-				this.socket?.send(
-					JSON.stringify({
-						type: "auth",
-						token: this.accessKey,
-						role: "dock",
-					}),
-				);
-			}
-		};
-		this.socket.onclose = () => {
-			this.connState = "disconnected";
-			this.widgetOnline = false;
-			if (!this.socketRejected) {
-				setTimeout(() => this.connectSocket(), this.socketRetryMs);
-				this.socketRetryMs = Math.min(this.socketRetryMs * 2, WS_RETRY_MAX_MS);
-			}
-		};
-		this.socket.onerror = () => this.socket?.close();
-		this.socket.onmessage = (e) => this.handleMessage(e.data);
+		this.ws = connectWs({
+			url: WS_URL,
+			token: this.accessKey,
+			role: "dock",
+			onMessage: (m) => this.handleMessage(m),
+			onState: (state) => {
+				this.connState = state;
+				if (state === "disconnected") this.widgetOnline = false;
+			},
+			onAuthError: () => this.setKeyState(this.accessKey ? "bad" : "missing"),
+			socketFactory: this.socketFactory,
+		});
 	}
 
-	private handleMessage(raw: string) {
-		const d = JSON.parse(raw) as WsMessage;
+	private handleMessage(d: WsServerMessage) {
 		switch (d.type) {
-			case "auth_ok":
-				this.socketRetryMs = WS_RETRY_BASE_MS;
-				break;
-			case "auth_err":
-				this.socketRejected = true;
-				this.setKeyState(this.accessKey ? "bad" : "missing");
-				break;
 			case "presence":
 				this.widgetOnline = (d.widget_count ?? 0) > 0;
 				break;
