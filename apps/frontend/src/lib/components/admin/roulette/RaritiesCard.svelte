@@ -10,117 +10,63 @@
 	import IconPlus from "~icons/lucide/plus";
 	import IconTrash2 from "~icons/lucide/trash-2";
 	import { Alert, Button, Field, Input, TableWrap } from "@sapa-tv-ru/ui-kit";
-	import { describeApiError } from "#lib/api-error-text";
+	import { CrudStore } from "#lib/internal/crud-store.svelte";
 
 	const DEFAULT_COLOR = "#9d9d9d";
-
-	let rarities = $state<RarityResponse[]>([]);
-	let loaded = $state(false);
-	let error = $state("");
-	let hint = $state("");
-
-	let formOpen = $state(false);
-	let editId = $state<number | null>(null);
-	let busy = $state(false);
-	let removeId = $state<number | null>(null);
 
 	let name = $state("");
 	let displayName = $state("");
 	let image = $state("");
 	let color = $state(DEFAULT_COLOR);
 
-	function setError(err: unknown) {
-		error = describeApiError(err);
-	}
-
-	async function load() {
-		error = "";
-		hint = "";
-		const res = await api.listRarities();
-		if (res.isErr()) {
-			setError(res.error);
-			return;
-		}
-		rarities = res.value;
-		loaded = true;
-	}
+	const crud = new CrudStore<RarityResponse, UpsertRarityRequest>({
+		list: async () => api.listRarities(),
+		create: async (payload) => api.createRarity(payload),
+		update: async (id, payload) => api.updateRarity(id, payload),
+		remove: async (id) => api.deleteRarity(id),
+		hints: {
+			created: "Редкость создана.",
+			updated: "Редкость обновлена.",
+			removed: "Редкость удалена.",
+		},
+		confirmRemove:
+			"Удалить редкость? Слоты с этой редкостью будут удалены вместе с ней.",
+	});
 
 	function openNew() {
-		editId = null;
 		name = "";
 		displayName = "";
 		image = "";
 		color = DEFAULT_COLOR;
-		formOpen = true;
+		crud.openForm(null);
 	}
 
 	function openEdit(rarity: RarityResponse) {
-		editId = rarity.id;
 		name = rarity.name;
 		displayName = rarity.display_name;
 		image = rarity.image;
 		color = rarity.color;
-		formOpen = true;
+		crud.openForm(rarity.id);
 	}
 
-	function cancelForm() {
-		formOpen = false;
-		editId = null;
-	}
-
-	async function save() {
-		if (!name.trim() || !displayName.trim()) return;
-		busy = true;
-		error = "";
-		const payload: UpsertRarityRequest = {
+	function buildPayload(): UpsertRarityRequest {
+		return {
 			name: name.trim(),
 			display_name: displayName.trim(),
 			image: image.trim(),
 			color: color.trim(),
 		};
-		const res =
-			editId === null
-				? await api.createRarity(payload)
-				: await api.updateRarity(editId, payload);
-		if (res.isErr()) {
-			setError(res.error);
-		} else {
-			hint = editId === null ? "Редкость создана." : "Редкость обновлена.";
-			formOpen = false;
-			editId = null;
-			await load();
-		}
-		busy = false;
-	}
-
-	async function remove(id: number) {
-		if (
-			!confirm(
-				"Удалить редкость? Слоты с этой редкостью будут удалены вместе с ней.",
-			)
-		)
-			return;
-		removeId = id;
-		error = "";
-		const res = await api.deleteRarity(id);
-		if (res.isErr()) {
-			setError(res.error);
-		} else {
-			hint = "Редкость удалена.";
-			await load();
-		}
-		removeId = null;
 	}
 
 	onMount(() => {
-		void load();
+		void crud.load();
 	});
 </script>
 
 <details class="rarities">
 	<summary>
 		<span class="summary-title">Редкости</span>
-		<span class="summary-count">{rarities.length}</span>
+		<span class="summary-count">{crud.items.length}</span>
 		<span class="summary-chevron">
 			<IconChevronDown aria-hidden="true" />
 		</span>
@@ -131,11 +77,11 @@
 			Названия и цвета редкостей рулетки. Используются в слотах и на виджете.
 		</p>
 
-		{#if error}
-			<Alert tone="error">{error}</Alert>
+		{#if crud.error}
+			<Alert tone="error">{crud.error}</Alert>
 		{/if}
-		{#if hint}
-			<Alert tone="success">{hint}</Alert>
+		{#if crud.hint}
+			<Alert tone="success">{crud.hint}</Alert>
 		{/if}
 
 		<Button variant="primary" onclick={openNew}>
@@ -143,12 +89,15 @@
 			Создать редкость
 		</Button>
 
-		{#if formOpen}
+		{#if crud.formOpen}
 			<form
 				class="inline-form stacked"
 				onsubmit={(e) => {
 					e.preventDefault();
-					void save();
+					void crud.save(
+						name.trim() !== "" && displayName.trim() !== "",
+						buildPayload(),
+					);
 				}}
 			>
 				<Field label="Отображаемое имя">
@@ -187,15 +136,21 @@
 				</Field>
 
 				<div class="form-actions">
-					<Button variant="primary" type="submit" disabled={busy}>
-						{busy ? "Сохранение..." : editId === null ? "Создать" : "Сохранить"}
+					<Button variant="primary" type="submit" disabled={crud.busy}>
+						{crud.busy
+							? "Сохранение..."
+							: crud.editId === null
+								? "Создать"
+								: "Сохранить"}
 					</Button>
-					<Button size="sm" type="button" onclick={cancelForm}>Отмена</Button>
+					<Button size="sm" type="button" onclick={() => crud.cancelForm()}
+						>Отмена</Button
+					>
 				</div>
 			</form>
 		{/if}
 
-		{#if loaded}
+		{#if crud.loaded}
 			<TableWrap>
 				<table>
 					<thead>
@@ -208,7 +163,7 @@
 						</tr>
 					</thead>
 					<tbody>
-						{#each rarities as rarity (rarity.id)}
+						{#each crud.items as rarity (rarity.id)}
 							<tr>
 								<td>{rarity.display_name}</td>
 								<td class="mono">{rarity.name}</td>
@@ -238,8 +193,8 @@
 										size="sm"
 										variant="danger"
 										icon
-										onclick={() => remove(rarity.id)}
-										disabled={removeId === rarity.id}
+										onclick={() => crud.remove(rarity.id)}
+										disabled={crud.removeId === rarity.id}
 										aria-label="Удалить редкость"
 									>
 										<IconTrash2 aria-hidden="true" />

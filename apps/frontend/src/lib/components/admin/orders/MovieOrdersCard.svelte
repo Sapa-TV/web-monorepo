@@ -20,17 +20,7 @@
 		Select,
 		TableWrap,
 	} from "@sapa-tv-ru/ui-kit";
-	import { describeApiError } from "#lib/api-error-text";
-
-	let orders = $state<MovieOrderResponse[]>([]);
-	let loaded = $state(false);
-	let error = $state("");
-	let hint = $state("");
-
-	let formOpen = $state(false);
-	let editId = $state<number | null>(null);
-	let busy = $state(false);
-	let removeId = $state<number | null>(null);
+	import { CrudStore } from "#lib/internal/crud-store.svelte";
 
 	let title = $state("");
 	let customerName = $state("");
@@ -57,54 +47,41 @@
 		cancelled: "отмена",
 	};
 
-	function setError(err: unknown) {
-		error = describeApiError(err);
-	}
-
-	async function load() {
-		error = "";
-		hint = "";
-		const res = await api.listMovieOrders();
-		if (res.isErr()) {
-			setError(res.error);
-			return;
-		}
-		orders = res.value;
-		loaded = true;
-	}
+	const crud = new CrudStore<MovieOrderResponse, UpsertMovieOrderRequest>({
+		list: async () => api.listMovieOrders(),
+		create: async (payload) => api.createMovieOrder(payload),
+		update: async (id, payload) => api.updateMovieOrder(id, payload),
+		remove: async (id) => api.deleteMovieOrder(id),
+		hints: {
+			created: "Заказ создан.",
+			updated: "Заказ обновлён.",
+			removed: "Заказ удалён.",
+		},
+		confirmRemove: "Удалить заказ фильма?",
+	});
 
 	function openNew() {
-		editId = null;
 		title = "";
 		customerName = "";
 		kind = MovieKind.Movie;
 		source = OrderSource.Other;
 		status = OrderStatus.Pending;
 		comment = "";
-		formOpen = true;
+		crud.openForm(null);
 	}
 
 	function openEdit(order: MovieOrderResponse) {
-		editId = order.id;
 		title = order.title ?? "";
 		customerName = order.customer_name;
 		kind = order.kind;
 		source = order.source;
 		status = order.status;
 		comment = order.comment ?? "";
-		formOpen = true;
+		crud.openForm(order.id);
 	}
 
-	function cancelForm() {
-		formOpen = false;
-		editId = null;
-	}
-
-	async function save() {
-		if (!customerName.trim()) return;
-		busy = true;
-		error = "";
-		const payload: UpsertMovieOrderRequest = {
+	function buildPayload(): UpsertMovieOrderRequest {
+		return {
 			title: title.trim() || null,
 			customer_name: customerName.trim(),
 			kind,
@@ -112,37 +89,10 @@
 			status,
 			comment: comment.trim() || null,
 		};
-		const res =
-			editId === null
-				? await api.createMovieOrder(payload)
-				: await api.updateMovieOrder(editId, payload);
-		if (res.isErr()) {
-			setError(res.error);
-		} else {
-			hint = editId === null ? "Заказ создан." : "Заказ обновлён.";
-			formOpen = false;
-			editId = null;
-			await load();
-		}
-		busy = false;
-	}
-
-	async function remove(id: number) {
-		if (!confirm("Удалить заказ фильма?")) return;
-		removeId = id;
-		error = "";
-		const res = await api.deleteMovieOrder(id);
-		if (res.isErr()) {
-			setError(res.error);
-		} else {
-			hint = "Заказ удалён.";
-			await load();
-		}
-		removeId = null;
 	}
 
 	onMount(() => {
-		void load();
+		void crud.load();
 	});
 </script>
 
@@ -151,11 +101,11 @@
 		title="Заказы фильмов"
 		hint="Список синхронизируется с Google-таблицей."
 	>
-		{#if error}
-			<Alert tone="error">{error}</Alert>
+		{#if crud.error}
+			<Alert tone="error">{crud.error}</Alert>
 		{/if}
-		{#if hint}
-			<Alert tone="success">{hint}</Alert>
+		{#if crud.hint}
+			<Alert tone="success">{crud.hint}</Alert>
 		{/if}
 
 		<Button variant="primary" onclick={openNew}>
@@ -163,12 +113,12 @@
 			Создать заказ
 		</Button>
 
-		{#if formOpen}
+		{#if crud.formOpen}
 			<form
 				class="inline-form stacked"
 				onsubmit={(e) => {
 					e.preventDefault();
-					void save();
+					void crud.save(customerName.trim() !== "", buildPayload());
 				}}
 			>
 				<Field label="Название (можно заполнить позже)">
@@ -217,15 +167,21 @@
 				</Field>
 
 				<div class="form-actions">
-					<Button variant="primary" type="submit" disabled={busy}>
-						{busy ? "Сохранение..." : editId === null ? "Создать" : "Сохранить"}
+					<Button variant="primary" type="submit" disabled={crud.busy}>
+						{crud.busy
+							? "Сохранение..."
+							: crud.editId === null
+								? "Создать"
+								: "Сохранить"}
 					</Button>
-					<Button size="sm" type="button" onclick={cancelForm}>Отмена</Button>
+					<Button size="sm" type="button" onclick={() => crud.cancelForm()}
+						>Отмена</Button
+					>
 				</div>
 			</form>
 		{/if}
 
-		{#if loaded}
+		{#if crud.loaded}
 			<TableWrap>
 				<table>
 					<thead>
@@ -240,14 +196,14 @@
 						</tr>
 					</thead>
 					<tbody>
-						{#if orders.length === 0}
+						{#if crud.items.length === 0}
 							<tr>
 								<td class="empty" colspan="7"
 									>Пока пусто — создай заказ или импортируй из таблицы.</td
 								>
 							</tr>
 						{/if}
-						{#each orders as order (order.id)}
+						{#each crud.items as order (order.id)}
 							<tr>
 								<td class="mono cell-nowrap">{order.id}</td>
 								<td>{order.title ?? "—"}</td>
@@ -276,8 +232,8 @@
 										size="sm"
 										variant="danger"
 										icon
-										onclick={() => remove(order.id)}
-										disabled={removeId === order.id}
+										onclick={() => crud.remove(order.id)}
+										disabled={crud.removeId === order.id}
 										aria-label="Удалить заказ"
 									>
 										<IconTrash2 aria-hidden="true" />

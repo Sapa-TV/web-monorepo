@@ -11,111 +11,64 @@
 	import IconTrash2 from "~icons/lucide/trash-2";
 	import { Alert, Button, Card, Section, TableWrap } from "@sapa-tv-ru/ui-kit";
 	import RouletteSlotForm from "#lib/components/admin/roulette/RouletteSlotForm.svelte";
-	import { describeApiError } from "#lib/api-error-text";
+	import { err, ok } from "neverthrow";
+	import { CrudStore } from "#lib/internal/crud-store.svelte";
 
-	let slots = $state<RouletteSlotResponse[]>([]);
 	let rarities = $state<RarityResponse[]>([]);
-	let loaded = $state(false);
-	let error = $state("");
-	let hint = $state("");
-
-	let formOpen = $state(false);
-	let editId = $state<number | null>(null);
-	let busy = $state(false);
-	let removeId = $state<number | null>(null);
 
 	let name = $state("");
 	let rarityId = $state(0);
 	let weight = $state("10");
 	let action = $state("");
 
+	const crud = new CrudStore<RouletteSlotResponse, UpsertRouletteSlotRequest>({
+		list: async () => {
+			const slotsRes = await api.listSlots();
+			if (slotsRes.isErr()) return err(slotsRes.error);
+			const raritiesRes = await api.listRarities();
+			if (raritiesRes.isErr()) return err(raritiesRes.error);
+			rarities = raritiesRes.value;
+			return ok(slotsRes.value);
+		},
+		create: async (payload) => api.createSlot(payload),
+		update: async (id, payload) => api.updateSlot(id, payload),
+		remove: async (id) => api.deleteSlot(id),
+		hints: {
+			created: "Слот создан.",
+			updated: "Слот обновлён.",
+			removed: "Слот удалён.",
+		},
+		confirmRemove: "Удалить слот рулетки?",
+	});
+
 	const totalWeight = $derived(
-		slots.reduce((sum, slot) => sum + slot.weight, 0),
+		crud.items.reduce((sum, slot) => sum + slot.weight, 0),
 	);
 	const PERCENT = 100;
 
-	function setError(err: unknown) {
-		error = describeApiError(err);
-	}
-
-	async function load() {
-		error = "";
-		hint = "";
-		const slotsRes = await api.listSlots();
-		if (slotsRes.isErr()) {
-			setError(slotsRes.error);
-			return;
-		}
-		const raritiesRes = await api.listRarities();
-		if (raritiesRes.isErr()) {
-			setError(raritiesRes.error);
-			return;
-		}
-		slots = slotsRes.value;
-		rarities = raritiesRes.value;
-		loaded = true;
-	}
-
 	function openNew() {
-		editId = null;
 		name = "";
 		rarityId = rarities[0]?.id ?? 0;
 		weight = "10";
 		action = "";
-		formOpen = true;
+		crud.openForm(null);
 	}
 
 	function openEdit(slot: RouletteSlotResponse) {
-		editId = slot.id;
 		name = slot.name;
 		rarityId = slot.rarity_id;
 		weight = String(slot.weight);
 		action = slot.action;
-		formOpen = true;
+		crud.openForm(slot.id);
 	}
 
-	function cancelForm() {
-		formOpen = false;
-		editId = null;
-	}
-
-	async function save() {
-		if (!name.trim()) return;
-		busy = true;
-		error = "";
-		const payload: UpsertRouletteSlotRequest = {
+	function buildPayload(): UpsertRouletteSlotRequest {
+		return {
 			name: name.trim(),
 			rarity_id: rarityId,
 			weight: Math.max(0, Number.parseInt(weight, 10) || 0),
 			action: action.trim(),
 		};
-		const res =
-			editId === null
-				? await api.createSlot(payload)
-				: await api.updateSlot(editId, payload);
-		if (res.isErr()) {
-			setError(res.error);
-		} else {
-			hint = editId === null ? "Слот создан." : "Слот обновлён.";
-			formOpen = false;
-			editId = null;
-			await load();
-		}
-		busy = false;
-	}
-
-	async function remove(id: number) {
-		if (!confirm("Удалить слот рулетки?")) return;
-		removeId = id;
-		error = "";
-		const res = await api.deleteSlot(id);
-		if (res.isErr()) {
-			setError(res.error);
-		} else {
-			hint = "Слот удалён.";
-			await load();
-		}
-		removeId = null;
 	}
 
 	function rarityOf(id: number): RarityResponse | undefined {
@@ -128,7 +81,7 @@
 	}
 
 	onMount(() => {
-		void load();
+		void crud.load();
 	});
 </script>
 
@@ -137,11 +90,11 @@
 		title="Слоты рулетки"
 		hint="Секторы колеса. Шанс сектора — его вес относительно суммы весов."
 	>
-		{#if error}
-			<Alert tone="error">{error}</Alert>
+		{#if crud.error}
+			<Alert tone="error">{crud.error}</Alert>
 		{/if}
-		{#if hint}
-			<Alert tone="success">{hint}</Alert>
+		{#if crud.hint}
+			<Alert tone="success">{crud.hint}</Alert>
 		{/if}
 
 		<Button variant="primary" onclick={openNew}>
@@ -149,21 +102,21 @@
 			Создать слот
 		</Button>
 
-		{#if formOpen}
+		{#if crud.formOpen}
 			<RouletteSlotForm
 				bind:name
 				bind:rarityId
 				bind:weight
 				bind:action
 				{rarities}
-				{busy}
-				submitLabel={editId === null ? "Создать" : "Сохранить"}
-				onsave={() => void save()}
-				oncancel={cancelForm}
+				busy={crud.busy}
+				submitLabel={crud.editId === null ? "Создать" : "Сохранить"}
+				onsave={() => void crud.save(name.trim() !== "", buildPayload())}
+				oncancel={() => crud.cancelForm()}
 			/>
 		{/if}
 
-		{#if loaded}
+		{#if crud.loaded}
 			<TableWrap>
 				<table>
 					<thead>
@@ -177,7 +130,7 @@
 						</tr>
 					</thead>
 					<tbody>
-						{#each slots as slot (slot.id)}
+						{#each crud.items as slot (slot.id)}
 							{@const rarity = rarityOf(slot.rarity_id)}
 							<tr>
 								<td>{slot.name}</td>
@@ -213,8 +166,8 @@
 										size="sm"
 										variant="danger"
 										icon
-										onclick={() => remove(slot.id)}
-										disabled={removeId === slot.id}
+										onclick={() => crud.remove(slot.id)}
+										disabled={crud.removeId === slot.id}
 										aria-label="Удалить слот"
 									>
 										<IconTrash2 aria-hidden="true" />

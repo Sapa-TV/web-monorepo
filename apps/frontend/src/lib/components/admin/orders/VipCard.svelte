@@ -20,18 +20,10 @@
 		Select,
 		TableWrap,
 	} from "@sapa-tv-ru/ui-kit";
-	import { describeApiError } from "#lib/api-error-text";
+	import { err, ok } from "neverthrow";
+	import { CrudStore } from "#lib/internal/crud-store.svelte";
 
-	let records = $state<VipRecordResponse[]>([]);
 	let reminders = $state<VipRemindersResponse | null>(null);
-	let loaded = $state(false);
-	let error = $state("");
-	let hint = $state("");
-
-	let formOpen = $state(false);
-	let editId = $state<number | null>(null);
-	let busy = $state(false);
-	let removeId = $state<number | null>(null);
 
 	let customerName = $state("");
 	let kind = $state<VipKind>(VipKind.Vip);
@@ -55,105 +47,83 @@
 		cancelled: "cancelled",
 	};
 
-	function setError(err: unknown) {
-		error = describeApiError(err);
-	}
+	type VipPayload = {
+		customer_name: string;
+		kind: VipKind;
+		roulette_date: string;
+		end_date: string;
+		note: string;
+	};
 
-	async function load() {
-		error = "";
-		hint = "";
-		const [listRes, remindersRes] = await Promise.all([
-			api.listVipRecords(),
-			api.vipReminders(),
-		]);
-		if (listRes.isErr()) {
-			setError(listRes.error);
-			return;
-		}
-		if (remindersRes.isErr()) {
-			setError(remindersRes.error);
-			return;
-		}
-		records = listRes.value;
-		reminders = remindersRes.value;
-		loaded = true;
-	}
+	const crud = new CrudStore<VipRecordResponse, VipPayload>({
+		list: async () => {
+			const [listRes, remindersRes] = await Promise.all([
+				api.listVipRecords(),
+				api.vipReminders(),
+			]);
+			if (listRes.isErr()) return err(listRes.error);
+			if (remindersRes.isErr()) return err(remindersRes.error);
+			reminders = remindersRes.value;
+			return ok(listRes.value);
+		},
+		create: async (p) =>
+			api.createVipRecord({
+				customer_name: p.customer_name,
+				kind: p.kind,
+				roulette_date: p.roulette_date,
+				end_date: p.end_date || null,
+				note: p.note,
+			}),
+		update: async (id, p) =>
+			api.updateVipRecord(id, {
+				customer_name: p.customer_name,
+				kind: p.kind,
+				roulette_date: p.roulette_date,
+				end_date: p.end_date,
+				status,
+				note: p.note,
+			}),
+		remove: async (id) => api.deleteVipRecord(id),
+		hints: {
+			created: "Запись создана.",
+			updated: "Запись обновлена.",
+			removed: "Запись удалена.",
+		},
+		confirmRemove: "Удалить VIP-запись?",
+	});
 
 	function openNew() {
-		editId = null;
 		customerName = "";
 		kind = VipKind.Vip;
 		rouletteDate = "";
 		endDate = "";
 		status = VipStatus.Active;
 		note = "";
-		formOpen = true;
+		crud.openForm(null);
 	}
 
 	function openEdit(record: VipRecordResponse) {
-		editId = record.id;
 		customerName = record.customer_name;
 		kind = record.kind;
 		rouletteDate = record.roulette_date;
 		endDate = record.end_date;
 		status = record.status;
 		note = record.note ?? "";
-		formOpen = true;
+		crud.openForm(record.id);
 	}
 
-	function cancelForm() {
-		formOpen = false;
-		editId = null;
-	}
-
-	async function save() {
-		if (!customerName.trim() || !rouletteDate) return;
-		busy = true;
-		error = "";
-		const res =
-			editId === null
-				? await api.createVipRecord({
-						customer_name: customerName.trim(),
-						kind,
-						roulette_date: rouletteDate,
-						end_date: endDate || null,
-						note: note.trim() || null,
-					})
-				: await api.updateVipRecord(editId, {
-						customer_name: customerName.trim(),
-						kind,
-						roulette_date: rouletteDate,
-						end_date: endDate,
-						status,
-						note: note.trim() || null,
-					});
-		if (res.isErr()) {
-			setError(res.error);
-		} else {
-			hint = editId === null ? "Запись создана." : "Запись обновлена.";
-			formOpen = false;
-			editId = null;
-			await load();
-		}
-		busy = false;
-	}
-
-	async function remove(id: number) {
-		if (!confirm("Удалить VIP-запись?")) return;
-		removeId = id;
-		error = "";
-		const res = await api.deleteVipRecord(id);
-		if (res.isErr()) {
-			setError(res.error);
-		} else {
-			hint = "Запись удалена.";
-			await load();
-		}
-		removeId = null;
+	function buildPayload(): VipPayload {
+		return {
+			customer_name: customerName.trim(),
+			kind,
+			roulette_date: rouletteDate,
+			end_date: endDate,
+			note: note.trim(),
+		};
 	}
 
 	onMount(() => {
-		void load();
+		void crud.load();
 	});
 </script>
 
@@ -162,11 +132,11 @@
 		title="VIP / UnVIP"
 		hint="VIP выдаётся на 14 дней, UnVIP (проигрыш постоянной випки) — на 7. Даты окончания подставляются автоматически, если оставить поле пустым."
 	>
-		{#if error}
-			<Alert tone="error">{error}</Alert>
+		{#if crud.error}
+			<Alert tone="error">{crud.error}</Alert>
 		{/if}
-		{#if hint}
-			<Alert tone="success">{hint}</Alert>
+		{#if crud.hint}
+			<Alert tone="success">{crud.hint}</Alert>
 		{/if}
 
 		{#if reminders && (reminders.expiring.length > 0 || reminders.awaiting_return.length > 0)}
@@ -199,12 +169,15 @@
 			Создать запись
 		</Button>
 
-		{#if formOpen}
+		{#if crud.formOpen}
 			<form
 				class="inline-form stacked"
 				onsubmit={(e) => {
 					e.preventDefault();
-					void save();
+					void crud.save(
+						customerName.trim() !== "" && rouletteDate !== "",
+						buildPayload(),
+					);
 				}}
 			>
 				<Field label="Заказчик">
@@ -229,14 +202,18 @@
 				</Field>
 
 				<Field
-					label={editId === null
+					label={crud.editId === null
 						? "Дата окончания (пусто = +14/7 дней)"
 						: "Дата окончания"}
 				>
-					<Input type="date" bind:value={endDate} required={editId !== null} />
+					<Input
+						type="date"
+						bind:value={endDate}
+						required={crud.editId !== null}
+					/>
 				</Field>
 
-				{#if editId !== null}
+				{#if crud.editId !== null}
 					<Field label="Статус">
 						<Select bind:value={status}>
 							{#each Object.entries(statusLabels) as [value, label] (value)}
@@ -251,15 +228,21 @@
 				</Field>
 
 				<div class="form-actions">
-					<Button variant="primary" type="submit" disabled={busy}>
-						{busy ? "Сохранение..." : editId === null ? "Создать" : "Сохранить"}
+					<Button variant="primary" type="submit" disabled={crud.busy}>
+						{crud.busy
+							? "Сохранение..."
+							: crud.editId === null
+								? "Создать"
+								: "Сохранить"}
 					</Button>
-					<Button size="sm" type="button" onclick={cancelForm}>Отмена</Button>
+					<Button size="sm" type="button" onclick={() => crud.cancelForm()}
+						>Отмена</Button
+					>
 				</div>
 			</form>
 		{/if}
 
-		{#if loaded}
+		{#if crud.loaded}
 			<TableWrap>
 				<table>
 					<thead>
@@ -274,12 +257,12 @@
 						</tr>
 					</thead>
 					<tbody>
-						{#if records.length === 0}
+						{#if crud.items.length === 0}
 							<tr>
 								<td class="empty" colspan="7">Записей нет.</td>
 							</tr>
 						{/if}
-						{#each records as record (record.id)}
+						{#each crud.items as record (record.id)}
 							<tr>
 								<td class="mono cell-nowrap">{record.id}</td>
 								<td class="cell-nowrap">{record.customer_name}</td>
@@ -308,8 +291,8 @@
 										size="sm"
 										variant="danger"
 										icon
-										onclick={() => remove(record.id)}
-										disabled={removeId === record.id}
+										onclick={() => crud.remove(record.id)}
+										disabled={crud.removeId === record.id}
 										aria-label="Удалить запись"
 									>
 										<IconTrash2 aria-hidden="true" />
