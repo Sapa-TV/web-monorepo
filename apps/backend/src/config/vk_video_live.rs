@@ -1,13 +1,8 @@
 use serde::Deserialize;
 use serde::de::Error as _;
 
+use super::{default_csrf_ttl_secs, validate_csrf_ttl, validate_required};
 use crate::error::config::ConfigError;
-
-const DEFAULT_CSRF_TTL_SECS: u64 = 600;
-
-fn default_csrf_ttl_secs() -> u64 {
-    DEFAULT_CSRF_TTL_SECS
-}
 
 #[derive(Clone)]
 #[non_exhaustive]
@@ -28,7 +23,7 @@ impl VkVideoLiveConfig {
         credentials_redirect_uri: String,
         csrf_ttl_secs: u64,
     ) -> Result<Self, ConfigError> {
-        let required = [
+        validate_required(&[
             ("client_id", client_id.as_str()),
             ("client_secret", client_secret.as_str()),
             ("redirect_uri", redirect_uri.as_str()),
@@ -36,15 +31,8 @@ impl VkVideoLiveConfig {
                 "credentials_redirect_uri",
                 credentials_redirect_uri.as_str(),
             ),
-        ];
-        for (name, value) in required {
-            if value.is_empty() {
-                return Err(ConfigError::MissingField { field: name });
-            }
-        }
-        if csrf_ttl_secs == 0 {
-            return Err(ConfigError::InvalidCsrfTtl);
-        }
+        ])?;
+        validate_csrf_ttl(csrf_ttl_secs)?;
         Ok(Self {
             client_id,
             client_secret,

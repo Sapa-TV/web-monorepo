@@ -1,7 +1,7 @@
 use axum::body::Body;
 use axum::extract::State;
 use axum::http::header;
-use axum::http::{HeaderValue, Method, Request, StatusCode};
+use axum::http::{Method, Request, StatusCode};
 use axum::middleware::Next;
 use axum::response::Response;
 use axum_extra::extract::cookie::{Cookie, SameSite};
@@ -168,18 +168,6 @@ pub fn read_cookie(headers: &header::HeaderMap, name: &str) -> Option<String> {
         })
         .next()
         .filter(|value| !value.is_empty())
-}
-
-pub fn cookie_header(name: &str, value: &str, max_age_secs: i64, secure: bool) -> HeaderValue {
-    let mut builder = Cookie::build((name, value))
-        .path("/")
-        .http_only(true)
-        .same_site(SameSite::Lax)
-        .secure(secure);
-    if max_age_secs >= 0 {
-        builder = builder.max_age(Duration::seconds(max_age_secs));
-    }
-    HeaderValue::from_str(&builder.build().encoded().to_string()).expect("cookie header is valid")
 }
 
 pub fn auth_cookie(name: &str, value: &str, max_age_secs: i64, secure: bool) -> Cookie<'static> {

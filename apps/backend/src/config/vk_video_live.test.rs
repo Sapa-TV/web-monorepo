@@ -2,6 +2,7 @@ use serde_json::from_value;
 use serde_json::json;
 
 use super::*;
+use crate::config::DEFAULT_CSRF_TTL_SECS;
 
 fn vk_json() -> serde_json::Value {
     json!({

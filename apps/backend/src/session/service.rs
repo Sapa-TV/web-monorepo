@@ -11,6 +11,7 @@ use crate::consts::session::LOGIN_TICKET_TTL;
 use crate::error::RepositoryError;
 use crate::error::SessionServiceError;
 use crate::platform::PlatformCredentialRepository;
+use crate::random::generate_secret;
 use crate::session::repository::SessionRepository;
 use crate::session::{LoginTicket, LoginTicketToken, Session, SessionToken};
 
@@ -68,7 +69,7 @@ where
     ) -> Result<LoginTicket, SessionServiceError> {
         let now = Utc::now();
         let ticket = LoginTicket::new(
-            LoginTicketToken::new(nonce()),
+            LoginTicketToken::new(generate_secret()),
             twitch_user_id.to_string(),
             twitch_user_name.map(str::to_string),
             now,
@@ -103,7 +104,7 @@ where
         let now = Utc::now();
         let ttl = Duration::from_secs(self.settings.read().session.ttl_secs);
         let session = Session::new(
-            SessionToken::new(nonce()),
+            SessionToken::new(generate_secret()),
             twitch_user_id.to_string(),
             twitch_user_name.map(str::to_string),
             now,
@@ -194,13 +195,6 @@ where
         let tickets = self.repo.purge_expired_tickets(now).await?;
         Ok(sessions + tickets)
     }
-}
-
-fn nonce() -> String {
-    use rand::RngExt;
-    let hi: u128 = rand::rng().random();
-    let lo: u128 = rand::rng().random();
-    format!("{hi:032x}{lo:032x}")
 }
 
 #[cfg(test)]
