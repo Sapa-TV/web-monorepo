@@ -8,6 +8,7 @@ use crate::db::inmemory_orders::{
     InMemoryGameOrderRepository, InMemoryMovieOrderRepository, InMemoryVipRecordRepository,
 };
 use crate::orders::game::{GameOrderId, GameOrderKind, OrderSource};
+use crate::orders::service::{GameOrderService, MovieOrderService, VipService};
 use crate::orders::status::OrderStatus;
 use crate::orders::vip::{VipKind, VipRecordId};
 
@@ -37,9 +38,9 @@ fn test_service() -> SheetsService<
     ));
     SheetsService::new(
         None,
-        InMemoryGameOrderRepository::new(),
-        InMemoryMovieOrderRepository::new(),
-        InMemoryVipRecordRepository::new(),
+        Arc::new(GameOrderService::new(InMemoryGameOrderRepository::new())),
+        Arc::new(MovieOrderService::new(InMemoryMovieOrderRepository::new())),
+        Arc::new(VipService::new(InMemoryVipRecordRepository::new())),
         config,
     )
 }
@@ -96,7 +97,11 @@ async fn import_vip_marks_expired_records_done() {
 
     svc.import_vip(vec![record]).await.unwrap();
 
-    let all = svc.vip_repo.list().await.unwrap();
+    let all = svc
+        .vip_service
+        .list(VipRecordFilter::default())
+        .await
+        .unwrap();
     assert_eq!(all[0].status, VipStatus::Done);
 }
 

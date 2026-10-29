@@ -2,6 +2,7 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use thiserror::Error;
 
+use super::OrdersServiceError;
 use super::RepositoryError;
 use super::api::ApiError;
 
@@ -22,11 +23,19 @@ pub enum SheetsError {
     Config(String),
     #[error("{0}")]
     Repo(RepositoryError),
+    #[error("{0}")]
+    Service(OrdersServiceError),
 }
 
 impl From<RepositoryError> for SheetsError {
     fn from(e: RepositoryError) -> Self {
         SheetsError::Repo(e)
+    }
+}
+
+impl From<OrdersServiceError> for SheetsError {
+    fn from(e: OrdersServiceError) -> Self {
+        SheetsError::Service(e)
     }
 }
 
@@ -49,6 +58,14 @@ impl SheetsError {
             SheetsError::Config(_) => StatusCode::INTERNAL_SERVER_ERROR,
             SheetsError::Repo(RepositoryError::Conflict(_)) => StatusCode::CONFLICT,
             SheetsError::Repo(RepositoryError::Database(_)) => StatusCode::INTERNAL_SERVER_ERROR,
+            SheetsError::Service(OrdersServiceError::NotFound) => StatusCode::NOT_FOUND,
+            SheetsError::Service(OrdersServiceError::Invalid(_)) => {
+                StatusCode::UNPROCESSABLE_ENTITY
+            }
+            SheetsError::Service(OrdersServiceError::Repo(RepositoryError::Conflict(_))) => {
+                StatusCode::CONFLICT
+            }
+            SheetsError::Service(OrdersServiceError::Repo(_)) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 }

@@ -306,9 +306,9 @@ where
         });
     let sheets = Arc::new(SheetsService::new(
         sheets_client,
-        game_order_repo,
-        movie_order_repo,
-        vip_record_repo,
+        Arc::clone(&game_order_service),
+        Arc::clone(&movie_order_service),
+        Arc::clone(&vip_service),
         Arc::clone(&config),
     ));
 

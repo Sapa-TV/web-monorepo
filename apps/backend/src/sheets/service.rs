@@ -9,6 +9,10 @@ use crate::error::SheetsError;
 use crate::orders::game::{GameOrder, GameOrderKind, NewGameOrder, OrderSource};
 use crate::orders::movie::{MovieKind, MovieOrder, NewMovieOrder};
 use crate::orders::repository::{GameOrderRepository, MovieOrderRepository, VipRecordRepository};
+use crate::orders::service::{
+    GameOrderFilter, GameOrderService, MovieOrderFilter, MovieOrderService, VipRecordFilter,
+    VipService,
+};
 use crate::orders::status::OrderStatus;
 use crate::orders::vip::{NewVipRecord, VipKind, VipRecord, VipStatus};
 use crate::sheets::client::GoogleSheetsClient;
@@ -112,9 +116,9 @@ where
     K: ConfigRepository,
 {
     client: Option<GoogleSheetsClient>,
-    game_repo: G,
-    movie_repo: M,
-    vip_repo: V,
+    game_service: Arc<GameOrderService<G>>,
+    movie_service: Arc<MovieOrderService<M>>,
+    vip_service: Arc<VipService<V>>,
     config: Arc<ConfigStore<K>>,
     dirty: AtomicBool,
     last_sync: Mutex<Option<DateTime<Utc>>>,
@@ -129,16 +133,16 @@ where
 {
     pub fn new(
         client: Option<GoogleSheetsClient>,
-        game_repo: G,
-        movie_repo: M,
-        vip_repo: V,
+        game_service: Arc<GameOrderService<G>>,
+        movie_service: Arc<MovieOrderService<M>>,
+        vip_service: Arc<VipService<V>>,
         config: Arc<ConfigStore<K>>,
     ) -> Self {
         Self {
             client,
-            game_repo,
-            movie_repo,
-            vip_repo,
+            game_service,
+            movie_service,
+            vip_service,
             config,
             dirty: AtomicBool::new(false),
             last_sync: Mutex::new(None),
@@ -188,42 +192,42 @@ where
 
     async fn import_games(&self, parsed: Vec<NewGameOrder>) -> Result<ImportCount, SheetsError> {
         let total = parsed.len() as u32;
-        let fresh = new_games_only(&self.game_repo.list().await?, parsed);
+        let existing = self.game_service.list(GameOrderFilter::default()).await?;
+        let fresh = new_games_only(&existing, parsed);
         let imported = fresh.len() as u32;
         for order in fresh {
-            self.game_repo.create(order).await?;
+            self.game_service.create(order).await?;
         }
         Ok(ImportCount::new(imported, total - imported))
     }
 
     async fn import_movies(&self, parsed: Vec<NewMovieOrder>) -> Result<ImportCount, SheetsError> {
         let total = parsed.len() as u32;
-        let fresh = new_movies_only(&self.movie_repo.list().await?, parsed);
+        let existing = self.movie_service.list(MovieOrderFilter::default()).await?;
+        let fresh = new_movies_only(&existing, parsed);
         let imported = fresh.len() as u32;
         for order in fresh {
-            self.movie_repo.create(order).await?;
+            self.movie_service.create(order).await?;
         }
         Ok(ImportCount::new(imported, total - imported))
     }
 
     async fn import_vip(&self, parsed: Vec<NewVipRecord>) -> Result<ImportCount, SheetsError> {
         let total = parsed.len() as u32;
-        let fresh = new_vip_only(&self.vip_repo.list().await?, parsed);
+        let existing = self.vip_service.list(VipRecordFilter::default()).await?;
+        let fresh = new_vip_only(&existing, parsed);
         let imported = fresh.len() as u32;
         let today = chrono::Utc::now().date_naive();
         for record in fresh {
-            let end_date = record.end_date.unwrap_or(record.roulette_date);
-            let mut created = self.vip_repo.create(record, end_date).await?;
+            let mut created = self.vip_service.create(record).await?;
             if created.end_date < today {
                 created.status = VipStatus::Done;
-                self.vip_repo.update(created).await?;
+                self.vip_service.update(created).await?;
             }
         }
         Ok(ImportCount::new(imported, total - imported))
     }
 }
-
-// ---------------------------------------------------------------- sync
 
 const GAMES_CLEAR_RANGE: &str = "'Игры'!A1:H2000";
 const MOVIES_CLEAR_RANGE: &str = "'Фильмы'!A1:G2000";
@@ -399,9 +403,27 @@ where
     pub async fn sync(&self) -> Result<SyncReport, SheetsError> {
         let (client, spreadsheet_id) = self.client_and_spreadsheet().await?;
 
-        let games = self.game_repo.list().await?;
-        let movies = self.movie_repo.list().await?;
-        let vip = self.vip_repo.list().await?;
+        let games = self
+            .game_service
+            .list(GameOrderFilter::default())
+            .await?
+            .into_iter()
+            .rev()
+            .collect::<Vec<_>>();
+        let movies = self
+            .movie_service
+            .list(MovieOrderFilter::default())
+            .await?
+            .into_iter()
+            .rev()
+            .collect::<Vec<_>>();
+        let vip = self
+            .vip_service
+            .list(VipRecordFilter::default())
+            .await?
+            .into_iter()
+            .rev()
+            .collect::<Vec<_>>();
 
         client
             .clear_values(&spreadsheet_id, GAMES_CLEAR_RANGE)
