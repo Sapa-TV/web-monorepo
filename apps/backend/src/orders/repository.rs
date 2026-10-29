@@ -2,88 +2,57 @@ use std::future::Future;
 use std::sync::Arc;
 
 use crate::error::RepositoryError;
-use crate::orders::game::{GameOrder, GameOrderId, NewGameOrder};
-use crate::orders::movie::{MovieOrder, MovieOrderId, NewMovieOrder};
+use crate::orders::service::{OrderNormalizable, OrderReplace, OrderView};
 use crate::orders::vip::{NewVipRecord, VipRecord, VipRecordId};
 
-pub trait GameOrderRepository: Send + Sync {
+pub trait OrderRepository: Send + Sync {
+    type Order: OrderNormalizable
+        + OrderReplace<New = Self::New>
+        + OrderView<Kind = Self::Kind>
+        + Send;
+    type New: OrderNormalizable + Send;
+    type Id: Send;
+    type Kind: PartialEq + Copy + Send;
+
     fn create(
         &self,
-        order: NewGameOrder,
-    ) -> impl Future<Output = Result<GameOrder, RepositoryError>> + Send;
+        order: Self::New,
+    ) -> impl Future<Output = Result<Self::Order, RepositoryError>> + Send;
     fn get_by_id(
         &self,
-        id: GameOrderId,
-    ) -> impl Future<Output = Result<Option<GameOrder>, RepositoryError>> + Send;
-    fn list(&self) -> impl Future<Output = Result<Vec<GameOrder>, RepositoryError>> + Send;
+        id: Self::Id,
+    ) -> impl Future<Output = Result<Option<Self::Order>, RepositoryError>> + Send;
+    fn list(&self) -> impl Future<Output = Result<Vec<Self::Order>, RepositoryError>> + Send;
     fn update(
         &self,
-        order: GameOrder,
-    ) -> impl Future<Output = Result<Option<GameOrder>, RepositoryError>> + Send;
-    fn delete(&self, id: GameOrderId)
-    -> impl Future<Output = Result<bool, RepositoryError>> + Send;
+        order: Self::Order,
+    ) -> impl Future<Output = Result<Option<Self::Order>, RepositoryError>> + Send;
+    fn delete(&self, id: Self::Id) -> impl Future<Output = Result<bool, RepositoryError>> + Send;
 }
 
-impl<T: GameOrderRepository> GameOrderRepository for Arc<T> {
-    async fn create(&self, order: NewGameOrder) -> Result<GameOrder, RepositoryError> {
+impl<T: OrderRepository + ?Sized> OrderRepository for Arc<T> {
+    type Order = T::Order;
+    type New = T::New;
+    type Id = T::Id;
+    type Kind = T::Kind;
+
+    async fn create(&self, order: Self::New) -> Result<Self::Order, RepositoryError> {
         (**self).create(order).await
     }
 
-    async fn get_by_id(&self, id: GameOrderId) -> Result<Option<GameOrder>, RepositoryError> {
+    async fn get_by_id(&self, id: Self::Id) -> Result<Option<Self::Order>, RepositoryError> {
         (**self).get_by_id(id).await
     }
 
-    async fn list(&self) -> Result<Vec<GameOrder>, RepositoryError> {
+    async fn list(&self) -> Result<Vec<Self::Order>, RepositoryError> {
         (**self).list().await
     }
 
-    async fn update(&self, order: GameOrder) -> Result<Option<GameOrder>, RepositoryError> {
+    async fn update(&self, order: Self::Order) -> Result<Option<Self::Order>, RepositoryError> {
         (**self).update(order).await
     }
 
-    async fn delete(&self, id: GameOrderId) -> Result<bool, RepositoryError> {
-        (**self).delete(id).await
-    }
-}
-
-pub trait MovieOrderRepository: Send + Sync {
-    fn create(
-        &self,
-        order: NewMovieOrder,
-    ) -> impl Future<Output = Result<MovieOrder, RepositoryError>> + Send;
-    fn get_by_id(
-        &self,
-        id: MovieOrderId,
-    ) -> impl Future<Output = Result<Option<MovieOrder>, RepositoryError>> + Send;
-    fn list(&self) -> impl Future<Output = Result<Vec<MovieOrder>, RepositoryError>> + Send;
-    fn update(
-        &self,
-        order: MovieOrder,
-    ) -> impl Future<Output = Result<Option<MovieOrder>, RepositoryError>> + Send;
-    fn delete(
-        &self,
-        id: MovieOrderId,
-    ) -> impl Future<Output = Result<bool, RepositoryError>> + Send;
-}
-
-impl<T: MovieOrderRepository> MovieOrderRepository for Arc<T> {
-    async fn create(&self, order: NewMovieOrder) -> Result<MovieOrder, RepositoryError> {
-        (**self).create(order).await
-    }
-
-    async fn get_by_id(&self, id: MovieOrderId) -> Result<Option<MovieOrder>, RepositoryError> {
-        (**self).get_by_id(id).await
-    }
-
-    async fn list(&self) -> Result<Vec<MovieOrder>, RepositoryError> {
-        (**self).list().await
-    }
-
-    async fn update(&self, order: MovieOrder) -> Result<Option<MovieOrder>, RepositoryError> {
-        (**self).update(order).await
-    }
-
-    async fn delete(&self, id: MovieOrderId) -> Result<bool, RepositoryError> {
+    async fn delete(&self, id: Self::Id) -> Result<bool, RepositoryError> {
         (**self).delete(id).await
     }
 }

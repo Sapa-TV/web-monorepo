@@ -4,7 +4,7 @@ use sqlx::SqlitePool;
 use crate::db::sqlite::map_err;
 use crate::error::RepositoryError;
 use crate::orders::game::{GameOrder, GameOrderId, GameOrderKind, NewGameOrder, OrderSource};
-use crate::orders::repository::GameOrderRepository;
+use crate::orders::repository::OrderRepository;
 use crate::orders::status::OrderStatus;
 use crate::user::UserId;
 
@@ -70,7 +70,12 @@ impl GameOrderRow {
     }
 }
 
-impl GameOrderRepository for SqliteGameOrderRepository {
+impl OrderRepository for SqliteGameOrderRepository {
+    type Order = GameOrder;
+    type New = NewGameOrder;
+    type Id = GameOrderId;
+    type Kind = GameOrderKind;
+
     async fn create(&self, order: NewGameOrder) -> Result<GameOrder, RepositoryError> {
         let now = Utc::now();
         let user_id = order.user_id.map(|id| id.get() as i64);

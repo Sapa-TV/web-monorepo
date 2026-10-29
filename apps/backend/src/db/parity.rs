@@ -1,4 +1,4 @@
-﻿//! Shared behavioral suites run against both repository implementations.
+//! Shared behavioral suites run against both repository implementations.
 //! A suite may only use trait methods: it is the executable specification
 //! of the contract both impls must satisfy.
 //!
@@ -45,9 +45,9 @@ use crate::db::sqlite::user::SqliteUserRepository;
 use crate::db::sqlite::vip_record::SqliteVipRecordRepository;
 use crate::error::RepositoryError;
 use crate::ingress::event::RuleTrigger;
-use crate::orders::game::{GameOrderId, GameOrderKind, NewGameOrder, OrderSource};
-use crate::orders::movie::{MovieKind, MovieOrderId, NewMovieOrder};
-use crate::orders::repository::{GameOrderRepository, MovieOrderRepository, VipRecordRepository};
+use crate::orders::game::{GameOrder, GameOrderId, GameOrderKind, NewGameOrder, OrderSource};
+use crate::orders::movie::{MovieKind, MovieOrder, MovieOrderId, NewMovieOrder};
+use crate::orders::repository::{OrderRepository, VipRecordRepository};
 use crate::orders::status::OrderStatus;
 use crate::orders::vip::{NewVipRecord, VipKind, VipRecordId, VipStatus};
 use crate::platform::PlatformId;
@@ -792,7 +792,11 @@ fn date(s: &str) -> chrono::NaiveDate {
     chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").unwrap()
 }
 
-async fn suite_game_order_lifecycle<G: GameOrderRepository>(repo: &G) {
+async fn suite_game_order_lifecycle<
+    G: OrderRepository<Order = GameOrder, New = NewGameOrder, Id = GameOrderId, Kind = GameOrderKind>,
+>(
+    repo: &G,
+) {
     assert!(repo.list().await.unwrap().is_empty());
 
     let created = repo
@@ -864,7 +868,11 @@ async fn parity_game_order_sqlite() {
     suite_game_order_lifecycle(&SqliteGameOrderRepository::new(pool)).await;
 }
 
-async fn suite_movie_order_lifecycle<M: MovieOrderRepository>(repo: &M) {
+async fn suite_movie_order_lifecycle<
+    M: OrderRepository<Order = MovieOrder, New = NewMovieOrder, Id = MovieOrderId, Kind = MovieKind>,
+>(
+    repo: &M,
+) {
     assert!(repo.list().await.unwrap().is_empty());
 
     let created = repo

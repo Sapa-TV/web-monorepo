@@ -4,9 +4,9 @@ use std::sync::nonpoison::Mutex;
 use chrono::{NaiveDate, Utc};
 
 use crate::error::RepositoryError;
-use crate::orders::game::{GameOrder, GameOrderId, NewGameOrder};
-use crate::orders::movie::{MovieOrder, MovieOrderId, NewMovieOrder};
-use crate::orders::repository::{GameOrderRepository, MovieOrderRepository, VipRecordRepository};
+use crate::orders::game::{GameOrder, GameOrderId, GameOrderKind, NewGameOrder};
+use crate::orders::movie::{MovieKind, MovieOrder, MovieOrderId, NewMovieOrder};
+use crate::orders::repository::{OrderRepository, VipRecordRepository};
 use crate::orders::vip::{NewVipRecord, VipRecord, VipRecordId, VipStatus};
 
 #[non_exhaustive]
@@ -30,7 +30,12 @@ impl InMemoryGameOrderRepository {
     }
 }
 
-impl GameOrderRepository for InMemoryGameOrderRepository {
+impl OrderRepository for InMemoryGameOrderRepository {
+    type Order = GameOrder;
+    type New = NewGameOrder;
+    type Id = GameOrderId;
+    type Kind = GameOrderKind;
+
     async fn create(&self, order: NewGameOrder) -> Result<GameOrder, RepositoryError> {
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
         let now = Utc::now();
@@ -110,7 +115,12 @@ impl InMemoryMovieOrderRepository {
     }
 }
 
-impl MovieOrderRepository for InMemoryMovieOrderRepository {
+impl OrderRepository for InMemoryMovieOrderRepository {
+    type Order = MovieOrder;
+    type New = NewMovieOrder;
+    type Id = MovieOrderId;
+    type Kind = MovieKind;
+
     async fn create(&self, order: NewMovieOrder) -> Result<MovieOrder, RepositoryError> {
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
         let now = Utc::now();

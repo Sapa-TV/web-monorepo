@@ -1,9 +1,9 @@
-﻿use chrono::{Days, NaiveDate};
+use chrono::{Days, NaiveDate};
 
 use crate::error::OrdersServiceError;
-use crate::orders::game::{GameOrder, GameOrderId, GameOrderKind, NewGameOrder, OrderSource};
-use crate::orders::movie::{MovieKind, MovieOrder, MovieOrderId, NewMovieOrder};
-use crate::orders::repository::{GameOrderRepository, MovieOrderRepository, VipRecordRepository};
+use crate::orders::game::{GameOrder, GameOrderKind, NewGameOrder, OrderSource};
+use crate::orders::movie::{MovieKind, MovieOrder, NewMovieOrder};
+use crate::orders::repository::{OrderRepository, VipRecordRepository};
 use crate::orders::status::OrderStatus;
 use crate::orders::vip::{
     NewVipRecord, UNVIP_DURATION_DAYS, VIP_DURATION_DAYS, VipKind, VipRecord, VipRecordId,
@@ -40,33 +40,174 @@ fn matches_query(query: &str, fields: &[&str]) -> bool {
     fields.iter().any(|f| f.to_lowercase().contains(&needle))
 }
 
-#[derive(Debug, Clone, Default)]
+pub trait OrderNormalizable {
+    fn normalize(&mut self) -> Result<(), OrdersServiceError>;
+}
+
+impl OrderNormalizable for NewGameOrder {
+    fn normalize(&mut self) -> Result<(), OrdersServiceError> {
+        self.customer_name = require_customer(&self.customer_name)?;
+        self.title = normalize_title(self.title.take());
+        self.comment = normalize_optional(self.comment.take());
+        Ok(())
+    }
+}
+
+impl OrderNormalizable for NewMovieOrder {
+    fn normalize(&mut self) -> Result<(), OrdersServiceError> {
+        self.customer_name = require_customer(&self.customer_name)?;
+        self.title = normalize_title(self.title.take());
+        self.comment = normalize_optional(self.comment.take());
+        Ok(())
+    }
+}
+
+impl OrderNormalizable for GameOrder {
+    fn normalize(&mut self) -> Result<(), OrdersServiceError> {
+        self.customer_name = require_customer(&self.customer_name)?;
+        self.title = normalize_title(self.title.take());
+        self.comment = normalize_optional(self.comment.take());
+        Ok(())
+    }
+}
+
+impl OrderNormalizable for MovieOrder {
+    fn normalize(&mut self) -> Result<(), OrdersServiceError> {
+        self.customer_name = require_customer(&self.customer_name)?;
+        self.title = normalize_title(self.title.take());
+        self.comment = normalize_optional(self.comment.take());
+        Ok(())
+    }
+}
+
+pub trait OrderReplace {
+    type New: OrderNormalizable;
+    fn replace_from(&self, new: Self::New) -> Self;
+}
+
+impl OrderReplace for GameOrder {
+    type New = NewGameOrder;
+    fn replace_from(&self, new: NewGameOrder) -> Self {
+        GameOrder::new(
+            self.id,
+            new.title,
+            new.customer_name,
+            self.user_id,
+            new.kind,
+            new.source,
+            new.status,
+            new.completed_at,
+            new.comment,
+            self.created_at,
+            self.updated_at,
+        )
+    }
+}
+
+impl OrderReplace for MovieOrder {
+    type New = NewMovieOrder;
+    fn replace_from(&self, new: NewMovieOrder) -> Self {
+        MovieOrder::new(
+            self.id,
+            new.title,
+            new.customer_name,
+            self.user_id,
+            new.kind,
+            new.source,
+            new.status,
+            new.comment,
+            self.created_at,
+            self.updated_at,
+        )
+    }
+}
+
+pub trait OrderView {
+    type Kind: PartialEq + Copy;
+    fn status(&self) -> OrderStatus;
+    fn kind(&self) -> Self::Kind;
+    fn source(&self) -> OrderSource;
+    fn title(&self) -> Option<&str>;
+    fn customer_name(&self) -> &str;
+}
+
+impl OrderView for GameOrder {
+    type Kind = GameOrderKind;
+    fn status(&self) -> OrderStatus {
+        self.status
+    }
+    fn kind(&self) -> GameOrderKind {
+        self.kind
+    }
+    fn source(&self) -> OrderSource {
+        self.source
+    }
+    fn title(&self) -> Option<&str> {
+        self.title.as_deref()
+    }
+    fn customer_name(&self) -> &str {
+        &self.customer_name
+    }
+}
+
+impl OrderView for MovieOrder {
+    type Kind = MovieKind;
+    fn status(&self) -> OrderStatus {
+        self.status
+    }
+    fn kind(&self) -> MovieKind {
+        self.kind
+    }
+    fn source(&self) -> OrderSource {
+        self.source
+    }
+    fn title(&self) -> Option<&str> {
+        self.title.as_deref()
+    }
+    fn customer_name(&self) -> &str {
+        &self.customer_name
+    }
+}
+
+#[derive(Debug, Clone)]
 #[non_exhaustive]
-pub struct GameOrderFilter {
+pub struct OrderFilter<K> {
     pub status: Option<OrderStatus>,
-    pub kind: Option<GameOrderKind>,
+    pub kind: Option<K>,
     pub source: Option<OrderSource>,
     pub query: Option<String>,
 }
 
+impl<K> Default for OrderFilter<K> {
+    fn default() -> Self {
+        Self {
+            status: None,
+            kind: None,
+            source: None,
+            query: None,
+        }
+    }
+}
+
+pub type GameOrderFilter = OrderFilter<GameOrderKind>;
+pub type MovieOrderFilter = OrderFilter<MovieKind>;
+
 #[non_exhaustive]
-pub struct GameOrderService<R: GameOrderRepository> {
+pub struct OrderService<R: OrderRepository> {
     repo: R,
 }
 
-impl<R: GameOrderRepository> GameOrderService<R> {
+impl<R: OrderRepository> OrderService<R> {
     pub fn new(repo: R) -> Self {
         Self { repo }
     }
 
-    pub async fn create(&self, mut order: NewGameOrder) -> Result<GameOrder, OrdersServiceError> {
-        order.customer_name = require_customer(&order.customer_name)?;
-        order.title = normalize_title(order.title.take());
-        order.comment = normalize_optional(order.comment.take());
+    pub async fn create(&self, mut order: R::New) -> Result<R::Order, OrdersServiceError> {
+        order.normalize()?;
         Ok(self.repo.create(order).await?)
     }
 
-    pub async fn get_by_id(&self, id: GameOrderId) -> Result<GameOrder, OrdersServiceError> {
+    pub async fn get_by_id(&self, id: R::Id) -> Result<R::Order, OrdersServiceError> {
         self.repo
             .get_by_id(id)
             .await?
@@ -75,28 +216,26 @@ impl<R: GameOrderRepository> GameOrderService<R> {
 
     pub async fn list(
         &self,
-        filter: GameOrderFilter,
-    ) -> Result<Vec<GameOrder>, OrdersServiceError> {
+        filter: OrderFilter<R::Kind>,
+    ) -> Result<Vec<R::Order>, OrdersServiceError> {
         let all = self.repo.list().await?;
         Ok(all
             .into_iter()
-            .filter(|o| filter.status.is_none_or(|s| o.status == s))
-            .filter(|o| filter.kind.is_none_or(|k| o.kind == k))
-            .filter(|o| filter.source.is_none_or(|s| o.source == s))
+            .filter(|o| filter.status.is_none_or(|s| o.status() == s))
+            .filter(|o| filter.kind.is_none_or(|k| o.kind() == k))
+            .filter(|o| filter.source.is_none_or(|s| o.source() == s))
             .filter(|o| {
-                filter.query.as_ref().is_none_or(|q| {
-                    let title = o.title.as_deref().unwrap_or("");
-                    matches_query(q, &[title, &o.customer_name])
-                })
+                filter
+                    .query
+                    .as_ref()
+                    .is_none_or(|q| matches_query(q, &[o.title().unwrap_or(""), o.customer_name()]))
             })
             .rev()
             .collect())
     }
 
-    pub async fn update(&self, mut order: GameOrder) -> Result<GameOrder, OrdersServiceError> {
-        order.customer_name = require_customer(&order.customer_name)?;
-        order.title = normalize_title(order.title.take());
-        order.comment = normalize_optional(order.comment.take());
+    pub async fn update(&self, mut order: R::Order) -> Result<R::Order, OrdersServiceError> {
+        order.normalize()?;
         self.repo
             .update(order)
             .await?
@@ -106,33 +245,19 @@ impl<R: GameOrderRepository> GameOrderService<R> {
     /// Replaces editable fields, preserving user_id and created_at.
     pub async fn replace(
         &self,
-        id: GameOrderId,
-        mut order: NewGameOrder,
-    ) -> Result<GameOrder, OrdersServiceError> {
+        id: R::Id,
+        mut order: R::New,
+    ) -> Result<R::Order, OrdersServiceError> {
         let existing = self.get_by_id(id).await?;
-        order.customer_name = require_customer(&order.customer_name)?;
-        order.title = normalize_title(order.title.take());
-        order.comment = normalize_optional(order.comment.take());
-        let updated = GameOrder::new(
-            id,
-            order.title,
-            order.customer_name,
-            existing.user_id,
-            order.kind,
-            order.source,
-            order.status,
-            order.completed_at,
-            order.comment,
-            existing.created_at,
-            existing.updated_at,
-        );
+        order.normalize()?;
+        let updated = existing.replace_from(order);
         self.repo
             .update(updated)
             .await?
             .ok_or(OrdersServiceError::NotFound)
     }
 
-    pub async fn delete(&self, id: GameOrderId) -> Result<(), OrdersServiceError> {
+    pub async fn delete(&self, id: R::Id) -> Result<(), OrdersServiceError> {
         if !self.repo.delete(id).await? {
             return Err(OrdersServiceError::NotFound);
         }
@@ -140,104 +265,8 @@ impl<R: GameOrderRepository> GameOrderService<R> {
     }
 }
 
-#[derive(Debug, Clone, Default)]
-#[non_exhaustive]
-pub struct MovieOrderFilter {
-    pub status: Option<OrderStatus>,
-    pub kind: Option<MovieKind>,
-    pub source: Option<OrderSource>,
-    pub query: Option<String>,
-}
-
-#[non_exhaustive]
-pub struct MovieOrderService<R: MovieOrderRepository> {
-    repo: R,
-}
-
-impl<R: MovieOrderRepository> MovieOrderService<R> {
-    pub fn new(repo: R) -> Self {
-        Self { repo }
-    }
-
-    pub async fn create(&self, mut order: NewMovieOrder) -> Result<MovieOrder, OrdersServiceError> {
-        order.customer_name = require_customer(&order.customer_name)?;
-        order.title = normalize_title(order.title.take());
-        order.comment = normalize_optional(order.comment.take());
-        Ok(self.repo.create(order).await?)
-    }
-
-    pub async fn get_by_id(&self, id: MovieOrderId) -> Result<MovieOrder, OrdersServiceError> {
-        self.repo
-            .get_by_id(id)
-            .await?
-            .ok_or(OrdersServiceError::NotFound)
-    }
-
-    pub async fn list(
-        &self,
-        filter: MovieOrderFilter,
-    ) -> Result<Vec<MovieOrder>, OrdersServiceError> {
-        let all = self.repo.list().await?;
-        Ok(all
-            .into_iter()
-            .filter(|o| filter.status.is_none_or(|s| o.status == s))
-            .filter(|o| filter.kind.is_none_or(|k| o.kind == k))
-            .filter(|o| filter.source.is_none_or(|s| o.source == s))
-            .filter(|o| {
-                filter.query.as_ref().is_none_or(|q| {
-                    let title = o.title.as_deref().unwrap_or("");
-                    matches_query(q, &[title, &o.customer_name])
-                })
-            })
-            .rev()
-            .collect())
-    }
-
-    pub async fn update(&self, mut order: MovieOrder) -> Result<MovieOrder, OrdersServiceError> {
-        order.customer_name = require_customer(&order.customer_name)?;
-        order.title = normalize_title(order.title.take());
-        order.comment = normalize_optional(order.comment.take());
-        self.repo
-            .update(order)
-            .await?
-            .ok_or(OrdersServiceError::NotFound)
-    }
-
-    /// Replaces editable fields, preserving user_id and created_at.
-    pub async fn replace(
-        &self,
-        id: MovieOrderId,
-        mut order: NewMovieOrder,
-    ) -> Result<MovieOrder, OrdersServiceError> {
-        let existing = self.get_by_id(id).await?;
-        order.customer_name = require_customer(&order.customer_name)?;
-        order.title = normalize_title(order.title.take());
-        order.comment = normalize_optional(order.comment.take());
-        let updated = MovieOrder::new(
-            id,
-            order.title,
-            order.customer_name,
-            existing.user_id,
-            order.kind,
-            order.source,
-            order.status,
-            order.comment,
-            existing.created_at,
-            existing.updated_at,
-        );
-        self.repo
-            .update(updated)
-            .await?
-            .ok_or(OrdersServiceError::NotFound)
-    }
-
-    pub async fn delete(&self, id: MovieOrderId) -> Result<(), OrdersServiceError> {
-        if !self.repo.delete(id).await? {
-            return Err(OrdersServiceError::NotFound);
-        }
-        Ok(())
-    }
-}
+pub type GameOrderService<R> = OrderService<R>;
+pub type MovieOrderService<R> = OrderService<R>;
 
 #[derive(Debug, Clone, Default)]
 #[non_exhaustive]

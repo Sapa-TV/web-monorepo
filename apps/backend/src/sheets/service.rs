@@ -8,7 +8,7 @@ use crate::config::store::ConfigStore;
 use crate::error::SheetsError;
 use crate::orders::game::{GameOrder, GameOrderKind, NewGameOrder, OrderSource};
 use crate::orders::movie::{MovieKind, MovieOrder, NewMovieOrder};
-use crate::orders::repository::{GameOrderRepository, MovieOrderRepository, VipRecordRepository};
+use crate::orders::repository::{OrderRepository, VipRecordRepository};
 use crate::orders::service::{
     GameOrderFilter, GameOrderService, MovieOrderFilter, MovieOrderService, VipRecordFilter,
     VipService,
@@ -110,8 +110,8 @@ fn new_vip_only(existing: &[VipRecord], parsed: Vec<NewVipRecord>) -> Vec<NewVip
 #[non_exhaustive]
 pub struct SheetsService<G, M, V, K>
 where
-    G: GameOrderRepository,
-    M: MovieOrderRepository,
+    G: OrderRepository<Order = GameOrder, New = NewGameOrder, Kind = GameOrderKind>,
+    M: OrderRepository<Order = MovieOrder, New = NewMovieOrder, Kind = MovieKind>,
     V: VipRecordRepository,
     K: ConfigRepository,
 {
@@ -126,8 +126,8 @@ where
 
 impl<G, M, V, K> SheetsService<G, M, V, K>
 where
-    G: GameOrderRepository,
-    M: MovieOrderRepository,
+    G: OrderRepository<Order = GameOrder, New = NewGameOrder, Kind = GameOrderKind>,
+    M: OrderRepository<Order = MovieOrder, New = NewMovieOrder, Kind = MovieKind>,
     V: VipRecordRepository,
     K: ConfigRepository,
 {
@@ -386,8 +386,8 @@ pub fn build_vip_rows(records: &[VipRecord]) -> Vec<Vec<String>> {
 
 impl<G, M, V, K> SheetsService<G, M, V, K>
 where
-    G: GameOrderRepository,
-    M: MovieOrderRepository,
+    G: OrderRepository<Order = GameOrder, New = NewGameOrder, Kind = GameOrderKind>,
+    M: OrderRepository<Order = MovieOrder, New = NewMovieOrder, Kind = MovieKind>,
     V: VipRecordRepository,
     K: ConfigRepository,
 {

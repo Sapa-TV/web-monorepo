@@ -28,7 +28,9 @@ use crate::event::BroadcastEventPublisher;
 use crate::ingress::twitch_auth::TwitchAuthService;
 use crate::ingress::vk_video_live_auth::VkVideoLiveAuthService;
 use crate::ingress::{EventIngress, spawn_logging_handler};
-use crate::orders::repository::{GameOrderRepository, MovieOrderRepository, VipRecordRepository};
+use crate::orders::game::{GameOrder, GameOrderId, GameOrderKind, NewGameOrder};
+use crate::orders::movie::{MovieKind, MovieOrder, MovieOrderId, NewMovieOrder};
+use crate::orders::repository::{OrderRepository, VipRecordRepository};
 use crate::orders::service::{GameOrderService, MovieOrderService, VipService};
 use crate::platform::{
     PlatformCredentialRepository, PlatformCredentialService, PlatformRepository,
@@ -66,8 +68,18 @@ where
     K: ConfigRepository,
     L: RuleRepository,
     M: ActionRepository,
-    Go: GameOrderRepository,
-    Mo: MovieOrderRepository,
+    Go: OrderRepository<
+            Order = GameOrder,
+            New = NewGameOrder,
+            Id = GameOrderId,
+            Kind = GameOrderKind,
+        >,
+    Mo: OrderRepository<
+            Order = MovieOrder,
+            New = NewMovieOrder,
+            Id = MovieOrderId,
+            Kind = MovieKind,
+        >,
     V: VipRecordRepository,
 {
     pub slot_service: Arc<RouletteSlotService<Arc<S>>>,
@@ -109,8 +121,18 @@ where
     K: ConfigRepository,
     L: RuleRepository,
     M: ActionRepository,
-    Go: GameOrderRepository,
-    Mo: MovieOrderRepository,
+    Go: OrderRepository<
+            Order = GameOrder,
+            New = NewGameOrder,
+            Id = GameOrderId,
+            Kind = GameOrderKind,
+        >,
+    Mo: OrderRepository<
+            Order = MovieOrder,
+            New = NewMovieOrder,
+            Id = MovieOrderId,
+            Kind = MovieKind,
+        >,
     V: VipRecordRepository,
 {
     fn clone(&self) -> Self {
@@ -187,8 +209,18 @@ where
     K: ConfigRepository,
     L: RuleRepository,
     M: ActionRepository,
-    Go: GameOrderRepository,
-    Mo: MovieOrderRepository,
+    Go: OrderRepository<
+            Order = GameOrder,
+            New = NewGameOrder,
+            Id = GameOrderId,
+            Kind = GameOrderKind,
+        >,
+    Mo: OrderRepository<
+            Order = MovieOrder,
+            New = NewMovieOrder,
+            Id = MovieOrderId,
+            Kind = MovieKind,
+        >,
     V: VipRecordRepository,
 {
     pub random: StandartRandomProvider,
@@ -224,8 +256,18 @@ where
     K: ConfigRepository,
     L: RuleRepository,
     M: ActionRepository,
-    Go: GameOrderRepository,
-    Mo: MovieOrderRepository,
+    Go: OrderRepository<
+            Order = GameOrder,
+            New = NewGameOrder,
+            Id = GameOrderId,
+            Kind = GameOrderKind,
+        >,
+    Mo: OrderRepository<
+            Order = MovieOrder,
+            New = NewMovieOrder,
+            Id = MovieOrderId,
+            Kind = MovieKind,
+        >,
     V: VipRecordRepository,
 {
     let UniStateParams {
