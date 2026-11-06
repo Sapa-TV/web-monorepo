@@ -76,7 +76,7 @@ pub async fn list_rewards(
     let mut out = Vec::new();
 
     if let Some(twitch) = state.twitch_api.as_ref() {
-        let rewards = twitch.custom_rewards().await.map_err(StatusCode::from)?;
+        let rewards = twitch.custom_rewards().await.map_err(|e| e.status_code())?;
         out.extend(
             rewards
                 .into_iter()

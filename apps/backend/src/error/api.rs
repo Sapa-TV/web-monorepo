@@ -33,10 +33,6 @@ impl ApiError {
             body: ErrorResponse::new(error),
         }
     }
-
-    pub(crate) fn status(&self) -> StatusCode {
-        self.status
-    }
 }
 
 impl IntoResponse for ApiError {

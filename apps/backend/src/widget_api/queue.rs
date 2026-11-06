@@ -7,7 +7,6 @@ use utoipa::ToSchema;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
 
-use crate::error::QueueServiceError;
 use crate::error::api::ApiError;
 use crate::platform::PlatformId;
 use crate::queue::entry::{QueueEntry, QueueEntryId, QueueStats, QueueStatus};
@@ -237,9 +236,7 @@ pub async fn peek_next(
         (status = 422, description = "No slots configured"),
     )
 )]
-pub async fn dequeue_next(
-    State(state): State<AppState>,
-) -> Result<Json<NextResponse>, QueueServiceError> {
+pub async fn dequeue_next(State(state): State<AppState>) -> Result<Json<NextResponse>, ApiError> {
     let (entry, slot) = state.queue_service.dequeue_next().await?;
     Ok(Json(NextResponse {
         entry: QueueEntryResponse::from(&entry).with_slot_name(&state),
@@ -262,7 +259,7 @@ pub async fn dequeue_next(
 pub async fn complete(
     State(state): State<AppState>,
     Path(params): Path<QueueIdParam>,
-) -> Result<StatusCode, QueueServiceError> {
+) -> Result<StatusCode, ApiError> {
     state.queue_service.complete(params.id).await?;
     Ok(StatusCode::OK)
 }
@@ -281,7 +278,7 @@ pub async fn complete(
 pub async fn cancel(
     State(state): State<AppState>,
     Path(params): Path<QueueIdParam>,
-) -> Result<StatusCode, QueueServiceError> {
+) -> Result<StatusCode, ApiError> {
     state.queue_service.cancel(params.id).await?;
     Ok(StatusCode::OK)
 }

@@ -9,6 +9,7 @@ use utoipa_axum::routes;
 
 use crate::actions::action::ActionId;
 use crate::error::RuleServiceError;
+use crate::error::api::ApiError;
 use crate::ingress::event::RuleTrigger;
 use crate::rules::rule::{Rule, RuleConditions, RuleId};
 use crate::state::AppState;
@@ -74,7 +75,7 @@ pub struct RuleIdParam {
 )]
 pub async fn list_rules(
     State(state): State<AppState>,
-) -> Result<Json<Vec<RuleResponse>>, RuleServiceError> {
+) -> Result<Json<Vec<RuleResponse>>, ApiError> {
     let rules = state.rule_service.list().await?;
     Ok(Json(rules.into_iter().map(RuleResponse::from).collect()))
 }
@@ -92,7 +93,7 @@ pub async fn list_rules(
 pub async fn create_rule(
     State(state): State<AppState>,
     Json(body): Json<UpsertRuleRequest>,
-) -> Result<(StatusCode, Json<RuleResponse>), RuleServiceError> {
+) -> Result<(StatusCode, Json<RuleResponse>), ApiError> {
     let rule = state
         .rule_service
         .create(
@@ -122,7 +123,7 @@ pub async fn update_rule(
     State(state): State<AppState>,
     Path(param): Path<RuleIdParam>,
     Json(body): Json<UpsertRuleRequest>,
-) -> Result<Json<RuleResponse>, RuleServiceError> {
+) -> Result<Json<RuleResponse>, ApiError> {
     let rule = Rule::new(
         RuleId::new(param.id),
         body.name,
@@ -135,7 +136,7 @@ pub async fn update_rule(
     );
     state.rule_service.update(rule).await?;
     let updated = state.rule_service.get(RuleId::new(param.id)).await?;
-    let updated = updated.ok_or(RuleServiceError::RuleNotFound)?;
+    let updated = updated.ok_or_else(|| ApiError::from(RuleServiceError::RuleNotFound))?;
     Ok(Json(RuleResponse::from(updated)))
 }
 
@@ -152,7 +153,7 @@ pub async fn update_rule(
 pub async fn delete_rule(
     State(state): State<AppState>,
     Path(param): Path<RuleIdParam>,
-) -> Result<StatusCode, RuleServiceError> {
+) -> Result<StatusCode, ApiError> {
     state.rule_service.delete(RuleId::new(param.id)).await?;
     Ok(StatusCode::NO_CONTENT)
 }

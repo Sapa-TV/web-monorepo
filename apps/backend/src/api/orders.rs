@@ -25,12 +25,7 @@ pub struct GameOrdersQuery {
 
 impl GameOrdersQuery {
     fn to_filter(&self) -> GameOrderFilter {
-        GameOrderFilter {
-            status: self.status,
-            kind: self.kind,
-            source: self.source,
-            query: self.q.clone(),
-        }
+        GameOrderFilter::new(self.status, self.kind, self.source, self.q.clone())
     }
 }
 
@@ -78,12 +73,7 @@ pub struct MovieOrdersQuery {
 
 impl MovieOrdersQuery {
     fn to_filter(&self) -> MovieOrderFilter {
-        MovieOrderFilter {
-            status: self.status,
-            kind: self.kind,
-            source: self.source,
-            query: self.q.clone(),
-        }
+        MovieOrderFilter::new(self.status, self.kind, self.source, self.q.clone())
     }
 }
 

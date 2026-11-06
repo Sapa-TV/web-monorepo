@@ -1,30 +1,8 @@
 use axum::http::StatusCode;
-use axum::response::{IntoResponse, Response};
-use thiserror::Error;
 
-use super::RepositoryError;
 use super::api::ApiError;
 
-#[derive(Debug, Error)]
-#[non_exhaustive]
-pub enum AdminServiceError {
-    #[error("admin not found")]
-    AdminNotFound,
-    #[error("admin already exists")]
-    AlreadyAdmin,
-    #[error("cannot remove the last root admin")]
-    CannotRemoveLastRoot,
-    #[error("cannot remove your own account")]
-    CannotRemoveSelf,
-    #[error("{0}")]
-    Repo(RepositoryError),
-}
-
-impl From<RepositoryError> for AdminServiceError {
-    fn from(e: RepositoryError) -> Self {
-        AdminServiceError::Repo(e)
-    }
-}
+pub use domain::error::admin::*;
 
 impl From<AdminServiceError> for ApiError {
     fn from(e: AdminServiceError) -> Self {
@@ -38,12 +16,7 @@ impl From<AdminServiceError> for ApiError {
             AdminServiceError::CannotRemoveSelf => {
                 ApiError::new(StatusCode::CONFLICT, e.to_string())
             }
+            _ => ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
         }
-    }
-}
-
-impl IntoResponse for AdminServiceError {
-    fn into_response(self) -> Response {
-        ApiError::from(self).into_response()
     }
 }

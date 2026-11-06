@@ -7,7 +7,7 @@ use crate::roulette::slot_service::{RouletteSlot, RouletteSlotId};
 use crate::test_fixtures::{InMemoryAppState, test_state_inmemory};
 use crate::user::UserId;
 
-use super::*;
+use crate::queue::repository::*;
 
 async fn setup_slots(state: &InMemoryAppState) -> UserId {
     state

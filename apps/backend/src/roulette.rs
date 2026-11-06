@@ -1,6 +1,4 @@
-pub use model::roulette::{rarity, repository};
+﻿pub mod dto;
 
-pub mod dto;
-pub mod machine;
-pub mod rarity_service;
-pub mod slot_service;
+pub use domain::roulette::{machine, rarity_service, slot_service};
+pub use model::roulette::{rarity, repository};

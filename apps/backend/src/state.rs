@@ -104,7 +104,7 @@ where
     pub movie_order_service: Arc<MovieOrderService<Arc<Mo>>>,
     pub vip_service: Arc<VipService<Arc<V>>>,
     #[allow(clippy::type_complexity)]
-    pub sheets: Arc<SheetsService<Arc<Go>, Arc<Mo>, Arc<V>, K>>,
+    pub sheets: Arc<SheetsService<GoogleSheetsClient, Arc<Go>, Arc<Mo>, Arc<V>, ConfigStore<K>>>,
 }
 
 impl<Q, R, U, P, S, A, Se, C, K, L, M, Go, Mo, V> Clone
@@ -172,10 +172,11 @@ pub type AppConfigStore = ConfigStore<SqliteConfigRepository>;
 
 #[allow(clippy::type_complexity)]
 pub type AppSheetsService = SheetsService<
+    GoogleSheetsClient,
     Arc<SqliteGameOrderRepository>,
     Arc<SqliteMovieOrderRepository>,
     Arc<SqliteVipRecordRepository>,
-    SqliteConfigRepository,
+    AppConfigStore,
 >;
 
 pub type AppState = UniAppState<

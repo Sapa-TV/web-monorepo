@@ -79,7 +79,7 @@ pub async fn test_state_inmemory() -> (InMemoryAppState, Arc<InMemoryQueueReposi
         Arc::new(InMemoryConfigRepository::new()),
     ));
     let state = assemble_uni_state(UniStateParams {
-        random: StandartRandomProvider,
+        random: StandartRandomProvider::new(),
         config: config_store,
         credentials_repo: Arc::new(InMemoryPlatformCredentialRepository::new()),
         slot_repo: Arc::new(InMemoryRouletteSlotRepository::new()),
@@ -112,8 +112,12 @@ async fn build_state(
     ));
     let credentials_repo = Arc::new(SqlitePlatformCredentialRepository::new(pool.clone()));
 
-    let mut builder =
-        AppStateBuilder::new(StandartRandomProvider, config_store, credentials_repo, pool);
+    let mut builder = AppStateBuilder::new(
+        StandartRandomProvider::new(),
+        config_store,
+        credentials_repo,
+        pool,
+    );
     if !seeded {
         builder = builder.with_empty_repos();
     }

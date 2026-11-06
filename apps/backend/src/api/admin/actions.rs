@@ -9,6 +9,7 @@ use utoipa_axum::routes;
 
 use crate::actions::action::{Action, ActionId, ActionKind};
 use crate::error::ActionServiceError;
+use crate::error::api::ApiError;
 use crate::state::AppState;
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -66,7 +67,7 @@ pub struct ActionIdParam {
 )]
 pub async fn list_actions(
     State(state): State<AppState>,
-) -> Result<Json<Vec<ActionResponse>>, ActionServiceError> {
+) -> Result<Json<Vec<ActionResponse>>, ApiError> {
     let actions = state.action_service.list().await?;
     Ok(Json(
         actions.into_iter().map(ActionResponse::from).collect(),
@@ -85,7 +86,7 @@ pub async fn list_actions(
 pub async fn create_action(
     State(state): State<AppState>,
     Json(body): Json<UpsertActionRequest>,
-) -> Result<(StatusCode, Json<ActionResponse>), ActionServiceError> {
+) -> Result<(StatusCode, Json<ActionResponse>), ApiError> {
     let action = state
         .action_service
         .create(&body.name, body.kind, body.enabled)
@@ -108,7 +109,7 @@ pub async fn update_action(
     State(state): State<AppState>,
     Path(param): Path<ActionIdParam>,
     Json(body): Json<UpsertActionRequest>,
-) -> Result<Json<ActionResponse>, ActionServiceError> {
+) -> Result<Json<ActionResponse>, ApiError> {
     let action = Action::new(
         ActionId::new(param.id),
         body.name,
@@ -119,7 +120,7 @@ pub async fn update_action(
     );
     state.action_service.update(action).await?;
     let updated = state.action_service.get(ActionId::new(param.id)).await?;
-    let updated = updated.ok_or(ActionServiceError::ActionNotFound)?;
+    let updated = updated.ok_or_else(|| ApiError::from(ActionServiceError::ActionNotFound))?;
     Ok(Json(ActionResponse::from(updated)))
 }
 
@@ -136,7 +137,7 @@ pub async fn update_action(
 pub async fn delete_action(
     State(state): State<AppState>,
     Path(param): Path<ActionIdParam>,
-) -> Result<StatusCode, ActionServiceError> {
+) -> Result<StatusCode, ApiError> {
     state.action_service.delete(ActionId::new(param.id)).await?;
     Ok(StatusCode::NO_CONTENT)
 }

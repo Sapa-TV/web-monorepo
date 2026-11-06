@@ -8,6 +8,7 @@ use reqwest::header::CONTENT_TYPE;
 use serde::Deserialize;
 
 use crate::error::SheetsError;
+use domain::sheets::client::SheetsClient;
 
 const SHEETS_SCOPE: &str = "https://www.googleapis.com/auth/spreadsheets";
 const DEFAULT_TOKEN_URI: &str = "https://oauth2.googleapis.com/token";
@@ -212,5 +213,28 @@ impl GoogleSheetsClient {
             .error_for_status()
             .map_err(|e| SheetsError::Api(format!("values update rejected: {e}")))?;
         Ok(())
+    }
+}
+
+impl SheetsClient for GoogleSheetsClient {
+    async fn get_values(
+        &self,
+        spreadsheet_id: &str,
+        range: &str,
+    ) -> Result<Vec<Vec<String>>, SheetsError> {
+        GoogleSheetsClient::get_values(self, spreadsheet_id, range).await
+    }
+
+    async fn clear_values(&self, spreadsheet_id: &str, range: &str) -> Result<(), SheetsError> {
+        GoogleSheetsClient::clear_values(self, spreadsheet_id, range).await
+    }
+
+    async fn update_values(
+        &self,
+        spreadsheet_id: &str,
+        range: &str,
+        values: Vec<Vec<String>>,
+    ) -> Result<(), SheetsError> {
+        GoogleSheetsClient::update_values(self, spreadsheet_id, range, values).await
     }
 }

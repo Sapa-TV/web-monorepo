@@ -89,7 +89,7 @@ pub struct PresenceResponse {
 )]
 pub async fn list_admins(
     State(state): State<AppState>,
-) -> Result<Json<Vec<AdminResponse>>, AdminServiceError> {
+) -> Result<Json<Vec<AdminResponse>>, ApiError> {
     let admins = state.admin_service.list().await?;
     Ok(Json(admins.into_iter().map(AdminResponse::from).collect()))
 }
@@ -107,7 +107,7 @@ pub async fn list_admins(
 pub async fn add_admin(
     State(state): State<AppState>,
     Json(body): Json<AddAdminRequest>,
-) -> Result<(StatusCode, Json<AdminResponse>), AdminServiceError> {
+) -> Result<(StatusCode, Json<AdminResponse>), ApiError> {
     let admin = state
         .admin_service
         .add(&body.twitch_id, body.display_name.as_deref())
@@ -131,9 +131,9 @@ pub async fn remove_admin(
     State(state): State<AppState>,
     Extension(session): Extension<Session>,
     Path(params): Path<TwitchIdParam>,
-) -> Result<StatusCode, AdminServiceError> {
+) -> Result<StatusCode, ApiError> {
     if session.twitch_user_id == params.twitch_id {
-        return Err(AdminServiceError::CannotRemoveSelf);
+        return Err(AdminServiceError::CannotRemoveSelf.into());
     }
     state.admin_service.remove(&params.twitch_id).await?;
     Ok(StatusCode::NO_CONTENT)

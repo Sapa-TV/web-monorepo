@@ -29,7 +29,7 @@ async fn state_with_twitch() -> AppState {
         Arc::new(SqliteConfigRepository::new(pool.clone())),
     ));
     AppStateBuilder::new(
-        StandartRandomProvider,
+        StandartRandomProvider::new(),
         config_store,
         Arc::new(SqlitePlatformCredentialRepository::new(pool.clone())),
         pool,

@@ -1,6 +1,5 @@
 #![feature(sync_nonpoison)]
 #![feature(nonpoison_mutex)]
-#![feature(nonpoison_rwlock)]
 #![deny(clippy::exhaustive_structs)]
 #![deny(clippy::new_ret_no_self)]
 

@@ -221,6 +221,7 @@ dependencies = [
  "better_tokio_select",
  "chrono",
  "config",
+ "domain",
  "dotenvy",
  "futures-util",
  "jsonwebtoken",
@@ -727,6 +728,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "442039f5147480ba31067cb00ada1adae6892028e40e45fc5de7b7df6dcc1b5f"
 dependencies = [
  "const-random",
+]
+
+[[package]]
+name = "domain"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "http",
+ "model",
+ "rand 0.10.2",
+ "serde",
+ "storage-inmemory",
+ "strum",
+ "thiserror 2.0.19",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

@@ -111,7 +111,10 @@ pub async fn find_twitch_user(
     Query(query): Query<TwitchUserSearchQuery>,
 ) -> Result<Json<TwitchUserResponse>, StatusCode> {
     let twitch = state.twitch_api.as_ref().ok_or(StatusCode::BAD_REQUEST)?;
-    let user = twitch.find_user_by_login(&query.login).await?;
+    let user = twitch
+        .find_user_by_login(&query.login)
+        .await
+        .map_err(|e| e.status_code())?;
     let user = user.ok_or(StatusCode::NOT_FOUND)?;
     Ok(Json(TwitchUserResponse {
         id: user.id.to_string(),

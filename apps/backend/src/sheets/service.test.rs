@@ -1,16 +1,26 @@
 use chrono::NaiveDate;
 
-use super::*;
-use crate::config::runtime::RuntimeConfig;
+use std::sync::Arc;
+
+use chrono::Utc;
+
 use crate::config::static_config::StaticConfig;
-use crate::db::inmemory_config::InMemoryConfigRepository;
-use crate::db::inmemory_orders::{
+use crate::config::store::ConfigStore;
+use crate::error::SheetsError;
+use crate::orders::game::{GameOrder, NewGameOrder};
+use crate::orders::service::VipRecordFilter;
+use crate::orders::service::{GameOrderService, MovieOrderService, VipService};
+use crate::orders::vip::{NewVipRecord, VipRecord, VipStatus};
+use crate::sheets::client::GoogleSheetsClient;
+use crate::sheets::service::*;
+use model::config::runtime::RuntimeConfig;
+use model::orders::game::{GameOrderId, GameOrderKind, OrderSource};
+use model::orders::status::OrderStatus;
+use model::orders::vip::{VipKind, VipRecordId};
+use storage_inmemory::inmemory_config::InMemoryConfigRepository;
+use storage_inmemory::inmemory_orders::{
     InMemoryGameOrderRepository, InMemoryMovieOrderRepository, InMemoryVipRecordRepository,
 };
-use crate::orders::game::{GameOrderId, GameOrderKind, OrderSource};
-use crate::orders::service::{GameOrderService, MovieOrderService, VipService};
-use crate::orders::status::OrderStatus;
-use crate::orders::vip::{VipKind, VipRecordId};
 
 fn game(title: Option<&str>, customer: &str) -> NewGameOrder {
     NewGameOrder::new(
@@ -26,10 +36,11 @@ fn game(title: Option<&str>, customer: &str) -> NewGameOrder {
 }
 
 fn test_service() -> SheetsService<
+    GoogleSheetsClient,
     InMemoryGameOrderRepository,
     InMemoryMovieOrderRepository,
     InMemoryVipRecordRepository,
-    InMemoryConfigRepository,
+    ConfigStore<InMemoryConfigRepository>,
 > {
     let config = Arc::new(ConfigStore::new(
         Arc::new(StaticConfig::test_config()),

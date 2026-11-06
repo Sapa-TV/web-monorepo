@@ -1,0 +1,25 @@
+[package]
+name = "domain"
+version = "0.1.0"
+edition = "2024"
+
+[lints]
+workspace = true
+
+[features]
+test-support = []
+
+[dependencies]
+chrono = { workspace = true }
+http = { workspace = true }
+model = { workspace = true }
+rand = { workspace = true, features = ["thread_rng"] }
+serde = { workspace = true, features = ["derive"] }
+strum = { workspace = true, features = ["derive"] }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+tracing = { workspace = true }
+
+[dev-dependencies]
+model = { workspace = true, features = ["test-support"] }
+storage-inmemory = { workspace = true }

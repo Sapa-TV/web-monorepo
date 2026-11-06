@@ -10,12 +10,9 @@ use crate::admin::csrf::CsrfStore;
 use crate::config::TwitchConfig;
 use crate::ingress::twitch_auth::INGRESS_SCOPES;
 use crate::platform::{PlatformCredentialRepository, PlatformCredentialService, PlatformId};
+use domain::session::exchange::LoginExchange;
 
-#[non_exhaustive]
-pub struct ExchangedToken {
-    pub user_id: String,
-    pub user_name: Option<String>,
-}
+pub use domain::session::exchange::ExchangedToken;
 
 #[derive(Debug, Error)]
 #[non_exhaustive]
@@ -30,6 +27,17 @@ pub enum AdminAuthError {
     Exchange,
     #[error("failed to persist credentials")]
     Persist,
+}
+
+impl<R> LoginExchange for AdminAuthService<R>
+where
+    R: PlatformCredentialRepository,
+{
+    async fn complete_login(&self, code: &str, auth_state: &str) -> Result<ExchangedToken, String> {
+        AdminAuthService::complete_login(self, code, auth_state)
+            .await
+            .map_err(|e| e.to_string())
+    }
 }
 
 impl From<AdminAuthError> for StatusCode {
@@ -189,7 +197,7 @@ fn exchanged_of(token: &twitch_oauth2::UserToken) -> ExchangedToken {
     let user_id = token.user_id().map(|u| u.to_string()).unwrap_or_default();
     let user_name = token.login().map(|u| u.to_string());
     debug!("twitch oauth exchanged: twitch_user_id={user_id}, twitch_user_name={user_name:?}");
-    ExchangedToken { user_id, user_name }
+    ExchangedToken::new(user_id, user_name)
 }
 
 #[cfg(test)]

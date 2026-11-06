@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "backend"
 version = "0.1.0"
 edition = "2024"
@@ -57,9 +57,11 @@ tokio-util = { workspace = true }
 vk-video-live = { workspace = true }
 tracing-appender = { workspace = true }
 model = { workspace = true }
+domain = { workspace = true }
 storage-sqlite = { workspace = true }
 
 [dev-dependencies]
 model = { workspace = true, features = ["test-support"] }
 storage-inmemory = { workspace = true }
 storage-sqlite = { workspace = true, features = ["test-support"] }
+
