@@ -1,8 +1,8 @@
 use std::sync::nonpoison::Mutex;
 
-use crate::config::repository::ConfigRepository;
-use crate::config::runtime::RuntimeConfig;
-use crate::error::RepositoryError;
+use model::config::repository::ConfigRepository;
+use model::config::runtime::RuntimeConfig;
+use model::error::RepositoryError;
 
 #[non_exhaustive]
 pub struct InMemoryConfigRepository {

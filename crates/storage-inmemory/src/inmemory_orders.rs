@@ -3,11 +3,11 @@ use std::sync::nonpoison::Mutex;
 
 use chrono::{NaiveDate, Utc};
 
-use crate::error::RepositoryError;
-use crate::orders::game::{GameOrder, GameOrderId, GameOrderKind, NewGameOrder};
-use crate::orders::movie::{MovieKind, MovieOrder, MovieOrderId, NewMovieOrder};
-use crate::orders::repository::{OrderRepository, VipRecordRepository};
-use crate::orders::vip::{NewVipRecord, VipRecord, VipRecordId, VipStatus};
+use model::error::RepositoryError;
+use model::orders::game::{GameOrder, GameOrderId, GameOrderKind, NewGameOrder};
+use model::orders::movie::{MovieKind, MovieOrder, MovieOrderId, NewMovieOrder};
+use model::orders::repository::{OrderRepository, VipRecordRepository};
+use model::orders::vip::{NewVipRecord, VipRecord, VipRecordId, VipStatus};
 
 #[non_exhaustive]
 pub struct InMemoryGameOrderRepository {

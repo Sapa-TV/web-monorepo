@@ -2,9 +2,9 @@ use std::sync::nonpoison::Mutex;
 
 use chrono::Utc;
 
-use crate::admin::Admin;
-use crate::admin::repository::AdminRepository;
-use crate::error::RepositoryError;
+use model::admin::Admin;
+use model::admin::repository::AdminRepository;
+use model::error::RepositoryError;
 
 #[non_exhaustive]
 pub struct InMemoryAdminRepository {

@@ -1,16 +1,7 @@
-pub mod inmemory_actions;
-pub mod inmemory_admin;
-pub mod inmemory_config;
-pub mod inmemory_orders;
-pub mod inmemory_platform;
-pub mod inmemory_platform_credential;
-pub mod inmemory_queue;
-pub mod inmemory_rarity;
-pub mod inmemory_roulette_slots;
-pub mod inmemory_rules;
-pub mod inmemory_session;
-pub mod inmemory_user;
-pub use storage_sqlite as sqlite;
-
 #[cfg(test)]
-mod parity;
+pub use storage_inmemory::{
+    inmemory_actions, inmemory_admin, inmemory_config, inmemory_orders, inmemory_platform,
+    inmemory_platform_credential, inmemory_queue, inmemory_rarity, inmemory_roulette_slots,
+    inmemory_rules, inmemory_session, inmemory_user,
+};
+pub use storage_sqlite as sqlite;

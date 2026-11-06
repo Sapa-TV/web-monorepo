@@ -3,9 +3,9 @@ use std::sync::nonpoison::Mutex;
 
 use chrono::{DateTime, Utc};
 
-use crate::error::RepositoryError;
-use crate::session::repository::SessionRepository;
-use crate::session::{LoginTicket, LoginTicketToken, Session, SessionToken};
+use model::error::RepositoryError;
+use model::session::repository::SessionRepository;
+use model::session::{LoginTicket, LoginTicketToken, Session, SessionToken};
 
 #[non_exhaustive]
 pub struct InMemorySessionRepository {

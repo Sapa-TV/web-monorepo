@@ -3,10 +3,10 @@ use std::sync::nonpoison::Mutex;
 
 use chrono::Utc;
 
-use crate::error::RepositoryError;
-use crate::platform::PlatformId;
-use crate::user::repository::UserRepository;
-use crate::user::{User, UserId, UserPlatform, UserPlatformId};
+use model::error::RepositoryError;
+use model::platform::PlatformId;
+use model::user::repository::UserRepository;
+use model::user::{User, UserId, UserPlatform, UserPlatformId};
 
 #[non_exhaustive]
 pub struct InMemoryUserRepository {

@@ -1,5 +1,5 @@
-﻿use super::*;
-use crate::rules::rule::{MessageConditions, MessageMatcher, RewardConditions};
+use super::*;
+use model::rules::rule::{MessageConditions, MessageMatcher, RewardConditions};
 
 fn conditions(trigger: RuleTrigger) -> RuleConditions {
     match trigger {

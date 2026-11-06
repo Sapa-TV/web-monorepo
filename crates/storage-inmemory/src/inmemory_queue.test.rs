@@ -1,5 +1,5 @@
-use crate::roulette::slot_service::RouletteSlotId;
-use crate::user::UserId;
+use model::roulette::slot::RouletteSlotId;
+use model::user::UserId;
 
 use super::*;
 

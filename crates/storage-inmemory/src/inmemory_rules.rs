@@ -3,11 +3,11 @@ use std::sync::nonpoison::Mutex;
 
 use chrono::Utc;
 
-use crate::actions::ActionId;
-use crate::error::RepositoryError;
-use crate::ingress::event::RuleTrigger;
-use crate::rules::repository::RuleRepository;
-use crate::rules::rule::{Rule, RuleConditions, RuleId};
+use model::actions::ActionId;
+use model::error::RepositoryError;
+use model::event::RuleTrigger;
+use model::rules::repository::RuleRepository;
+use model::rules::rule::{Rule, RuleConditions, RuleId};
 
 #[non_exhaustive]
 pub struct InMemoryRuleRepository {

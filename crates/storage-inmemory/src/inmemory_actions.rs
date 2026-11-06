@@ -3,9 +3,9 @@ use std::sync::nonpoison::Mutex;
 
 use chrono::Utc;
 
-use crate::actions::action::{Action, ActionId, ActionKind};
-use crate::actions::repository::ActionRepository;
-use crate::error::RepositoryError;
+use model::actions::action::{Action, ActionId, ActionKind};
+use model::actions::repository::ActionRepository;
+use model::error::RepositoryError;
 
 #[non_exhaustive]
 pub struct InMemoryActionRepository {

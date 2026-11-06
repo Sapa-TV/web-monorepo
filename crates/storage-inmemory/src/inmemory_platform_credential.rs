@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::sync::nonpoison::Mutex;
 
-use crate::error::RepositoryError;
-use crate::platform::{PlatformCredentialRepository, PlatformId};
+use model::error::RepositoryError;
+use model::platform::{PlatformCredentialRepository, PlatformId};
 
 #[non_exhaustive]
 pub struct InMemoryPlatformCredentialRepository {

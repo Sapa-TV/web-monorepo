@@ -1,7 +1,7 @@
 use std::time::Duration;
 use tokio::time::sleep;
 
-use crate::platform::PlatformId;
+use model::platform::PlatformId;
 
 use super::*;
 

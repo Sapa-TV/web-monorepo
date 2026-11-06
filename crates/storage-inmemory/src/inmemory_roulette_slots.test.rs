@@ -1,4 +1,4 @@
-use crate::roulette::rarity::RarityId;
+use model::roulette::rarity::RarityId;
 
 use super::*;
 

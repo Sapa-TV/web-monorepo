@@ -3,11 +3,11 @@ use std::sync::nonpoison::Mutex;
 
 use chrono::{DateTime, Utc};
 
-use crate::error::RepositoryError;
-use crate::queue::entry::{QueueEntry, QueueEntryId, QueueStats, QueueStatus};
-use crate::queue::repository::{DequeueOutcome, QueueRepository, StatusUpdateOutcome};
-use crate::roulette::slot_service::RouletteSlotId;
-use crate::user::UserId;
+use model::error::RepositoryError;
+use model::queue::entry::{QueueEntry, QueueEntryId, QueueStats, QueueStatus};
+use model::queue::repository::{DequeueOutcome, QueueRepository, StatusUpdateOutcome};
+use model::roulette::slot::RouletteSlotId;
+use model::user::UserId;
 
 #[non_exhaustive]
 pub struct InMemoryQueueRepository {

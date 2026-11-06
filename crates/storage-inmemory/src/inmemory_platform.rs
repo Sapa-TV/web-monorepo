@@ -1,7 +1,7 @@
 use std::sync::nonpoison::Mutex;
 
-use crate::error::RepositoryError;
-use crate::platform::{Platform, PlatformId, PlatformRepository};
+use model::error::RepositoryError;
+use model::platform::{Platform, PlatformId, PlatformRepository};
 
 #[non_exhaustive]
 pub struct InMemoryPlatformRepository {

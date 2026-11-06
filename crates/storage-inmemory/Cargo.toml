@@ -1,0 +1,16 @@
+[package]
+name = "storage-inmemory"
+version = "0.1.0"
+edition = "2024"
+
+[lints]
+workspace = true
+
+[dependencies]
+chrono = { workspace = true }
+model = { workspace = true }
+
+[dev-dependencies]
+model = { workspace = true, features = ["test-support"] }
+storage-sqlite = { workspace = true, features = ["test-support"] }
+tokio = { workspace = true, features = ["time"] }

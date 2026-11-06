@@ -1,10 +1,10 @@
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::nonpoison::Mutex;
 
-use crate::error::RepositoryError;
-use crate::roulette::rarity::RarityId;
-use crate::roulette::repository::RouletteSlotRepository;
-use crate::roulette::slot_service::{RouletteSlot, RouletteSlotId};
+use model::error::RepositoryError;
+use model::roulette::rarity::RarityId;
+use model::roulette::repository::RouletteSlotRepository;
+use model::roulette::slot::{RouletteSlot, RouletteSlotId};
 
 #[non_exhaustive]
 pub struct InMemoryRouletteSlotRepository {
