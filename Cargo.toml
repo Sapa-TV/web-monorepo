@@ -4,6 +4,7 @@
 resolver = "2"
 members = [
     "apps/backend",
+    "crates/app",
     "crates/domain",
     "crates/model",
     "crates/storage-inmemory",
@@ -67,5 +68,6 @@ tokio-util = "0.7.19"
 vk-video-live = { path = 'crates/vk-video-live' }
 tracing-appender = "0.2.5"
 domain = { version = "0.1.0", path = 'crates/domain' }
+app = { version = "0.1.0", path = 'crates/app' }
 http = "1"
 

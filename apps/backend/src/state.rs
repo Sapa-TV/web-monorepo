@@ -1,13 +1,13 @@
-use sqlx::SqlitePool;
 use std::sync::Arc;
 
-use crate::actions::repository::ActionRepository;
-use crate::actions::service::ActionService;
+use sqlx::SqlitePool;
+
+pub use app::UniAppState;
+pub use app::assemble_uni_state;
+pub use app::{UniStateParams, UniStateParams as AppStateParams};
+
 use crate::admin::auth::AdminAuthService;
-use crate::admin::repository::AdminRepository;
-use crate::admin::service::AdminService;
 use crate::admin::vk_auth::VkVideoLiveAdminAuthService;
-use crate::config::repository::ConfigRepository;
 use crate::config::store::ConfigStore;
 use crate::db::sqlite::action::SqliteActionRepository;
 use crate::db::sqlite::admin::SqliteAdminRepository;
@@ -24,144 +24,15 @@ use crate::db::sqlite::session::SqliteSessionRepository;
 use crate::db::sqlite::user::SqliteUserRepository;
 use crate::db::sqlite::vip_record::SqliteVipRecordRepository;
 use crate::error::RepositoryError;
-use crate::event::BroadcastEventPublisher;
 use crate::ingress::twitch_auth::TwitchAuthService;
 use crate::ingress::vk_video_live_auth::VkVideoLiveAuthService;
 use crate::ingress::{EventIngress, spawn_logging_handler};
-use crate::orders::game::{GameOrder, GameOrderId, GameOrderKind, NewGameOrder};
-use crate::orders::movie::{MovieKind, MovieOrder, MovieOrderId, NewMovieOrder};
-use crate::orders::repository::{OrderRepository, VipRecordRepository};
-use crate::orders::service::{GameOrderService, MovieOrderService, VipService};
-use crate::platform::{
-    PlatformCredentialRepository, PlatformCredentialService, PlatformRepository,
-};
+use crate::platform::PlatformCredentialService;
 use crate::presence::Presence;
-use crate::queue::repository::QueueRepository;
-use crate::queue::service::QueueService;
 use crate::random::StandartRandomProvider;
-use crate::roulette::machine::RouletteService;
-use crate::roulette::rarity::RarityRepository;
-use crate::roulette::rarity_service::RarityService;
-use crate::roulette::repository::RouletteSlotRepository;
-use crate::roulette::slot_service::RouletteSlotService;
-use crate::rules::repository::RuleRepository;
-use crate::rules::service::RuleService;
-use crate::session::repository::SessionRepository;
-use crate::session::service::SessionService;
 use crate::sheets::client::GoogleSheetsClient;
 use crate::sheets::service::SheetsService;
 use crate::stream::StreamStatus;
-use crate::user::repository::UserRepository;
-use crate::user::service::UserService;
-
-#[non_exhaustive]
-pub struct UniAppState<Q, R, U, P, S, A, Se, C, K, L, M, Go, Mo, V>
-where
-    Q: QueueRepository,
-    R: RarityRepository,
-    U: UserRepository,
-    P: PlatformRepository,
-    S: RouletteSlotRepository,
-    A: AdminRepository,
-    Se: SessionRepository,
-    C: PlatformCredentialRepository,
-    K: ConfigRepository,
-    L: RuleRepository,
-    M: ActionRepository,
-    Go: OrderRepository<
-            Order = GameOrder,
-            New = NewGameOrder,
-            Id = GameOrderId,
-            Kind = GameOrderKind,
-        >,
-    Mo: OrderRepository<
-            Order = MovieOrder,
-            New = NewMovieOrder,
-            Id = MovieOrderId,
-            Kind = MovieKind,
-        >,
-    V: VipRecordRepository,
-{
-    pub slot_service: Arc<RouletteSlotService<Arc<S>>>,
-    pub rarity_service: Arc<RarityService<Arc<R>>>,
-    pub user_service: Arc<UserService<U, P>>,
-    pub admin_service: Arc<AdminService<A>>,
-    pub session_service: Arc<SessionService<Se, A>>,
-    pub queue_service: Arc<QueueService<Q, R, S>>,
-    pub config: Arc<ConfigStore<K>>,
-    pub event_publisher: BroadcastEventPublisher,
-    pub stream_status: Arc<StreamStatus>,
-    pub ingress: Arc<EventIngress>,
-    pub presence: Arc<Presence>,
-    pub admin_auth: Arc<AdminAuthService<C>>,
-    pub vk_admin_auth: Arc<VkVideoLiveAdminAuthService<C>>,
-    pub credentials: Arc<PlatformCredentialService<C>>,
-    pub rule_service: Arc<RuleService<L, M>>,
-    pub action_service: Arc<ActionService<M>>,
-    pub twitch_api: Option<Arc<TwitchAuthService<C>>>,
-    pub vk_api: Option<Arc<VkVideoLiveAuthService<C>>>,
-    pub game_order_service: Arc<GameOrderService<Arc<Go>>>,
-    pub movie_order_service: Arc<MovieOrderService<Arc<Mo>>>,
-    pub vip_service: Arc<VipService<Arc<V>>>,
-    #[allow(clippy::type_complexity)]
-    pub sheets: Arc<SheetsService<GoogleSheetsClient, Arc<Go>, Arc<Mo>, Arc<V>, ConfigStore<K>>>,
-}
-
-impl<Q, R, U, P, S, A, Se, C, K, L, M, Go, Mo, V> Clone
-    for UniAppState<Q, R, U, P, S, A, Se, C, K, L, M, Go, Mo, V>
-where
-    Q: QueueRepository,
-    R: RarityRepository,
-    U: UserRepository,
-    P: PlatformRepository,
-    S: RouletteSlotRepository,
-    A: AdminRepository,
-    Se: SessionRepository,
-    C: PlatformCredentialRepository,
-    K: ConfigRepository,
-    L: RuleRepository,
-    M: ActionRepository,
-    Go: OrderRepository<
-            Order = GameOrder,
-            New = NewGameOrder,
-            Id = GameOrderId,
-            Kind = GameOrderKind,
-        >,
-    Mo: OrderRepository<
-            Order = MovieOrder,
-            New = NewMovieOrder,
-            Id = MovieOrderId,
-            Kind = MovieKind,
-        >,
-    V: VipRecordRepository,
-{
-    fn clone(&self) -> Self {
-        Self {
-            slot_service: Arc::clone(&self.slot_service),
-            rarity_service: Arc::clone(&self.rarity_service),
-            user_service: Arc::clone(&self.user_service),
-            admin_service: Arc::clone(&self.admin_service),
-            session_service: Arc::clone(&self.session_service),
-            queue_service: Arc::clone(&self.queue_service),
-            config: Arc::clone(&self.config),
-            event_publisher: self.event_publisher.clone(),
-            stream_status: Arc::clone(&self.stream_status),
-            ingress: Arc::clone(&self.ingress),
-            presence: Arc::clone(&self.presence),
-            admin_auth: Arc::clone(&self.admin_auth),
-            vk_admin_auth: Arc::clone(&self.vk_admin_auth),
-            credentials: Arc::clone(&self.credentials),
-            rule_service: Arc::clone(&self.rule_service),
-            action_service: Arc::clone(&self.action_service),
-            twitch_api: self.twitch_api.clone(),
-            vk_api: self.vk_api.clone(),
-            game_order_service: Arc::clone(&self.game_order_service),
-            movie_order_service: Arc::clone(&self.movie_order_service),
-            vip_service: Arc::clone(&self.vip_service),
-            sheets: Arc::clone(&self.sheets),
-        }
-    }
-}
 
 pub type AppQueueService =
     QueueService<SqliteQueueRepository, SqliteRarityRepository, SqliteRouletteSlotRepository>;
@@ -187,206 +58,25 @@ pub type AppState = UniAppState<
     SqliteRouletteSlotRepository,
     SqliteAdminRepository,
     SqliteSessionRepository,
-    SqlitePlatformCredentialRepository,
-    SqliteConfigRepository,
     SqliteRuleRepository,
     SqliteActionRepository,
     SqliteGameOrderRepository,
     SqliteMovieOrderRepository,
     SqliteVipRecordRepository,
+    AppConfigStore,
+    GoogleSheetsClient,
+    PlatformCredentialService<SqlitePlatformCredentialRepository>,
+    AdminAuthService<SqlitePlatformCredentialRepository>,
+    VkVideoLiveAdminAuthService<SqlitePlatformCredentialRepository>,
+    TwitchAuthService<SqlitePlatformCredentialRepository>,
+    VkVideoLiveAuthService<SqlitePlatformCredentialRepository>,
+    EventIngress,
+    Presence,
+    StreamStatus,
 >;
 
-#[non_exhaustive]
-pub struct UniStateParams<Q, R, U, P, S, A, Se, C, K, L, M, Go, Mo, V>
-where
-    Q: QueueRepository,
-    R: RarityRepository,
-    U: UserRepository,
-    P: PlatformRepository,
-    S: RouletteSlotRepository,
-    A: AdminRepository,
-    Se: SessionRepository,
-    C: PlatformCredentialRepository,
-    K: ConfigRepository,
-    L: RuleRepository,
-    M: ActionRepository,
-    Go: OrderRepository<
-            Order = GameOrder,
-            New = NewGameOrder,
-            Id = GameOrderId,
-            Kind = GameOrderKind,
-        >,
-    Mo: OrderRepository<
-            Order = MovieOrder,
-            New = NewMovieOrder,
-            Id = MovieOrderId,
-            Kind = MovieKind,
-        >,
-    V: VipRecordRepository,
-{
-    pub random: StandartRandomProvider,
-    pub config: Arc<ConfigStore<K>>,
-    pub credentials_repo: Arc<C>,
-    pub slot_repo: Arc<S>,
-    pub rarity_repo: Arc<R>,
-    pub user_repo: Arc<U>,
-    pub platform_repo: Arc<P>,
-    pub queue_repo: Arc<Q>,
-    pub admin_repo: Arc<A>,
-    pub session_repo: Arc<Se>,
-    pub rule_repo: Arc<L>,
-    pub action_repo: Arc<M>,
-    pub game_order_repo: Arc<Go>,
-    pub movie_order_repo: Arc<Mo>,
-    pub vip_record_repo: Arc<V>,
-}
-
-#[allow(clippy::type_complexity)]
-pub async fn assemble_uni_state<Q, R, U, P, S, A, Se, C, K, L, M, Go, Mo, V>(
-    params: UniStateParams<Q, R, U, P, S, A, Se, C, K, L, M, Go, Mo, V>,
-) -> Result<UniAppState<Q, R, U, P, S, A, Se, C, K, L, M, Go, Mo, V>, RepositoryError>
-where
-    Q: QueueRepository,
-    R: RarityRepository,
-    U: UserRepository,
-    P: PlatformRepository,
-    S: RouletteSlotRepository,
-    A: AdminRepository,
-    Se: SessionRepository,
-    C: PlatformCredentialRepository,
-    K: ConfigRepository,
-    L: RuleRepository,
-    M: ActionRepository,
-    Go: OrderRepository<
-            Order = GameOrder,
-            New = NewGameOrder,
-            Id = GameOrderId,
-            Kind = GameOrderKind,
-        >,
-    Mo: OrderRepository<
-            Order = MovieOrder,
-            New = NewMovieOrder,
-            Id = MovieOrderId,
-            Kind = MovieKind,
-        >,
-    V: VipRecordRepository,
-{
-    let UniStateParams {
-        random,
-        config,
-        credentials_repo,
-        slot_repo,
-        rarity_repo,
-        user_repo,
-        platform_repo,
-        queue_repo,
-        admin_repo,
-        session_repo,
-        rule_repo,
-        action_repo,
-        game_order_repo,
-        movie_order_repo,
-        vip_record_repo,
-    } = params;
-
-    let event_publisher = BroadcastEventPublisher::new();
-    let ingress = Arc::new(EventIngress::new());
-    spawn_logging_handler(ingress.subscribe());
-    let presence = Presence::new();
-
-    let slot_service = Arc::new(RouletteSlotService::build(slot_repo).await?);
-    let rarity_service = Arc::new(RarityService::build(rarity_repo).await?);
-    let settings = config.source();
-    let roulette = RouletteService::new(Arc::clone(&slot_service), random);
-    let queue_service = Arc::new(QueueService::new(
-        queue_repo,
-        Arc::clone(&rarity_service),
-        roulette,
-        event_publisher.clone(),
-        settings.clone(),
-    ));
-    let user_service = Arc::new(UserService::new(user_repo, platform_repo));
-    let admin_service = Arc::new(AdminService::new(admin_repo));
-    if let Some(admin_id) = config.admin_twitch_id() {
-        tracing::info!("seeding root admin: twitch_user_id={admin_id}");
-        admin_service.seed(admin_id).await?;
-    }
-    if let Some(extra_ids) = config.admin_twitch_ids() {
-        for admin_id in extra_ids {
-            admin_service.seed_non_root(admin_id).await?;
-        }
-    }
-    let session_service = Arc::new(SessionService::new(
-        session_repo,
-        Arc::clone(&admin_service),
-        settings,
-    ));
-    let credentials = Arc::new(PlatformCredentialService::new(credentials_repo));
-    let admin_auth = Arc::new(AdminAuthService::new(
-        config.twitch().map(|twitch| Arc::new(twitch.clone())),
-        Arc::clone(&credentials),
-    ));
-
-    let vk_config = config.vk_video_live().map(|vk| Arc::new(vk.clone()));
-    let vk_api = vk_config
-        .clone()
-        .map(|cfg| Arc::new(VkVideoLiveAuthService::new(cfg, Arc::clone(&credentials))));
-    let vk_admin_auth = Arc::new(VkVideoLiveAdminAuthService::new(vk_config, vk_api.clone()));
-
-    let action_service = Arc::new(ActionService::new(action_repo));
-    let rule_service = Arc::new(RuleService::new(rule_repo, Arc::clone(&action_service)));
-
-    let game_order_service = Arc::new(GameOrderService::new(Arc::clone(&game_order_repo)));
-    let movie_order_service = Arc::new(MovieOrderService::new(Arc::clone(&movie_order_repo)));
-    let vip_service = Arc::new(VipService::new(Arc::clone(&vip_record_repo)));
-
-    let sheets_client = config
-        .google_service_account_key_base64()
-        .and_then(|encoded| {
-            GoogleSheetsClient::from_key_base64(encoded)
-                .map_err(|e| tracing::error!("google sheets disabled: {e}"))
-                .ok()
-        });
-    let sheets = Arc::new(SheetsService::new(
-        sheets_client,
-        Arc::clone(&game_order_service),
-        Arc::clone(&movie_order_service),
-        Arc::clone(&vip_service),
-        Arc::clone(&config),
-    ));
-
-    let twitch_api = config.twitch().map(|twitch| {
-        Arc::new(TwitchAuthService::new(
-            Arc::new(twitch.clone()),
-            Arc::clone(&credentials),
-        ))
-    });
-
-    Ok(UniAppState {
-        slot_service,
-        rarity_service,
-        user_service,
-        admin_service,
-        session_service,
-        queue_service,
-        config,
-        event_publisher,
-        stream_status: Arc::new(StreamStatus::new()),
-        ingress,
-        presence,
-        admin_auth,
-        vk_admin_auth,
-        credentials,
-        rule_service,
-        action_service,
-        twitch_api,
-        vk_api,
-        game_order_service,
-        movie_order_service,
-        vip_service,
-        sheets,
-    })
-}
+use crate::queue::service::QueueService;
+use crate::session::service::SessionService;
 
 #[non_exhaustive]
 pub struct AppStateBuilder {
@@ -430,20 +120,64 @@ impl AppStateBuilder {
 
     pub async fn build(self) -> Result<AppState, RepositoryError> {
         if !self.seeded {
-            sqlx::query("DELETE FROM roulette_slots")
-                .execute(&self.pool)
-                .await
-                .map_err(|e| RepositoryError::Database(e.to_string()))?;
-            sqlx::query("DELETE FROM rarities")
-                .execute(&self.pool)
+            storage_sqlite::reset_roulette_seed_data(&self.pool)
                 .await
                 .map_err(|e| RepositoryError::Database(e.to_string()))?;
         }
 
+        let credentials = Arc::new(PlatformCredentialService::new(self.credentials_repo));
+
+        let admin_auth = Arc::new(AdminAuthService::new(
+            self.config.twitch().map(|twitch| Arc::new(twitch.clone())),
+            Arc::clone(&credentials),
+        ));
+
+        let vk_config = self.config.vk_video_live().map(|vk| Arc::new(vk.clone()));
+        let vk_api = vk_config
+            .clone()
+            .map(|cfg| Arc::new(VkVideoLiveAuthService::new(cfg, Arc::clone(&credentials))));
+        let vk_admin_auth = Arc::new(VkVideoLiveAdminAuthService::new(vk_config, vk_api.clone()));
+
+        let twitch_api = self.config.twitch().map(|twitch| {
+            Arc::new(TwitchAuthService::new(
+                Arc::new(twitch.clone()),
+                Arc::clone(&credentials),
+            ))
+        });
+
+        let sheets_client = self
+            .config
+            .google_service_account_key_base64()
+            .and_then(|encoded| {
+                GoogleSheetsClient::from_key_base64(encoded)
+                    .map_err(|e| tracing::error!("google sheets disabled: {e}"))
+                    .ok()
+            });
+
+        let ingress = Arc::new(EventIngress::new());
+        spawn_logging_handler(ingress.subscribe());
+
+        let settings = self.config.source();
+        let admin_twitch_id = self.config.admin_twitch_id().map(str::to_string);
+        let extra_admin_twitch_ids = self
+            .config
+            .admin_twitch_ids()
+            .map(|ids| ids.to_vec())
+            .unwrap_or_default();
+
         assemble_uni_state(UniStateParams {
             random: self.random,
+            settings,
+            sheets_client,
             config: self.config,
-            credentials_repo: self.credentials_repo,
+            credential_service: credentials,
+            admin_auth,
+            vk_admin_auth,
+            twitch_api,
+            vk_api,
+            ingress,
+            presence: Presence::new(),
+            stream_status: Arc::new(StreamStatus::new()),
             slot_repo: Arc::new(SqliteRouletteSlotRepository::new(self.pool.clone())),
             rarity_repo: Arc::new(SqliteRarityRepository::new(self.pool.clone())),
             user_repo: Arc::new(SqliteUserRepository::new(self.pool.clone())),
@@ -458,6 +192,8 @@ impl AppStateBuilder {
             game_order_repo: Arc::new(SqliteGameOrderRepository::new(self.pool.clone())),
             movie_order_repo: Arc::new(SqliteMovieOrderRepository::new(self.pool.clone())),
             vip_record_repo: Arc::new(SqliteVipRecordRepository::new(self.pool.clone())),
+            admin_twitch_id,
+            extra_admin_twitch_ids,
         })
         .await
     }

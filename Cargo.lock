@@ -53,6 +53,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "app"
+version = "0.1.0"
+dependencies = [
+ "domain",
+ "model",
+ "tracing",
+]
+
+[[package]]
 name = "arbitrary"
 version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -215,6 +224,7 @@ dependencies = [
 name = "backend"
 version = "0.1.0"
 dependencies = [
+ "app",
  "axum",
  "axum-extra",
  "base64",

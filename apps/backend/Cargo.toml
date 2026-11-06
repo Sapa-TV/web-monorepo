@@ -58,6 +58,7 @@ vk-video-live = { workspace = true }
 tracing-appender = { workspace = true }
 model = { workspace = true }
 domain = { workspace = true }
+app = { workspace = true }
 storage-sqlite = { workspace = true }
 
 [dev-dependencies]

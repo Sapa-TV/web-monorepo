@@ -8,6 +8,8 @@ use axum::http::{Request, StatusCode};
 use sqlx::SqlitePool;
 use tower::ServiceExt;
 
+use crate::admin::auth::AdminAuthService;
+use crate::admin::vk_auth::VkVideoLiveAdminAuthService;
 use crate::api;
 use crate::api::auth::LOGIN_COOKIE;
 use crate::config::runtime::RuntimeConfig;
@@ -31,11 +33,18 @@ use crate::db::sqlite::config::SqliteConfigRepository;
 use crate::db::sqlite::platform_credential::SqlitePlatformCredentialRepository;
 use crate::db::sqlite::queue::SqliteQueueRepository;
 use crate::db::sqlite::test_pool;
+use crate::ingress::EventIngress;
+use crate::ingress::twitch_auth::TwitchAuthService;
+use crate::ingress::vk_video_live_auth::VkVideoLiveAuthService;
+use crate::platform::PlatformCredentialService;
 use crate::platform::PlatformId;
+use crate::presence::Presence;
 use crate::random::StandartRandomProvider;
+use crate::sheets::client::GoogleSheetsClient;
 use crate::state::{
     AppConfigStore, AppState, AppStateBuilder, UniAppState, UniStateParams, assemble_uni_state,
 };
+use crate::stream::StreamStatus;
 use crate::widget_api;
 
 /// Empty slots/rarities (like pre-sqlite `with_empty_repos`), default queue repo.
@@ -60,13 +69,21 @@ pub type InMemoryAppState = UniAppState<
     InMemoryRouletteSlotRepository,
     InMemoryAdminRepository,
     InMemorySessionRepository,
-    InMemoryPlatformCredentialRepository,
-    InMemoryConfigRepository,
     InMemoryRuleRepository,
     InMemoryActionRepository,
     InMemoryGameOrderRepository,
     InMemoryMovieOrderRepository,
     InMemoryVipRecordRepository,
+    ConfigStore<InMemoryConfigRepository>,
+    GoogleSheetsClient,
+    PlatformCredentialService<InMemoryPlatformCredentialRepository>,
+    AdminAuthService<InMemoryPlatformCredentialRepository>,
+    VkVideoLiveAdminAuthService<InMemoryPlatformCredentialRepository>,
+    TwitchAuthService<InMemoryPlatformCredentialRepository>,
+    VkVideoLiveAuthService<InMemoryPlatformCredentialRepository>,
+    EventIngress,
+    Presence,
+    StreamStatus,
 >;
 
 /// No sqlite at all. Platforms are seeded (like migrations do); slots/rarities
@@ -78,10 +95,41 @@ pub async fn test_state_inmemory() -> (InMemoryAppState, Arc<InMemoryQueueReposi
         RuntimeConfig::test_runtime("test-key"),
         Arc::new(InMemoryConfigRepository::new()),
     ));
+    let credentials_repo = Arc::new(InMemoryPlatformCredentialRepository::new());
+    let credentials = Arc::new(PlatformCredentialService::new(Arc::clone(
+        &credentials_repo,
+    )));
+    let admin_auth = Arc::new(AdminAuthService::new(
+        config_store.twitch().map(|twitch| Arc::new(twitch.clone())),
+        Arc::clone(&credentials),
+    ));
+    let vk_api = config_store.vk_video_live().map(|vk| {
+        Arc::new(VkVideoLiveAuthService::new(
+            Arc::new(vk.clone()),
+            Arc::clone(&credentials),
+        ))
+    });
+    let vk_admin_auth = Arc::new(VkVideoLiveAdminAuthService::new(None, vk_api.clone()));
+    let twitch_api = config_store.twitch().map(|twitch| {
+        Arc::new(TwitchAuthService::new(
+            Arc::new(twitch.clone()),
+            Arc::clone(&credentials),
+        ))
+    });
+    let settings = config_store.source();
     let state = assemble_uni_state(UniStateParams {
         random: StandartRandomProvider::new(),
+        settings,
         config: config_store,
-        credentials_repo: Arc::new(InMemoryPlatformCredentialRepository::new()),
+        sheets_client: None,
+        credential_service: credentials,
+        admin_auth,
+        vk_admin_auth,
+        twitch_api,
+        vk_api,
+        ingress: Arc::new(EventIngress::new()),
+        presence: Presence::new(),
+        stream_status: Arc::new(StreamStatus::new()),
         slot_repo: Arc::new(InMemoryRouletteSlotRepository::new()),
         rarity_repo: Arc::new(InMemoryRarityRepository::new()),
         user_repo: Arc::new(InMemoryUserRepository::new()),
@@ -94,6 +142,8 @@ pub async fn test_state_inmemory() -> (InMemoryAppState, Arc<InMemoryQueueReposi
         game_order_repo: Arc::new(InMemoryGameOrderRepository::new()),
         movie_order_repo: Arc::new(InMemoryMovieOrderRepository::new()),
         vip_record_repo: Arc::new(InMemoryVipRecordRepository::new()),
+        admin_twitch_id: None,
+        extra_admin_twitch_ids: Vec::new(),
     })
     .await
     .expect("failed to build in-memory test state");

@@ -96,6 +96,15 @@ pub(crate) fn conflict_on_unique(e: Error, message: &str) -> RepositoryError {
 }
 
 #[cfg(any(test, feature = "test-support"))]
+pub async fn reset_roulette_seed_data(pool: &SqlitePool) -> Result<(), Error> {
+    sqlx::query("DELETE FROM roulette_slots")
+        .execute(pool)
+        .await?;
+    sqlx::query("DELETE FROM rarities").execute(pool).await?;
+    Ok(())
+}
+
+#[cfg(any(test, feature = "test-support"))]
 pub async fn test_pool() -> (SqlitePool, PathBuf) {
     use std::env;
 
