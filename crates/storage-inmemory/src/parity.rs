@@ -877,7 +877,7 @@ async fn suite_movie_order_lifecycle<
 
     let created = repo
         .create(NewMovieOrder::new(
-            Some("РўРµСЃС‚РѕРІС‹Р№ С„РёР»СЊРј".to_string()),
+            Some("Тестовый фильм".to_string()),
             "user_four".to_string(),
             None,
             MovieKind::Movie,
