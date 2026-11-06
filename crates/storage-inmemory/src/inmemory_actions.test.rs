@@ -1,3 +1,7 @@
+use std::time::Duration;
+
+use tokio::time::sleep;
+
 use super::*;
 
 fn reply_kind() -> ActionKind {
@@ -32,6 +36,7 @@ async fn update_replaces_fields_and_touches_updated_at() {
     let repo = InMemoryActionRepository::new();
     repo.create("a", reply_kind(), true).await.unwrap();
     let original = repo.get_by_id(ActionId::new(1)).await.unwrap().unwrap();
+    sleep(Duration::from_millis(5)).await;
     let updated = repo
         .update(Action::new(
             original.id,

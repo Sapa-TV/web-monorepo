@@ -1,3 +1,7 @@
+use std::time::Duration;
+
+use tokio::time::sleep;
+
 use super::*;
 use model::rules::rule::{MessageConditions, MessageMatcher, RewardConditions};
 
@@ -70,6 +74,7 @@ async fn update_replaces_fields_and_touches_updated_at() {
     .await
     .unwrap();
     let original = repo.get_by_id(RuleId::new(1)).await.unwrap().unwrap();
+    sleep(Duration::from_millis(5)).await;
     let updated = repo
         .update(original.clone().with_name("renamed").with_enabled(false))
         .await

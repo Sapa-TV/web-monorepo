@@ -204,6 +204,7 @@ async fn updated_at_changes_on_update() {
     let repo = InMemoryUserRepository::new();
     let user = repo.create("Viewer").await.unwrap();
     let original = user.updated_at;
+    sleep(Duration::from_millis(5)).await;
 
     let updated = repo
         .update_display_name(user.id, "New")
@@ -218,6 +219,7 @@ async fn updated_at_changes_on_link_platform() {
     let repo = InMemoryUserRepository::new();
     let user = repo.create("Viewer").await.unwrap();
     let original = user.updated_at;
+    sleep(Duration::from_millis(5)).await;
 
     repo.link_platform(user.id, TWITCH, "123", "user")
         .await
