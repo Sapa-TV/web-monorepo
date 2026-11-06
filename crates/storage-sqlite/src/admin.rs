@@ -1,9 +1,9 @@
 use chrono::{DateTime, Utc};
 use sqlx::SqlitePool;
 
-use crate::admin::{Admin, repository::AdminRepository};
-use crate::db::sqlite::{conflict_on_unique, map_err};
-use crate::error::RepositoryError;
+use crate::{conflict_on_unique, map_err};
+use model::admin::{Admin, repository::AdminRepository};
+use model::error::RepositoryError;
 
 #[non_exhaustive]
 pub struct SqliteAdminRepository {

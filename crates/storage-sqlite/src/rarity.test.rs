@@ -1,4 +1,4 @@
-use crate::db::sqlite::test_pool;
+use crate::test_pool;
 
 use super::*;
 
@@ -81,8 +81,8 @@ async fn delete_reports_presence() {
 
 #[tokio::test]
 async fn deleting_rarity_cascades_to_its_slots() {
-    use crate::db::sqlite::roulette_slot::SqliteRouletteSlotRepository;
-    use crate::roulette::repository::RouletteSlotRepository;
+    use crate::roulette_slot::SqliteRouletteSlotRepository;
+    use model::roulette::repository::RouletteSlotRepository;
 
     let (pool, _path) = test_pool().await;
     let repo = SqliteRarityRepository::new(pool.clone());

@@ -2,7 +2,13 @@ cargo-features = ["profile-rustflags"]
 
 [workspace]
 resolver = "2"
-members = ["apps/backend", "crates/model", "crates/vk-video-live", "tools/gen-openapi"]
+members = [
+    "apps/backend",
+    "crates/model",
+    "crates/storage-sqlite",
+    "crates/vk-video-live",
+    "tools/gen-openapi",
+]
 
 [workspace.lints.clippy]
 unwrap_used = "deny"
@@ -49,6 +55,7 @@ url = "2.5.8"
 percent-encoding = "2.3.1"
 backend = { version = "0.1.0", path = 'apps/backend' }
 model = { version = "0.1.0", path = 'crates/model' }
+storage-sqlite = { version = "0.1.0", path = 'crates/storage-sqlite' }
 uuid = "1.24.1"
 strum = "0.28.0"
 axum-extra = "0.12.6"

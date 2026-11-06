@@ -1,8 +1,8 @@
 use sqlx::SqlitePool;
 
-use crate::db::sqlite::map_err;
-use crate::error::RepositoryError;
-use crate::roulette::rarity::{Rarity, RarityId, RarityRepository};
+use crate::map_err;
+use model::error::RepositoryError;
+use model::roulette::rarity::{Rarity, RarityId, RarityRepository};
 
 /// FK-enforced: deleting a rarity cascades to its roulette slots.
 #[non_exhaustive]

@@ -1,10 +1,10 @@
 use chrono::{DateTime, Utc};
 use sqlx::SqlitePool;
 
-use crate::db::sqlite::map_err;
-use crate::error::RepositoryError;
-use crate::session::repository::SessionRepository;
-use crate::session::{LoginTicket, LoginTicketToken, Session, SessionToken};
+use crate::map_err;
+use model::error::RepositoryError;
+use model::session::repository::SessionRepository;
+use model::session::{LoginTicket, LoginTicketToken, Session, SessionToken};
 
 #[non_exhaustive]
 pub struct SqliteSessionRepository {

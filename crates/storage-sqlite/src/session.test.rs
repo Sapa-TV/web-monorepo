@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use chrono::{Duration as ChronoDuration, Utc};
 
-use crate::db::sqlite::test_pool;
+use crate::test_pool;
 
 use super::*;
 

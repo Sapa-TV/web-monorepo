@@ -1,7 +1,7 @@
-use crate::db::sqlite::test_pool;
-use crate::error::RepositoryError;
-use crate::roulette::rarity::RarityId;
-use crate::roulette::slot_service::RouletteSlotId;
+use crate::test_pool;
+use model::error::RepositoryError;
+use model::roulette::rarity::RarityId;
+use model::roulette::slot::RouletteSlotId;
 
 use super::*;
 

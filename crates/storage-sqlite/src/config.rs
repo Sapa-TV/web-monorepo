@@ -1,9 +1,9 @@
 use sqlx::SqlitePool;
 
-use crate::config::repository::ConfigRepository;
-use crate::config::runtime::RuntimeConfig;
-use crate::db::sqlite::map_err;
-use crate::error::RepositoryError;
+use crate::map_err;
+use model::config::repository::ConfigRepository;
+use model::config::runtime::RuntimeConfig;
+use model::error::RepositoryError;
 
 #[non_exhaustive]
 pub struct SqliteConfigRepository {

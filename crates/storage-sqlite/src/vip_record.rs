@@ -1,11 +1,11 @@
 use chrono::{DateTime, NaiveDate, Utc};
 use sqlx::SqlitePool;
 
-use crate::db::sqlite::map_err;
-use crate::error::RepositoryError;
-use crate::orders::repository::VipRecordRepository;
-use crate::orders::vip::{NewVipRecord, VipKind, VipRecord, VipRecordId, VipStatus};
-use crate::user::UserId;
+use crate::map_err;
+use model::error::RepositoryError;
+use model::orders::repository::VipRecordRepository;
+use model::orders::vip::{NewVipRecord, VipKind, VipRecord, VipRecordId, VipStatus};
+use model::user::UserId;
 
 #[non_exhaustive]
 pub struct SqliteVipRecordRepository {

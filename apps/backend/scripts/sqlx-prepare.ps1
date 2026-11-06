@@ -4,6 +4,7 @@ $ErrorActionPreference = "Stop"
 
 $backendDir = Join-Path $PSScriptRoot ".."
 $repoDir = Join-Path (Join-Path $backendDir "..") ".."
+$storageDir = Join-Path $repoDir "crates\storage-sqlite"
 $dbPath = Join-Path $repoDir "data\server.db"
 New-Item -ItemType Directory -Force -Path (Split-Path $dbPath) | Out-Null
 # Same DB the app uses via .env; absolute because query! macros expand under a
@@ -11,7 +12,7 @@ New-Item -ItemType Directory -Force -Path (Split-Path $dbPath) | Out-Null
 $env:DATABASE_URL = "sqlite:" + ($dbPath -replace '\\', '/') + "?mode=rwc"
 Remove-Item Env:SQLX_OFFLINE -ErrorAction SilentlyContinue
 
-Push-Location $backendDir
+Push-Location $storageDir
 try {
     sqlx database create
     if ($LASTEXITCODE -ne 0) { throw "sqlx database create failed" }

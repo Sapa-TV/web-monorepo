@@ -1,10 +1,10 @@
 use sqlx::SqlitePool;
 
-use crate::db::sqlite::map_err;
-use crate::error::RepositoryError;
-use crate::roulette::rarity::RarityId;
-use crate::roulette::repository::RouletteSlotRepository;
-use crate::roulette::slot_service::{RouletteSlot, RouletteSlotId};
+use crate::map_err;
+use model::error::RepositoryError;
+use model::roulette::rarity::RarityId;
+use model::roulette::repository::RouletteSlotRepository;
+use model::roulette::slot::{RouletteSlot, RouletteSlotId};
 
 #[non_exhaustive]
 pub struct SqliteRouletteSlotRepository {

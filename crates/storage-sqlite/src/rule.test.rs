@@ -1,10 +1,10 @@
-﻿use std::time::Duration;
+use std::time::Duration;
 
 use tokio::time::sleep;
 
-use crate::actions::action::{Action, ActionKind};
-use crate::db::sqlite::test_pool;
-use crate::rules::rule::{MessageConditions, MessageMatcher, RewardConditions};
+use crate::test_pool;
+use model::actions::action::{Action, ActionKind};
+use model::rules::rule::{MessageConditions, MessageMatcher, RewardConditions};
 
 use super::*;
 
@@ -24,16 +24,16 @@ impl SqliteActionRepo {
     }
 
     async fn create(&self, name: &str) -> Action {
-        use crate::actions::repository::ActionRepository;
-        use crate::db::sqlite::action::SqliteActionRepository;
+        use crate::action::SqliteActionRepository;
+        use model::actions::repository::ActionRepository;
         SqliteActionRepository::new(self.0.clone())
             .create(name, ActionKind::NoAction, true)
             .await
             .unwrap()
     }
     async fn delete(&self, id: ActionId) -> bool {
-        use crate::actions::repository::ActionRepository;
-        use crate::db::sqlite::action::SqliteActionRepository;
+        use crate::action::SqliteActionRepository;
+        use model::actions::repository::ActionRepository;
         SqliteActionRepository::new(self.0.clone())
             .delete(id)
             .await

@@ -1,8 +1,8 @@
 use chrono::{Duration as ChronoDuration, Utc};
 
-use crate::db::sqlite::test_pool;
-use crate::roulette::slot_service::RouletteSlotId;
-use crate::user::UserId;
+use crate::test_pool;
+use model::roulette::slot::RouletteSlotId;
+use model::user::UserId;
 
 use super::*;
 

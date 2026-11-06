@@ -1,12 +1,12 @@
 use chrono::{DateTime, Utc};
 use sqlx::SqlitePool;
 
-use crate::actions::ActionId;
-use crate::db::sqlite::map_err;
-use crate::error::RepositoryError;
-use crate::ingress::event::RuleTrigger;
-use crate::rules::repository::RuleRepository;
-use crate::rules::rule::{Rule, RuleConditions, RuleId};
+use crate::map_err;
+use model::actions::ActionId;
+use model::error::RepositoryError;
+use model::event::RuleTrigger;
+use model::rules::repository::RuleRepository;
+use model::rules::rule::{Rule, RuleConditions, RuleId};
 
 #[non_exhaustive]
 pub struct SqliteRuleRepository {

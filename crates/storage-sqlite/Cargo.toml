@@ -1,0 +1,27 @@
+[package]
+name = "storage-sqlite"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+test-support = []
+
+[lints]
+workspace = true
+
+[dependencies]
+chrono = { workspace = true }
+model = { workspace = true }
+serde_json = { workspace = true }
+sqlx = { workspace = true, features = [
+    "sqlite",
+    "chrono",
+    "runtime-tokio",
+    "migrate",
+    "macros",
+] }
+tokio = { workspace = true, features = ["full"] }
+uuid = { workspace = true, features = ["v7"] }
+
+[dev-dependencies]
+model = { workspace = true, features = ["test-support"] }

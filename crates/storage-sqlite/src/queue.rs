@@ -2,13 +2,13 @@ use chrono::{DateTime, Utc};
 use sqlx::sqlite::SqliteRow;
 use sqlx::{FromRow, SqlitePool};
 
-use crate::db::sqlite::map_err;
-use crate::error::RepositoryError;
-use crate::platform::PlatformId;
-use crate::queue::entry::{QueueEntry, QueueEntryId, QueueStats, QueueStatus};
-use crate::queue::repository::{DequeueOutcome, QueueRepository, StatusUpdateOutcome};
-use crate::roulette::slot_service::RouletteSlotId;
-use crate::user::UserId;
+use crate::map_err;
+use model::error::RepositoryError;
+use model::platform::PlatformId;
+use model::queue::entry::{QueueEntry, QueueEntryId, QueueStats, QueueStatus};
+use model::queue::repository::{DequeueOutcome, QueueRepository, StatusUpdateOutcome};
+use model::roulette::slot::RouletteSlotId;
+use model::user::UserId;
 
 #[non_exhaustive]
 pub struct SqliteQueueRepository {

@@ -1,8 +1,8 @@
 use sqlx::SqlitePool;
 
-use crate::db::sqlite::map_err;
-use crate::error::RepositoryError;
-use crate::platform::{Platform, PlatformId, PlatformRepository};
+use crate::map_err;
+use model::error::RepositoryError;
+use model::platform::{Platform, PlatformId, PlatformRepository};
 
 #[non_exhaustive]
 pub struct SqlitePlatformRepository {

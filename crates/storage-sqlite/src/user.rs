@@ -1,11 +1,11 @@
 use chrono::{DateTime, Utc};
 use sqlx::SqlitePool;
 
-use crate::db::sqlite::{conflict_on_unique, map_err};
-use crate::error::RepositoryError;
-use crate::platform::PlatformId;
-use crate::user::repository::UserRepository;
-use crate::user::{User, UserId, UserPlatform, UserPlatformId};
+use crate::{conflict_on_unique, map_err};
+use model::error::RepositoryError;
+use model::platform::PlatformId;
+use model::user::repository::UserRepository;
+use model::user::{User, UserId, UserPlatform, UserPlatformId};
 
 #[non_exhaustive]
 pub struct SqliteUserRepository {

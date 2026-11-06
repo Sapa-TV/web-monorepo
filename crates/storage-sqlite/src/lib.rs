@@ -1,17 +1,17 @@
 use std::time::Duration;
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-support"))]
 use std::path::{Path, PathBuf};
 
 use sqlx::migrate::{MigrateError, Migrator};
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
 use sqlx::{Error, SqlitePool};
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-support"))]
 use tokio::fs;
 
-use crate::consts::sqlite;
-use crate::error::RepositoryError;
+use model::consts::sqlite;
+use model::error::RepositoryError;
 
 pub mod action;
 pub mod admin;
@@ -45,7 +45,7 @@ pub async fn connect_url(url: &str) -> Result<SqlitePool, RepositoryError> {
     open(with_pragmas(options)).await
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-support"))]
 pub(crate) async fn connect_path(path: &Path) -> Result<SqlitePool, RepositoryError> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)
@@ -95,9 +95,8 @@ pub(crate) fn conflict_on_unique(e: Error, message: &str) -> RepositoryError {
     }
 }
 
-#[cfg(test)]
-#[cfg(test)]
-pub(crate) async fn test_pool() -> (SqlitePool, PathBuf) {
+#[cfg(any(test, feature = "test-support"))]
+pub async fn test_pool() -> (SqlitePool, PathBuf) {
     use std::env;
 
     let path = env::temp_dir().join(format!("sapa-test-{}.db", uuid::Uuid::now_v7().simple()));

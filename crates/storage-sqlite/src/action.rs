@@ -1,10 +1,10 @@
 use chrono::{DateTime, Utc};
 use sqlx::SqlitePool;
 
-use crate::actions::action::{Action, ActionId, ActionKind};
-use crate::actions::repository::ActionRepository;
-use crate::db::sqlite::map_err;
-use crate::error::RepositoryError;
+use crate::map_err;
+use model::actions::action::{Action, ActionId, ActionKind};
+use model::actions::repository::ActionRepository;
+use model::error::RepositoryError;
 
 #[non_exhaustive]
 pub struct SqliteActionRepository {

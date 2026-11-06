@@ -3,8 +3,8 @@ use std::time::Duration;
 use chrono::Utc;
 use tokio::time::sleep;
 
-use crate::db::sqlite::test_pool;
-use crate::platform::PlatformId;
+use crate::test_pool;
+use model::platform::PlatformId;
 
 use super::*;
 

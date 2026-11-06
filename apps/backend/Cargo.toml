@@ -57,6 +57,8 @@ tokio-util = { workspace = true }
 vk-video-live = { workspace = true }
 tracing-appender = { workspace = true }
 model = { workspace = true }
+storage-sqlite = { workspace = true }
 
 [dev-dependencies]
 model = { workspace = true, features = ["test-support"] }
+storage-sqlite = { workspace = true, features = ["test-support"] }

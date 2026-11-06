@@ -10,7 +10,7 @@ pub mod inmemory_roulette_slots;
 pub mod inmemory_rules;
 pub mod inmemory_session;
 pub mod inmemory_user;
-pub mod sqlite;
+pub use storage_sqlite as sqlite;
 
 #[cfg(test)]
 mod parity;
