@@ -1,0 +1,65 @@
+{
+	"description": "Allowed direct dependencies of the workspace crates. Every workspace member must be listed; every internal dependency must be listed in depends_on or dev_depends_on of the depending crate. External crates listed in owned_external may be used only by the crates named there. Crates in optional_only may appear only as an optional dependency.",
+	"crates": {
+		"model": {
+			"depends_on": [],
+			"dev_depends_on": []
+		},
+		"domain": {
+			"depends_on": ["model"],
+			"dev_depends_on": ["model", "storage-inmemory"]
+		},
+		"app": {
+			"depends_on": ["model", "domain"],
+			"dev_depends_on": []
+		},
+		"storage-sqlite": {
+			"depends_on": ["model"],
+			"dev_depends_on": ["model"]
+		},
+		"storage-inmemory": {
+			"depends_on": ["model"],
+			"dev_depends_on": ["model", "storage-sqlite"]
+		},
+		"composition": {
+			"depends_on": [
+				"model",
+				"domain",
+				"app",
+				"storage-sqlite",
+				"storage-inmemory",
+				"vk-video-live"
+			],
+			"dev_depends_on": ["model", "storage-sqlite", "storage-inmemory"]
+		},
+		"api": {
+			"depends_on": ["model", "domain", "app", "composition", "vk-video-live"],
+			"dev_depends_on": [
+				"model",
+				"composition",
+				"storage-sqlite",
+				"storage-inmemory"
+			]
+		},
+		"backend": {
+			"depends_on": ["api", "composition", "domain", "storage-sqlite"],
+			"dev_depends_on": []
+		},
+		"gen-openapi": {
+			"depends_on": ["api"],
+			"dev_depends_on": []
+		},
+		"vk-video-live": {
+			"depends_on": [],
+			"dev_depends_on": []
+		}
+	},
+	"owned_external": {
+		"sqlx": ["storage-sqlite", "composition"],
+		"axum": ["api", "backend"],
+		"reqwest": ["composition"],
+		"tokio-tungstenite": ["composition", "vk-video-live"],
+		"twitch_api": ["composition", "api"]
+	},
+	"optional_only": ["storage-inmemory"]
+}

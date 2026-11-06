@@ -3,6 +3,11 @@
 #![feature(sync_nonpoison)]
 #![deny(clippy::exhaustive_structs)]
 #![deny(clippy::new_ret_no_self)]
+//! Services and business rules. Storage crates are not a dependency on purpose.
+//!
+//! ```compile_fail
+//! use storage_sqlite::SqliteGameOrderRepository;
+//! ```
 
 pub mod actions;
 pub mod admin;

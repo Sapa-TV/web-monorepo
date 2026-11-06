@@ -12,6 +12,8 @@
 #   just astg-one   — run one ast-grep rule test suite (id = rule id)
 #   just astg-inspect — show why files/rules are scanned or skipped
 #   just astg-pat   — check an ast-grep pattern against Rust code from stdin
+#   just check-layers — check the crate dependency graph against arch/layers.json
+#   just check      — everything CI runs: layers, ast-grep, fmt, clippy, tests
 
 set dotenv-load
 set dotenv-filename := ".env.dev"
@@ -72,6 +74,17 @@ astg-inspect:
 # Check an ast-grep pattern against Rust code from stdin, e.g. `code | just astg-pat 'if $C { $$$B }'`
 astg-pat pattern:
     pnpm exec ast-grep run -p '{{pattern}}' -l rust --stdin
+
+# Check the crate dependency graph against arch/layers.json
+check-layers:
+    node tools/check-layers.mjs
+
+# Run every check CI runs
+check: check-layers lint lint-test
+    cargo fmt --all --check
+    cargo clippy --workspace --all-targets
+    cargo test --doc -p domain
+    cargo nextest run --workspace
 
 # Encrypt .env -> .env.sops (needs sops + age, uses .sops.yaml)
 encrypt-env:
