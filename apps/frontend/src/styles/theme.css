@@ -22,6 +22,7 @@
 	--youtube-ink: oklch(0.98 0.01 28);
 	--stream-ink: oklch(0.97 0.02 293);
 	--overlay-scan: rgba(0 0 0 / 0.08);
+	--video-bg: oklch(0.16 calc(var(--c-neutral) * 1.2) var(--h));
 }
 
 :root,

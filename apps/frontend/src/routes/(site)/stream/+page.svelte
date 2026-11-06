@@ -1,61 +1,53 @@
 <script lang="ts">
 	import { onMount } from "svelte";
 	import IconMessageCircle from "~icons/lucide/message-circle";
-	import { tryAutoplay } from "#lib/internal/media";
+	import {
+		loadStreamPlayer,
+		tryAutoplay,
+		type StreamPlayer,
+	} from "#lib/internal/media";
+
+	const STREAM_URL = "https://sapa-tv.ru/live/stream1.flv";
+	const FAILURE_TEXT = {
+		unsupported: "Браузер не поддерживает воспроизведение",
+		load_failed: "Не удалось загрузить плеер",
+	};
 
 	let video: HTMLVideoElement | undefined = $state();
 	let status = $state("");
 
-	const MAX_RETRIES = 50;
-	const RETRY_INTERVAL_MS = 200;
-
 	onMount(() => {
-		let player: { destroy: () => void } | undefined;
-		let retries = 0;
+		let player: StreamPlayer | undefined;
+		let destroyed = false;
 
-		function tryStart() {
-			if (!video) return;
-			if (typeof window.mpegts !== "undefined" && window.mpegts.isSupported()) {
-				const instance = window.mpegts.createPlayer(
-					{
-						type: "flv",
-						isLive: true,
-						url: "https://sapa-tv.ru/live/stream1.flv",
-					},
-					{
-						enableStashBuffer: false,
-						liveBufferLatencyChasing: true,
-					},
-				);
-
-				instance.attachMediaElement(video);
-				instance.load();
-				void tryAutoplay(instance).then((outcome) => {
+		if (video) {
+			void loadStreamPlayer(video, STREAM_URL).then((result) => {
+				if (result.isErr()) {
+					status = FAILURE_TEXT[result.error];
+					return;
+				}
+				if (destroyed) {
+					result.value.destroy();
+					return;
+				}
+				player = result.value;
+				void tryAutoplay(player).then((outcome) => {
 					if (outcome === "blocked") {
 						console.warn("Autoplay blocked: требуется клик по видео.");
 					}
 				});
-				player = instance;
-			} else if (retries < MAX_RETRIES) {
-				retries += 1;
-				setTimeout(tryStart, RETRY_INTERVAL_MS);
-			} else {
-				status = "mpegts.js не поддерживается";
-				console.error("mpegts.js не загружен или не поддерживается браузером");
-			}
+			});
 		}
 
-		tryStart();
-
-		return () => player?.destroy();
+		return () => {
+			destroyed = true;
+			player?.destroy();
+		};
 	});
 </script>
 
 <svelte:head>
 	<title>Онлайн Трансляция</title>
-	<script
-		src="https://cdn.jsdelivr.net/npm/mpegts.js@1.7.3/dist/mpegts.min.js"
-	></script>
 </svelte:head>
 
 <div class="page">
@@ -198,9 +190,19 @@
 			flex-direction: column;
 		}
 
+		.tuner {
+			height: auto;
+		}
+
+		.video-shell {
+			flex: none;
+			width: 100%;
+			aspect-ratio: 16 / 9;
+		}
+
 		.chat-sidebar {
 			width: 100%;
-			height: clamp(360px, 40vh, 480px);
+			height: clamp(360px, 45vh, 520px);
 			border-left: none;
 			border-top: 1px solid var(--outline-variant);
 		}
