@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
 
+use crate::config::ConfigError;
 use crate::consts::queue;
 use crate::consts::roulette;
 use crate::consts::session;
-use crate::error::ConfigError;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
@@ -170,7 +170,7 @@ impl RuntimeConfig {
     }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-support"))]
 impl RuntimeConfig {
     pub fn test_runtime(widget_access_key: &str) -> Self {
         Self {

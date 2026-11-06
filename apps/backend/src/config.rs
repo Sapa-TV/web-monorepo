@@ -1,5 +1,3 @@
-pub mod repository;
-pub mod runtime;
 pub mod static_config;
 pub mod store;
 pub mod twitch;
@@ -7,8 +5,7 @@ pub mod vk_video_live;
 
 use crate::error::config::ConfigError;
 
-pub use repository::ConfigRepository;
-pub use runtime::RuntimeConfig;
+pub use model::config::{ConfigRepository, RuntimeConfig, repository, runtime};
 pub use static_config::StaticConfig;
 pub use store::{ConfigStore, SharedSettings};
 pub use twitch::TwitchConfig;

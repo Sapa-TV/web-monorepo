@@ -3,6 +3,8 @@
 
 pub mod actions;
 pub mod admin;
+pub mod config;
+pub mod consts;
 pub mod error;
 pub mod event;
 pub mod orders;

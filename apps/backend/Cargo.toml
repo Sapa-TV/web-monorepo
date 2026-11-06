@@ -57,3 +57,6 @@ tokio-util = { workspace = true }
 vk-video-live = { workspace = true }
 tracing-appender = { workspace = true }
 model = { workspace = true }
+
+[dev-dependencies]
+model = { workspace = true, features = ["test-support"] }
