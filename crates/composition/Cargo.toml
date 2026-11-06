@@ -1,0 +1,56 @@
+[package]
+name = "composition"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+app = { workspace = true }
+base64 = { workspace = true }
+better_tokio_select = { workspace = true }
+chrono = { workspace = true }
+config = { workspace = true }
+domain = { workspace = true }
+dotenvy = { workspace = true }
+futures-util = { workspace = true }
+http = { workspace = true }
+jsonwebtoken = { workspace = true }
+model = { workspace = true }
+percent-encoding = { workspace = true }
+rand = { workspace = true, features = ["thread_rng"] }
+reqwest = { workspace = true, features = ["json"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+sqlx = { workspace = true, features = ["sqlite"] }
+storage-inmemory = { workspace = true, optional = true }
+storage-sqlite = { workspace = true }
+strum = { workspace = true, features = ["derive"] }
+subtle = { workspace = true }
+thiserror = { workspace = true }
+time = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+tokio-tungstenite = { workspace = true, features = ["rustls-tls-webpki-roots"] }
+tokio-util = { workspace = true }
+tracing = { workspace = true }
+twitch_api = { workspace = true, features = [
+    "eventsub",
+    "helix",
+    "client",
+    "twitch_oauth2",
+    "reqwest",
+] }
+twitch_oauth2 = { workspace = true }
+url = { workspace = true }
+utoipa = { workspace = true }
+uuid = { workspace = true, features = ["v7"] }
+vk-video-live = { workspace = true }
+
+[features]
+test-support = ["dep:storage-inmemory", "model/test-support", "storage-sqlite/test-support"]
+
+[dev-dependencies]
+model = { workspace = true, features = ["test-support"] }
+storage-inmemory = { workspace = true }
+storage-sqlite = { workspace = true, features = ["test-support"] }
+
+[lints]
+workspace = true

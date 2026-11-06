@@ -1,0 +1,40 @@
+[package]
+name = "api"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+app = { workspace = true }
+better_tokio_select = { workspace = true }
+axum = { workspace = true, features = ["macros", "ws"] }
+axum-extra = { workspace = true, features = ["cookie"] }
+chrono = { workspace = true }
+composition = { workspace = true }
+domain = { workspace = true }
+model = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+subtle = { workspace = true }
+time = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+tokio-util = { workspace = true }
+tokio-stream = { workspace = true, features = ["sync"] }
+tower = { workspace = true }
+twitch_api = { workspace = true, features = ["helix", "client", "twitch_oauth2"] }
+tracing = { workspace = true }
+utoipa = { workspace = true, features = ["axum_extras"] }
+utoipa-axum = { workspace = true }
+vk-video-live = { workspace = true }
+
+[dev-dependencies]
+composition = { workspace = true, features = ["test-support"] }
+model = { workspace = true, features = ["test-support"] }
+storage-inmemory = { workspace = true }
+storage-sqlite = { workspace = true, features = ["test-support"] }
+tokio = { workspace = true, features = ["full"] }
+tokio-util = { workspace = true }
+tower = { workspace = true }
+twitch_api = { workspace = true, features = ["helix", "client", "twitch_oauth2"] }
+
+[lints]
+workspace = true

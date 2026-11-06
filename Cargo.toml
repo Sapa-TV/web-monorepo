@@ -6,6 +6,8 @@ members = [
     "apps/backend",
     "crates/app",
     "crates/domain",
+    "crates/api",
+    "crates/composition",
     "crates/model",
     "crates/storage-inmemory",
     "crates/storage-sqlite",
@@ -69,5 +71,7 @@ vk-video-live = { path = 'crates/vk-video-live' }
 tracing-appender = "0.2.5"
 domain = { version = "0.1.0", path = 'crates/domain' }
 app = { version = "0.1.0", path = 'crates/app' }
+api = { version = "0.1.0", path = 'crates/api' }
+composition = { version = "0.1.0", path = 'crates/composition' }
 http = "1"
 

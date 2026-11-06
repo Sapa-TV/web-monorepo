@@ -7,17 +7,17 @@ mod logging;
 
 use std::sync::Arc;
 
+use api::api::router;
+use api::openapi;
+use api::widget_api::router as widget_router;
 use axum::http::{HeaderValue, Method, header};
-use backend::api;
-use backend::config::store::ConfigStore;
-use backend::db::sqlite::config::SqliteConfigRepository;
-use backend::db::sqlite::connect_from_env;
-use backend::db::sqlite::platform_credential::SqlitePlatformCredentialRepository;
-use backend::ingress::supervisor::IngressSupervisor;
-use backend::openapi;
-use backend::random::StandartRandomProvider;
-use backend::state::AppStateBuilder;
-use backend::widget_api;
+use composition::config::store::ConfigStore;
+use composition::ingress::supervisor::IngressSupervisor;
+use composition::state::AppStateBuilder;
+use domain::random::StandartRandomProvider;
+use storage_sqlite::config::SqliteConfigRepository;
+use storage_sqlite::connect_from_env;
+use storage_sqlite::platform_credential::SqlitePlatformCredentialRepository;
 use tokio::net::TcpListener;
 use tokio_util::sync::CancellationToken;
 use tower_http::cors::CorsLayer;
@@ -82,7 +82,7 @@ async fn main() {
     };
 
     let spec = openapi();
-    let app = api::router(state.clone()).merge(widget_api::router(state.clone()));
+    let app = router(state.clone()).merge(widget_router(state.clone()));
     let app = match cors {
         Some(cors) => app.layer(cors),
         None => app,

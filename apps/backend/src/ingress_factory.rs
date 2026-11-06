@@ -3,16 +3,16 @@ use std::sync::Arc;
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 
-use backend::config::twitch::TwitchConfig;
-use backend::config::vk_video_live::VkVideoLiveConfig;
-use backend::db::sqlite::platform_credential::SqlitePlatformCredentialRepository;
-use backend::ingress::PlatformService;
-use backend::ingress::platform::EventSink;
-use backend::ingress::twitch::TwitchPlatformService;
-use backend::ingress::vk_video_live::VkVideoLivePlatformService;
-use backend::ingress::vk_video_live_auth::VkVideoLiveAuthService;
-use backend::platform::{PlatformCredentialService, PlatformId};
-use backend::state::AppConfigStore;
+use composition::config::twitch::TwitchConfig;
+use composition::config::vk_video_live::VkVideoLiveConfig;
+use composition::ingress::PlatformService;
+use composition::ingress::platform::EventSink;
+use composition::ingress::twitch::TwitchPlatformService;
+use composition::ingress::vk_video_live::VkVideoLivePlatformService;
+use composition::ingress::vk_video_live_auth::VkVideoLiveAuthService;
+use composition::platform::{PlatformCredentialService, PlatformId};
+use composition::state::AppConfigStore;
+use storage_sqlite::platform_credential::SqlitePlatformCredentialRepository;
 
 pub fn log_platform_config(config: &AppConfigStore) {
     match config.twitch() {

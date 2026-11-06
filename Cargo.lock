@@ -53,6 +53,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "api"
+version = "0.1.0"
+dependencies = [
+ "app",
+ "axum",
+ "axum-extra",
+ "better_tokio_select",
+ "chrono",
+ "composition",
+ "domain",
+ "model",
+ "serde",
+ "serde_json",
+ "storage-inmemory",
+ "storage-sqlite",
+ "subtle",
+ "time",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+ "tower 0.5.3",
+ "tracing",
+ "twitch_api",
+ "utoipa",
+ "utoipa-axum",
+ "vk-video-live",
+]
+
+[[package]]
 name = "app"
 version = "0.1.0"
 dependencies = [
@@ -224,48 +253,21 @@ dependencies = [
 name = "backend"
 version = "0.1.0"
 dependencies = [
- "app",
+ "api",
  "axum",
- "axum-extra",
- "base64",
- "better_tokio_select",
  "chrono",
- "config",
+ "composition",
  "domain",
  "dotenvy",
- "futures-util",
- "jsonwebtoken",
- "model",
- "percent-encoding",
- "rand 0.10.2",
- "reqwest",
- "serde",
- "serde_json",
- "sqlx",
- "storage-inmemory",
  "storage-sqlite",
- "strum",
- "subtle",
- "thiserror 2.0.19",
- "time",
  "tokio",
- "tokio-stream",
- "tokio-tungstenite 0.30.0",
  "tokio-util",
- "tower 0.5.3",
  "tower-http 0.7.0",
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
- "twitch_api",
- "twitch_oauth2",
- "url",
- "utoipa",
- "utoipa-axum",
  "utoipa-redoc",
  "utoipa-swagger-ui",
- "uuid",
- "vk-video-live",
 ]
 
 [[package]]
@@ -414,6 +416,45 @@ checksum = "ba5a308b75df32fe02788e748662718f03fde005016435c444eea572398219fd"
 dependencies = [
  "bytes",
  "memchr",
+]
+
+[[package]]
+name = "composition"
+version = "0.1.0"
+dependencies = [
+ "app",
+ "base64",
+ "better_tokio_select",
+ "chrono",
+ "config",
+ "domain",
+ "dotenvy",
+ "futures-util",
+ "http",
+ "jsonwebtoken",
+ "model",
+ "percent-encoding",
+ "rand 0.10.2",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "storage-inmemory",
+ "storage-sqlite",
+ "strum",
+ "subtle",
+ "thiserror 2.0.19",
+ "time",
+ "tokio",
+ "tokio-tungstenite 0.30.0",
+ "tokio-util",
+ "tracing",
+ "twitch_api",
+ "twitch_oauth2",
+ "url",
+ "utoipa",
+ "uuid",
+ "vk-video-live",
 ]
 
 [[package]]
@@ -1066,7 +1107,7 @@ dependencies = [
 name = "gen-openapi"
 version = "0.1.0"
 dependencies = [
- "backend",
+ "api",
  "serde_json",
 ]
 

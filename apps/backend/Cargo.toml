@@ -7,62 +7,18 @@ edition = "2024"
 workspace = true
 
 [dependencies]
+api = { workspace = true }
 axum = { workspace = true, features = ["macros", "ws"] }
-better_tokio_select = { workspace = true }
 chrono = { workspace = true }
-rand = { workspace = true, features = ["thread_rng"] }
-serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true }
-sqlx = { workspace = true, features = [
-    "sqlite",
-    "chrono",
-    "runtime-tokio",
-    "migrate",
-    "macros",
-] }
-thiserror = { workspace = true }
+composition = { workspace = true }
+domain = { workspace = true }
+dotenvy = { workspace = true }
+storage-sqlite = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
-tower = { workspace = true }
-tokio-stream = { workspace = true, features = ["sync"] }
+tokio-util = { workspace = true }
 tower-http = { workspace = true, features = ["cors", "fs", "trace"] }
 tracing = { workspace = true }
+tracing-appender = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
-utoipa = { workspace = true, features = ["axum_extras"] }
-utoipa-axum = { workspace = true }
 utoipa-redoc = { workspace = true, features = ["axum"] }
 utoipa-swagger-ui = { workspace = true, features = ["axum"] }
-futures-util = { workspace = true }
-dotenvy = { workspace = true }
-subtle = { workspace = true }
-config = { workspace = true }
-tokio-tungstenite = { workspace = true, features = ["rustls-tls-webpki-roots"] }
-twitch_api = { workspace = true, features = [
-    "eventsub",
-    "helix",
-    "client",
-    "twitch_oauth2",
-    "reqwest",
-] }
-reqwest = { workspace = true, features = ["json"] }
-jsonwebtoken = { workspace = true }
-base64 = { workspace = true }
-twitch_oauth2 = { workspace = true }
-url = { workspace = true }
-percent-encoding = { workspace = true }
-uuid = { workspace = true, features = ["v7"] }
-strum = { workspace = true, features = ["derive"] }
-axum-extra = { workspace = true, features = ["cookie"] }
-time = { workspace = true }
-tokio-util = { workspace = true }
-vk-video-live = { workspace = true }
-tracing-appender = { workspace = true }
-model = { workspace = true }
-domain = { workspace = true }
-app = { workspace = true }
-storage-sqlite = { workspace = true }
-
-[dev-dependencies]
-model = { workspace = true, features = ["test-support"] }
-storage-inmemory = { workspace = true }
-storage-sqlite = { workspace = true, features = ["test-support"] }
-

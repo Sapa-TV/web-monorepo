@@ -8,11 +8,11 @@ use tokio::time;
 use tokio_util::sync::CancellationToken;
 use tracing::info;
 
-use backend::runtime;
-use backend::sheets;
-use backend::state::{
+use composition::runtime;
+use composition::state::{
     AppConfigStore, AppQueueService, AppSessionService, AppSheetsService, AppState,
 };
+use domain::sheets;
 
 pub fn start_background_tasks(state: &AppState, shutdown: &CancellationToken) {
     tokio::spawn(queue_timeout_task(

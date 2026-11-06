@@ -3,7 +3,7 @@ use std::fs;
 use std::path::Path;
 use std::process::ExitCode;
 
-use backend::openapi;
+use api::openapi;
 
 fn main() -> ExitCode {
     let path = env::args()
