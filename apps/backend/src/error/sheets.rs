@@ -58,6 +58,7 @@ impl SheetsError {
             SheetsError::Config(_) => StatusCode::INTERNAL_SERVER_ERROR,
             SheetsError::Repo(RepositoryError::Conflict(_)) => StatusCode::CONFLICT,
             SheetsError::Repo(RepositoryError::Database(_)) => StatusCode::INTERNAL_SERVER_ERROR,
+            SheetsError::Repo(_) => StatusCode::INTERNAL_SERVER_ERROR,
             SheetsError::Service(OrdersServiceError::NotFound) => StatusCode::NOT_FOUND,
             SheetsError::Service(OrdersServiceError::Invalid(_)) => {
                 StatusCode::UNPROCESSABLE_ENTITY

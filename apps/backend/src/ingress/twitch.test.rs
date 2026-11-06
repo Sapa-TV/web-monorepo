@@ -52,6 +52,7 @@ fn maps_chat_message_fields() {
             assert_eq!(msg.text, "Hi chat");
         }
         PlatformEventPayload::RewardRedemption(_) => unreachable!(),
+        _ => unreachable!(),
     }
     assert_eq!(event.payload.type_name(), "chat_message");
 }
@@ -92,6 +93,7 @@ fn maps_reward_redemption_fields() {
             assert_eq!(red.user_input, "pogchamp");
             assert_eq!(red.status, "unfulfilled");
         }
+        _ => unreachable!(),
     }
     assert_eq!(event.payload.type_name(), "reward_redemption");
 }

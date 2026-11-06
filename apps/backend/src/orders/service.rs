@@ -6,8 +6,7 @@ use crate::orders::movie::{MovieKind, MovieOrder, NewMovieOrder};
 use crate::orders::repository::{OrderRepository, VipRecordRepository};
 use crate::orders::status::OrderStatus;
 use crate::orders::vip::{
-    NewVipRecord, UNVIP_DURATION_DAYS, VIP_DURATION_DAYS, VipKind, VipRecord, VipRecordId,
-    VipRecordUpdate, VipStatus,
+    NewVipRecord, VipKind, VipRecord, VipRecordId, VipRecordUpdate, VipStatus,
 };
 
 fn normalize_title(title: Option<String>) -> Option<String> {
@@ -197,7 +196,12 @@ pub struct OrderService<R: OrderRepository> {
     repo: R,
 }
 
-impl<R: OrderRepository> OrderService<R> {
+impl<R> OrderService<R>
+where
+    R: OrderRepository,
+    R::Order: OrderView<Kind = R::Kind> + OrderReplace<New = R::New> + OrderNormalizable,
+    R::New: OrderNormalizable,
+{
     pub fn new(repo: R) -> Self {
         Self { repo }
     }
@@ -290,10 +294,7 @@ impl<R: VipRecordRepository> VipService<R> {
         record.customer_name = require_customer(&record.customer_name)?;
         record.note = normalize_optional(record.note.take());
         let end_date = record.end_date.unwrap_or_else(|| {
-            let days = match record.kind {
-                VipKind::Vip => VIP_DURATION_DAYS,
-                VipKind::Unvip => UNVIP_DURATION_DAYS,
-            };
+            let days = record.kind.duration_days();
             record
                 .roulette_date
                 .checked_add_days(Days::new(days as u64))

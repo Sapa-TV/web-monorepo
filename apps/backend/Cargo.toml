@@ -56,3 +56,4 @@ time = { workspace = true }
 tokio-util = { workspace = true }
 vk-video-live = { workspace = true }
 tracing-appender = { workspace = true }
+model = { workspace = true }

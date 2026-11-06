@@ -262,6 +262,7 @@ fn game_kind_label(kind: GameOrderKind) -> &'static str {
     match kind {
         GameOrderKind::Stream => "стрим",
         GameOrderKind::Playthrough => "прохождение",
+        _ => "",
     }
 }
 
@@ -271,6 +272,7 @@ fn movie_kind_label(kind: MovieKind) -> &'static str {
         MovieKind::Series => "сериал",
         MovieKind::Anime => "аниме",
         MovieKind::Youtube => "ютуб",
+        _ => "",
     }
 }
 
@@ -280,6 +282,7 @@ fn source_label(source: OrderSource) -> &'static str {
         OrderSource::Points => "баллы",
         OrderSource::Roulette => "рулетка",
         OrderSource::Other => "",
+        _ => "",
     }
 }
 
@@ -288,6 +291,7 @@ fn order_status_label(status: OrderStatus, completed: &str) -> &str {
         OrderStatus::Pending => "ожидает",
         OrderStatus::Completed => completed,
         OrderStatus::Cancelled => "отмена",
+        _ => "",
     }
 }
 
@@ -295,6 +299,7 @@ fn vip_kind_label(kind: VipKind) -> &'static str {
     match kind {
         VipKind::Vip => "VIP",
         VipKind::Unvip => "UnVIP",
+        _ => "",
     }
 }
 
@@ -303,6 +308,7 @@ fn vip_status_label(status: VipStatus) -> &'static str {
         VipStatus::Active => "активна",
         VipStatus::Done => "завершена",
         VipStatus::Cancelled => "отменена",
+        _ => "",
     }
 }
 

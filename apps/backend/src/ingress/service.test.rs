@@ -23,6 +23,7 @@ async fn publish_delivers_to_subscriber() {
     match &received.payload {
         PlatformEventPayload::ChatMessage(msg) => assert_eq!(msg.text, "hello"),
         PlatformEventPayload::RewardRedemption(_) => unreachable!(),
+        _ => unreachable!(),
     }
 }
 

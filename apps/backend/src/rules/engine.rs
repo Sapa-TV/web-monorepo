@@ -139,6 +139,7 @@ pub fn conditions_match(
                 MessageMatcher::StartsWith => msg.text.starts_with(pattern),
                 MessageMatcher::Equals => msg.text == *pattern,
                 MessageMatcher::EndsWith => msg.text.ends_with(pattern),
+                _ => false,
             }
         }
         (

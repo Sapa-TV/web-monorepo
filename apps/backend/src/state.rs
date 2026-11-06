@@ -431,10 +431,12 @@ impl AppStateBuilder {
         if !self.seeded {
             sqlx::query("DELETE FROM roulette_slots")
                 .execute(&self.pool)
-                .await?;
+                .await
+                .map_err(|e| RepositoryError::Database(e.to_string()))?;
             sqlx::query("DELETE FROM rarities")
                 .execute(&self.pool)
-                .await?;
+                .await
+                .map_err(|e| RepositoryError::Database(e.to_string()))?;
         }
 
         assemble_uni_state(UniStateParams {

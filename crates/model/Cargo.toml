@@ -1,0 +1,17 @@
+[package]
+name = "model"
+version = "0.1.0"
+edition = "2024"
+
+[lints]
+workspace = true
+
+[dependencies]
+chrono = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+strum = { workspace = true, features = ["derive"] }
+thiserror = { workspace = true }
+utoipa = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }

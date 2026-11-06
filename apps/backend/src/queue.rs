@@ -1,4 +1,4 @@
-pub mod entry;
+pub use model::queue::{entry, repository};
+
 pub mod events;
-pub mod repository;
 pub mod service;

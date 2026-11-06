@@ -1,6 +1,2 @@
-pub mod game;
-pub mod movie;
-pub mod repository;
+pub use model::orders::{game, movie, repository, status, vip};
 pub mod service;
-pub mod status;
-pub mod vip;

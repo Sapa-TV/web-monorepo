@@ -246,13 +246,8 @@ impl QueueRepository for SqliteQueueRepository {
         let mut stats = QueueStats::new(0, 0, 0, 0, 0);
         for row in rows {
             let count = row.count as u32;
-            match status_from_db(&row.status)? {
-                QueueStatus::Pending => stats.pending = count,
-                QueueStatus::Spinning => stats.spinning = count,
-                QueueStatus::Completed => stats.completed = count,
-                QueueStatus::Error => stats.error = count,
-                QueueStatus::Cancelled => stats.cancelled = count,
-            }
+            let status = status_from_db(&row.status)?;
+            stats.set(status, count);
         }
         Ok(stats)
     }

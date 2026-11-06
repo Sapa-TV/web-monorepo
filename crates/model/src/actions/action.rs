@@ -3,13 +3,15 @@ use serde::{Deserialize, Serialize};
 use std::fmt::{self, Display};
 use utoipa::ToSchema;
 
+use crate::event::PlatformEventPayload;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, ToSchema)]
 #[serde(transparent)]
 #[non_exhaustive]
 pub struct ActionId(u32);
 
 impl ActionId {
-    pub(crate) const fn new(id: u32) -> Self {
+    pub const fn new(id: u32) -> Self {
         Self(id)
     }
 
@@ -116,6 +118,23 @@ impl EventContext {
             reward_cost,
             user_input,
             ..Self::default()
+        }
+    }
+}
+
+impl EventContext {
+    pub fn from_payload(payload: &PlatformEventPayload) -> Self {
+        match payload {
+            PlatformEventPayload::ChatMessage(msg) => {
+                Self::chat(msg.user_id.clone(), msg.user_name.clone(), msg.text.clone())
+            }
+            PlatformEventPayload::RewardRedemption(red) => Self::reward(
+                red.user_id.clone(),
+                red.user_name.clone(),
+                red.reward_title.clone(),
+                red.reward_cost,
+                red.user_input.clone(),
+            ),
         }
     }
 }

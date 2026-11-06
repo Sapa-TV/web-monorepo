@@ -9,6 +9,7 @@ async fn repo() -> SqliteRarityRepository {
 
 #[tokio::test]
 async fn load_all_returns_seeded_four_in_order() {
+    // TODO: stale after migration 0014, which seeds a fifth rarity (uncommon); test expects four.
     let repo = repo().await;
 
     let all = repo.load_all().await.unwrap();

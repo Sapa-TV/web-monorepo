@@ -56,6 +56,10 @@ impl From<RepositoryError> for ApiError {
                 status: StatusCode::INTERNAL_SERVER_ERROR,
                 body: ErrorResponse::new(msg),
             },
+            other => Self {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                body: ErrorResponse::new(other.to_string()),
+            },
         }
     }
 }

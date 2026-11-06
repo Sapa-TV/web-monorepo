@@ -5,7 +5,7 @@ use std::fmt::{self, Display};
 use utoipa::ToSchema;
 
 use crate::platform::PlatformId;
-use crate::roulette::slot_service::RouletteSlotId;
+use crate::roulette::slot::RouletteSlotId;
 use crate::user::UserId;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, ToSchema)]
@@ -14,7 +14,7 @@ use crate::user::UserId;
 pub struct QueueEntryId(u32);
 
 impl QueueEntryId {
-    pub(crate) const fn new(id: u32) -> Self {
+    pub const fn new(id: u32) -> Self {
         Self(id)
     }
 
@@ -123,6 +123,26 @@ impl QueueStats {
             error,
             cancelled,
             _sealed: (),
+        }
+    }
+
+    pub fn record(&mut self, status: QueueStatus) {
+        match status {
+            QueueStatus::Pending => self.pending += 1,
+            QueueStatus::Spinning => self.spinning += 1,
+            QueueStatus::Completed => self.completed += 1,
+            QueueStatus::Error => self.error += 1,
+            QueueStatus::Cancelled => self.cancelled += 1,
+        }
+    }
+
+    pub fn set(&mut self, status: QueueStatus, value: u32) {
+        match status {
+            QueueStatus::Pending => self.pending = value,
+            QueueStatus::Spinning => self.spinning = value,
+            QueueStatus::Completed => self.completed = value,
+            QueueStatus::Error => self.error = value,
+            QueueStatus::Cancelled => self.cancelled = value,
         }
     }
 }

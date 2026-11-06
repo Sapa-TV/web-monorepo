@@ -2,15 +2,11 @@ use std::future::Future;
 use std::sync::Arc;
 
 use crate::error::RepositoryError;
-use crate::orders::service::{OrderNormalizable, OrderReplace, OrderView};
 use crate::orders::vip::{NewVipRecord, VipRecord, VipRecordId};
 
 pub trait OrderRepository: Send + Sync {
-    type Order: OrderNormalizable
-        + OrderReplace<New = Self::New>
-        + OrderView<Kind = Self::Kind>
-        + Send;
-    type New: OrderNormalizable + Send;
+    type Order: Send;
+    type New: Send;
     type Id: Send;
     type Kind: PartialEq + Copy + Send;
 

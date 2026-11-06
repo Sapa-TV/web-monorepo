@@ -1,66 +1,8 @@
 use super::repository::RouletteSlotRepository;
 use crate::error::RepositoryError;
-use crate::roulette::rarity::RarityId;
-use serde::{Deserialize, Serialize};
-use std::fmt::{self, Display};
 use std::sync::nonpoison::RwLock;
-use utoipa::ToSchema;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
-#[serde(transparent)]
-#[non_exhaustive]
-pub struct RouletteSlotId(u32);
-
-impl RouletteSlotId {
-    pub(crate) fn new(id: u32) -> Self {
-        Self(id)
-    }
-
-    pub const fn get(self) -> u32 {
-        self.0
-    }
-}
-
-impl Display for RouletteSlotId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-#[derive(Debug, Clone, serde::Serialize, ToSchema)]
-#[non_exhaustive]
-pub struct RouletteSlot {
-    pub(crate) id: RouletteSlotId,
-    pub(crate) name: String,
-    pub(crate) rarity_id: RarityId,
-    pub(crate) weight: u64,
-    pub(crate) action: String,
-    #[serde(skip)]
-    _sealed: (),
-}
-
-impl RouletteSlot {
-    pub fn new<S1, S2>(
-        id: RouletteSlotId,
-        name: S1,
-        rarity_id: RarityId,
-        weight: u64,
-        action: S2,
-    ) -> Self
-    where
-        S1: Into<String>,
-        S2: Into<String>,
-    {
-        Self {
-            id,
-            name: name.into(),
-            rarity_id,
-            weight,
-            action: action.into(),
-            _sealed: (),
-        }
-    }
-}
+pub use model::roulette::slot::{RouletteSlot, RouletteSlotId};
 
 #[non_exhaustive]
 pub struct RouletteSlotService<R: RouletteSlotRepository> {

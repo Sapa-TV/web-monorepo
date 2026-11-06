@@ -40,6 +40,7 @@ impl OrdersServiceError {
             OrdersServiceError::Repo(RepositoryError::Database(_)) => {
                 StatusCode::INTERNAL_SERVER_ERROR
             }
+            OrdersServiceError::Repo(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 }

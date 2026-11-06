@@ -80,6 +80,9 @@ where
                     .send_chat_message(event.source.platform, &ctx, &text)
                     .await?;
             }
+            _ => {
+                tracing::warn!(kind = ?event.kind, "unsupported action kind");
+            }
         }
         Ok(())
     }

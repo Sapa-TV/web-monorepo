@@ -1,4 +1,5 @@
 use crate::db::inmemory_roulette_slots::InMemoryRouletteSlotRepository;
+use crate::roulette::rarity::RarityId;
 
 const COMMON: RarityId = RarityId::new(1);
 

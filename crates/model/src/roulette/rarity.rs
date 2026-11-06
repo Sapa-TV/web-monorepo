@@ -13,7 +13,7 @@ use crate::error::RepositoryError;
 pub struct RarityId(u32);
 
 impl RarityId {
-    pub(crate) const fn new(id: u32) -> Self {
+    pub const fn new(id: u32) -> Self {
         Self(id)
     }
 
@@ -31,11 +31,11 @@ impl Display for RarityId {
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub struct Rarity {
-    pub(crate) id: RarityId,
-    pub(crate) name: String,
-    pub(crate) display_name: String,
-    pub(crate) image: String,
-    pub(crate) color: String,
+    pub id: RarityId,
+    pub name: String,
+    pub display_name: String,
+    pub image: String,
+    pub color: String,
     _sealed: (),
 }
 

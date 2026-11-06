@@ -47,7 +47,7 @@ fn action(kind: ActionKind) -> Arc<Action> {
 #[test]
 fn ctx_from_chat_payload() {
     let event = chat_event();
-    let ctx = EventContext::from(&event.payload);
+    let ctx = EventContext::from_payload(&event.payload);
     assert_eq!(ctx.user_id, "1");
     assert_eq!(ctx.user_name, "viewer");
     assert_eq!(ctx.text, "hello");
@@ -57,7 +57,7 @@ fn ctx_from_chat_payload() {
 #[test]
 fn ctx_from_reward_payload() {
     let event = reward_event();
-    let ctx = EventContext::from(&event.payload);
+    let ctx = EventContext::from_payload(&event.payload);
     assert_eq!(ctx.user_id, "1");
     assert_eq!(ctx.user_name, "viewer");
     assert_eq!(ctx.reward_title, "Spin");

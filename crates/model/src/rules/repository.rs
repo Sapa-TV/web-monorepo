@@ -2,7 +2,7 @@ use std::future::Future;
 
 use crate::actions::ActionId;
 use crate::error::RepositoryError;
-use crate::ingress::event::RuleTrigger;
+use crate::event::RuleTrigger;
 use crate::rules::rule::{Rule, RuleConditions, RuleId};
 
 pub trait RuleRepository: Send + Sync {

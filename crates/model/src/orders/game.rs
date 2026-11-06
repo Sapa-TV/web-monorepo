@@ -1,20 +1,19 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use serde::de::Error;
 use serde::{Deserialize, Serialize};
 use std::fmt::{self, Display};
 use utoipa::ToSchema;
 
-use crate::orders::game::OrderSource;
 use crate::orders::status::OrderStatus;
 use crate::user::UserId;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 #[serde(transparent)]
 #[non_exhaustive]
-pub struct MovieOrderId(u32);
+pub struct GameOrderId(u32);
 
-impl MovieOrderId {
-    pub(crate) const fn new(id: u32) -> Self {
+impl GameOrderId {
+    pub const fn new(id: u32) -> Self {
         Self(id)
     }
 
@@ -23,7 +22,7 @@ impl MovieOrderId {
     }
 }
 
-impl Display for MovieOrderId {
+impl Display for GameOrderId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
     }
@@ -35,14 +34,12 @@ impl Display for MovieOrderId {
 #[strum(serialize_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
-pub enum MovieKind {
-    Movie,
-    Series,
-    Anime,
-    Youtube,
+pub enum GameOrderKind {
+    Stream,
+    Playthrough,
 }
 
-impl<'de> Deserialize<'de> for MovieKind {
+impl<'de> Deserialize<'de> for GameOrderKind {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
@@ -51,36 +48,64 @@ impl<'de> Deserialize<'de> for MovieKind {
         value
             .to_ascii_lowercase()
             .parse()
-            .map_err(|_| Error::custom(format!("unknown movie kind: {value}")))
+            .map_err(|_| Error::custom(format!("unknown game order kind: {value}")))
+    }
+}
+
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Serialize, ToSchema, strum::EnumString, strum::IntoStaticStr,
+)]
+#[strum(serialize_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
+#[non_exhaustive]
+pub enum OrderSource {
+    Donate,
+    Points,
+    Roulette,
+    Other,
+}
+
+impl<'de> Deserialize<'de> for OrderSource {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let value = String::deserialize(deserializer)?;
+        value
+            .to_ascii_lowercase()
+            .parse()
+            .map_err(|_| Error::custom(format!("unknown order source: {value}")))
     }
 }
 
 #[derive(Debug, Clone)]
 #[non_exhaustive]
-pub struct MovieOrder {
-    pub id: MovieOrderId,
+pub struct GameOrder {
+    pub id: GameOrderId,
     pub title: Option<String>,
     pub customer_name: String,
     pub user_id: Option<UserId>,
-    pub kind: MovieKind,
+    pub kind: GameOrderKind,
     pub source: OrderSource,
     pub status: OrderStatus,
+    pub completed_at: Option<NaiveDate>,
     pub comment: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     _sealed: (),
 }
 
-impl MovieOrder {
+impl GameOrder {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        id: MovieOrderId,
+        id: GameOrderId,
         title: Option<String>,
         customer_name: String,
         user_id: Option<UserId>,
-        kind: MovieKind,
+        kind: GameOrderKind,
         source: OrderSource,
         status: OrderStatus,
+        completed_at: Option<NaiveDate>,
         comment: Option<String>,
         created_at: DateTime<Utc>,
         updated_at: DateTime<Utc>,
@@ -93,6 +118,7 @@ impl MovieOrder {
             kind,
             source,
             status,
+            completed_at,
             comment,
             created_at,
             updated_at,
@@ -103,25 +129,28 @@ impl MovieOrder {
 
 #[derive(Debug, Clone)]
 #[non_exhaustive]
-pub struct NewMovieOrder {
+pub struct NewGameOrder {
     pub title: Option<String>,
     pub customer_name: String,
     pub user_id: Option<UserId>,
-    pub kind: MovieKind,
+    pub kind: GameOrderKind,
     pub source: OrderSource,
     pub status: OrderStatus,
+    pub completed_at: Option<NaiveDate>,
     pub comment: Option<String>,
     _sealed: (),
 }
 
-impl NewMovieOrder {
+impl NewGameOrder {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         title: Option<String>,
         customer_name: String,
         user_id: Option<UserId>,
-        kind: MovieKind,
+        kind: GameOrderKind,
         source: OrderSource,
         status: OrderStatus,
+        completed_at: Option<NaiveDate>,
         comment: Option<String>,
     ) -> Self {
         Self {
@@ -131,6 +160,7 @@ impl NewMovieOrder {
             kind,
             source,
             status,
+            completed_at,
             comment,
             _sealed: (),
         }

@@ -134,13 +134,7 @@ impl QueueRepository for InMemoryQueueRepository {
         let entries = self.entries.lock();
         let mut stats = QueueStats::new(0, 0, 0, 0, 0);
         for entry in entries.iter() {
-            match entry.status {
-                QueueStatus::Pending => stats.pending += 1,
-                QueueStatus::Spinning => stats.spinning += 1,
-                QueueStatus::Completed => stats.completed += 1,
-                QueueStatus::Error => stats.error += 1,
-                QueueStatus::Cancelled => stats.cancelled += 1,
-            }
+            stats.record(entry.status);
         }
         Ok(stats)
     }

@@ -2,7 +2,7 @@ use std::future::Future;
 use std::sync::Arc;
 
 use crate::error::RepositoryError;
-use crate::roulette::slot_service::{RouletteSlot, RouletteSlotId};
+use crate::roulette::slot::{RouletteSlot, RouletteSlotId};
 
 pub trait RouletteSlotRepository: Send + Sync {
     fn load_all(&self) -> impl Future<Output = Result<Vec<RouletteSlot>, RepositoryError>> + Send;

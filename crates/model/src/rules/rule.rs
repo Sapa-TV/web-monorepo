@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt::{self, Display};
 use utoipa::ToSchema;
 
-pub use crate::ingress::event::RuleTrigger;
+pub use crate::event::RuleTrigger;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, ToSchema)]
 #[serde(transparent)]
@@ -13,7 +13,7 @@ pub use crate::ingress::event::RuleTrigger;
 pub struct RuleId(u32);
 
 impl RuleId {
-    pub(crate) const fn new(id: u32) -> Self {
+    pub const fn new(id: u32) -> Self {
         Self(id)
     }
 

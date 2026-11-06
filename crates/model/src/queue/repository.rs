@@ -4,17 +4,15 @@ use chrono::{DateTime, Utc};
 
 use crate::error::RepositoryError;
 use crate::queue::entry::{QueueEntry, QueueEntryId, QueueStats, QueueStatus};
-use crate::roulette::slot_service::RouletteSlotId;
+use crate::roulette::slot::RouletteSlotId;
 use crate::user::UserId;
 
-#[non_exhaustive]
 pub enum DequeueOutcome {
     Picked(QueueEntry),
     AlreadyActive,
     Empty,
 }
 
-#[non_exhaustive]
 pub enum StatusUpdateOutcome {
     Updated(QueueEntry),
     NotFound,

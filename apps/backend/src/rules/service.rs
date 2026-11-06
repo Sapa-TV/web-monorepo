@@ -133,6 +133,7 @@ where
                 }
             }
             RuleConditions::RewardRedemption(_) => {}
+            _ => {}
         }
         if self.actions.get(action_id).await?.is_none() {
             return Err(RuleServiceError::ActionNotFound);

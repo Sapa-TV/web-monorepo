@@ -4,16 +4,18 @@ use serde::{Deserialize, Serialize};
 use std::fmt::{self, Display};
 use utoipa::ToSchema;
 
-use crate::orders::status::OrderStatus;
 use crate::user::UserId;
+
+pub const VIP_DURATION_DAYS: i64 = 14;
+pub const UNVIP_DURATION_DAYS: i64 = 7;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 #[serde(transparent)]
 #[non_exhaustive]
-pub struct GameOrderId(u32);
+pub struct VipRecordId(u32);
 
-impl GameOrderId {
-    pub(crate) const fn new(id: u32) -> Self {
+impl VipRecordId {
+    pub const fn new(id: u32) -> Self {
         Self(id)
     }
 
@@ -22,7 +24,7 @@ impl GameOrderId {
     }
 }
 
-impl Display for GameOrderId {
+impl Display for VipRecordId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
     }
@@ -34,12 +36,21 @@ impl Display for GameOrderId {
 #[strum(serialize_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
-pub enum GameOrderKind {
-    Stream,
-    Playthrough,
+pub enum VipKind {
+    Vip,
+    Unvip,
 }
 
-impl<'de> Deserialize<'de> for GameOrderKind {
+impl VipKind {
+    pub fn duration_days(self) -> i64 {
+        match self {
+            Self::Vip => VIP_DURATION_DAYS,
+            Self::Unvip => UNVIP_DURATION_DAYS,
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for VipKind {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
@@ -48,7 +59,7 @@ impl<'de> Deserialize<'de> for GameOrderKind {
         value
             .to_ascii_lowercase()
             .parse()
-            .map_err(|_| Error::custom(format!("unknown game order kind: {value}")))
+            .map_err(|_| Error::custom(format!("unknown vip kind: {value}")))
     }
 }
 
@@ -58,14 +69,13 @@ impl<'de> Deserialize<'de> for GameOrderKind {
 #[strum(serialize_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
-pub enum OrderSource {
-    Donate,
-    Points,
-    Roulette,
-    Other,
+pub enum VipStatus {
+    Active,
+    Done,
+    Cancelled,
 }
 
-impl<'de> Deserialize<'de> for OrderSource {
+impl<'de> Deserialize<'de> for VipStatus {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
@@ -74,52 +84,49 @@ impl<'de> Deserialize<'de> for OrderSource {
         value
             .to_ascii_lowercase()
             .parse()
-            .map_err(|_| Error::custom(format!("unknown order source: {value}")))
+            .map_err(|_| Error::custom(format!("unknown vip status: {value}")))
     }
 }
 
 #[derive(Debug, Clone)]
 #[non_exhaustive]
-pub struct GameOrder {
-    pub id: GameOrderId,
-    pub title: Option<String>,
+pub struct VipRecord {
+    pub id: VipRecordId,
     pub customer_name: String,
     pub user_id: Option<UserId>,
-    pub kind: GameOrderKind,
-    pub source: OrderSource,
-    pub status: OrderStatus,
-    pub completed_at: Option<NaiveDate>,
-    pub comment: Option<String>,
+    pub kind: VipKind,
+    pub roulette_date: NaiveDate,
+    pub end_date: NaiveDate,
+    pub status: VipStatus,
+    pub note: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     _sealed: (),
 }
 
-impl GameOrder {
+impl VipRecord {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        id: GameOrderId,
-        title: Option<String>,
+        id: VipRecordId,
         customer_name: String,
         user_id: Option<UserId>,
-        kind: GameOrderKind,
-        source: OrderSource,
-        status: OrderStatus,
-        completed_at: Option<NaiveDate>,
-        comment: Option<String>,
+        kind: VipKind,
+        roulette_date: NaiveDate,
+        end_date: NaiveDate,
+        status: VipStatus,
+        note: Option<String>,
         created_at: DateTime<Utc>,
         updated_at: DateTime<Utc>,
     ) -> Self {
         Self {
             id,
-            title,
             customer_name,
             user_id,
             kind,
-            source,
+            roulette_date,
+            end_date,
             status,
-            completed_at,
-            comment,
+            note,
             created_at,
             updated_at,
             _sealed: (),
@@ -129,39 +136,65 @@ impl GameOrder {
 
 #[derive(Debug, Clone)]
 #[non_exhaustive]
-pub struct NewGameOrder {
-    pub title: Option<String>,
+pub struct NewVipRecord {
     pub customer_name: String,
     pub user_id: Option<UserId>,
-    pub kind: GameOrderKind,
-    pub source: OrderSource,
-    pub status: OrderStatus,
-    pub completed_at: Option<NaiveDate>,
-    pub comment: Option<String>,
+    pub kind: VipKind,
+    pub roulette_date: NaiveDate,
+    pub end_date: Option<NaiveDate>,
+    pub note: Option<String>,
     _sealed: (),
 }
 
-impl NewGameOrder {
-    #[allow(clippy::too_many_arguments)]
+impl NewVipRecord {
     pub fn new(
-        title: Option<String>,
         customer_name: String,
         user_id: Option<UserId>,
-        kind: GameOrderKind,
-        source: OrderSource,
-        status: OrderStatus,
-        completed_at: Option<NaiveDate>,
-        comment: Option<String>,
+        kind: VipKind,
+        roulette_date: NaiveDate,
+        end_date: Option<NaiveDate>,
+        note: Option<String>,
     ) -> Self {
         Self {
-            title,
             customer_name,
             user_id,
             kind,
-            source,
+            roulette_date,
+            end_date,
+            note,
+            _sealed: (),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+#[non_exhaustive]
+pub struct VipRecordUpdate {
+    pub customer_name: String,
+    pub kind: VipKind,
+    pub roulette_date: NaiveDate,
+    pub end_date: NaiveDate,
+    pub status: VipStatus,
+    pub note: Option<String>,
+    _sealed: (),
+}
+
+impl VipRecordUpdate {
+    pub fn new(
+        customer_name: String,
+        kind: VipKind,
+        roulette_date: NaiveDate,
+        end_date: NaiveDate,
+        status: VipStatus,
+        note: Option<String>,
+    ) -> Self {
+        Self {
+            customer_name,
+            kind,
+            roulette_date,
+            end_date,
             status,
-            completed_at,
-            comment,
+            note,
             _sealed: (),
         }
     }

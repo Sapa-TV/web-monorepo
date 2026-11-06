@@ -58,6 +58,7 @@ impl QueueServiceError {
             QueueServiceError::Repo(RepositoryError::Database(_)) => {
                 StatusCode::INTERNAL_SERVER_ERROR
             }
+            QueueServiceError::Repo(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 }

@@ -105,6 +105,14 @@ pub fn spawn_logging_handler(rx: broadcast::Receiver<Arc<PlatformEvent>>) {
                                 "ingress event received"
                             );
                         }
+                        _ => {
+                            tracing::info!(
+                                platform = ?event.platform,
+                                sent_at = ?event.sent_at,
+                                payload_type,
+                                "ingress event received"
+                            );
+                        }
                     }
                 }
                 Err(broadcast::error::RecvError::Lagged(skipped)) => {

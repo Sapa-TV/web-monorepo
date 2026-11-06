@@ -1,6 +1,6 @@
+pub use model::rules::{repository, rule};
+
 pub mod engine;
-pub mod repository;
-pub mod rule;
 pub mod service;
 
 pub use rule::Rule;
