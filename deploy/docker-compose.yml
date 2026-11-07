@@ -13,3 +13,22 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+  srs:
+    image: ossrs/srs:5
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:1935:1935"
+      - "0.0.0.0:1985:1985"
+      - "0.0.0.0:8080:8080"
+      - "8000:8000/udp"
+    environment:
+      SRS_DAEMON: "off"
+      SRS_IN_DOCKER: "on"
+    volumes:
+      - ./srs.conf:/usr/local/srs/conf/docker.conf:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

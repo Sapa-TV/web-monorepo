@@ -94,7 +94,3 @@ clippy-linux:
 # Encrypt .env -> .env.sops (needs sops + age, uses .sops.yaml)
 encrypt-env:
     sops -e --input-type dotenv --output-type dotenv .env > .env.sops
-
-# Decrypt .env.sops -> .env (local inspection only, file is gitignored)
-decrypt-env:
-    sops -d --input-type dotenv --output-type dotenv .env.sops > .env

@@ -35,6 +35,15 @@ pub mod sqlite {
     pub const DEFAULT_DATABASE_URL: &str = "sqlite:data/server.db?mode=rwc";
 }
 
+pub mod stream {
+    use std::time::Duration;
+
+    pub const SRS_APP: &str = "live";
+    pub const SRS_STREAM: &str = "stream1";
+    pub const SRS_POLL_INTERVAL: Duration = Duration::from_secs(5);
+    pub const SRS_POLL_TIMEOUT: Duration = Duration::from_secs(3);
+}
+
 pub mod session {
     use std::time::Duration;
 

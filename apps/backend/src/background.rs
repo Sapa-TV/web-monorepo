@@ -13,6 +13,7 @@ use std::future::pending;
 use tokio::signal::unix::{SignalKind, signal};
 
 use composition::runtime;
+use composition::srs::stream_status_task;
 use composition::state::{
     AppConfigStore, AppQueueService, AppSessionService, AppSheetsService, AppState,
 };
@@ -37,6 +38,13 @@ pub fn start_background_tasks(state: &AppState, shutdown: &CancellationToken) {
         Arc::clone(&state.sheets),
         shutdown.child_token(),
     ));
+    if let Some(api_url) = state.config.srs_api_url() {
+        tokio::spawn(stream_status_task(
+            Arc::clone(&state.stream_status),
+            api_url.to_string(),
+            shutdown.child_token(),
+        ));
+    }
 
     runtime::start_rule_pipeline(state, shutdown);
 }

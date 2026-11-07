@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { onMount } from "svelte";
 	import IconMessageCircle from "~icons/lucide/message-circle";
+	import IconVideoOff from "~icons/lucide/video-off";
 	import {
 		loadStreamPlayer,
 		tryAutoplay,
 		type StreamPlayer,
 	} from "#lib/internal/media";
+	import { StreamStatusStore } from "#lib/stream-status.svelte";
 
 	const STREAM_URL = "https://sapa-tv.ru/live/stream1.flv";
 	const FAILURE_TEXT = {
@@ -13,31 +15,39 @@
 		load_failed: "Не удалось загрузить плеер",
 	};
 
+	const stream = new StreamStatusStore();
+
 	let video: HTMLVideoElement | undefined = $state();
 	let status = $state("");
 
 	onMount(() => {
+		stream.start();
+		return () => stream.stop();
+	});
+
+	$effect(() => {
+		if (stream.phase !== "online" || !video) return;
+
 		let player: StreamPlayer | undefined;
 		let destroyed = false;
+		status = "";
 
-		if (video) {
-			void loadStreamPlayer(video, STREAM_URL).then((result) => {
-				if (result.isErr()) {
-					status = FAILURE_TEXT[result.error];
-					return;
+		void loadStreamPlayer(video, STREAM_URL).then((result) => {
+			if (result.isErr()) {
+				status = FAILURE_TEXT[result.error];
+				return;
+			}
+			if (destroyed) {
+				result.value.destroy();
+				return;
+			}
+			player = result.value;
+			void tryAutoplay(player).then((outcome) => {
+				if (outcome === "blocked") {
+					console.warn("Autoplay blocked: требуется клик по видео.");
 				}
-				if (destroyed) {
-					result.value.destroy();
-					return;
-				}
-				player = result.value;
-				void tryAutoplay(player).then((outcome) => {
-					if (outcome === "blocked") {
-						console.warn("Autoplay blocked: требуется клик по видео.");
-					}
-				});
 			});
-		}
+		});
 
 		return () => {
 			destroyed = true;
@@ -53,9 +63,24 @@
 <div class="page">
 	<main class="tuner">
 		<div class="video-shell">
-			<video bind:this={video} controls autoplay muted playsinline></video>
-			{#if status}
-				<span class="status">{status}</span>
+			{#if stream.phase === "online"}
+				<video bind:this={video} controls autoplay muted playsinline></video>
+				{#if status}
+					<span class="status">{status}</span>
+				{/if}
+			{:else if stream.phase === "offline"}
+				<div class="placeholder" role="status">
+					<IconVideoOff aria-hidden="true" />
+					<p class="placeholder-title">Сейчас офлайн</p>
+					<p class="placeholder-text">
+						Следите за анонсами — скоро вернёмся в эфир.
+					</p>
+				</div>
+			{:else}
+				<div class="placeholder" role="status">
+					<span class="pulse" aria-hidden="true"></span>
+					<p class="placeholder-text">Проверяем эфир…</p>
+				</div>
 			{/if}
 		</div>
 	</main>
@@ -120,6 +145,56 @@
 		background-color: var(--video-bg);
 		overflow: hidden;
 		border: 1px solid var(--outline-variant);
+	}
+
+	.placeholder {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 0.75rem;
+		padding: 1.5rem;
+		text-align: center;
+		color: var(--on-surface-variant);
+	}
+
+	.placeholder :global(svg) {
+		width: 2.5rem;
+		height: 2.5rem;
+		opacity: 0.7;
+	}
+
+	.placeholder-title {
+		margin: 0;
+		font-size: 1.1rem;
+		font-weight: 600;
+		color: var(--on-surface);
+	}
+
+	.placeholder-text {
+		margin: 0;
+		font-size: 0.9rem;
+		max-width: 24rem;
+	}
+
+	.pulse {
+		width: 0.5rem;
+		height: 0.5rem;
+		border-radius: 50%;
+		background: var(--primary);
+		animation: pulse 1.4s ease-in-out infinite;
+	}
+
+	@keyframes pulse {
+		0%,
+		100% {
+			opacity: 0.25;
+		}
+		50% {
+			opacity: 1;
+		}
 	}
 
 	video {

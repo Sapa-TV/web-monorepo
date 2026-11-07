@@ -1642,6 +1642,57 @@
         }
       }
     },
+    "/api/srs/hooks": {
+      "post": {
+        "tags": [
+          "stream"
+        ],
+        "operationId": "srs_hook",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "description": "Shared secret configured in SRS",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SrsHookPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Hook accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SrsHookResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SrsHookResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/stream/status": {
       "get": {
         "tags": [
@@ -3438,6 +3489,41 @@
             ]
           },
           "spreadsheet_id": {
+            "type": "string"
+          }
+        }
+      },
+      "SrsHookPayload": {
+        "type": "object",
+        "required": [
+          "action",
+          "app",
+          "stream"
+        ],
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "app": {
+            "type": "string"
+          },
+          "stream": {
+            "type": "string"
+          }
+        }
+      },
+      "SrsHookResponse": {
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "message": {
             "type": "string"
           }
         }

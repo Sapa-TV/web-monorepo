@@ -24,6 +24,8 @@ pub struct StaticConfig {
     pub google_service_account_key_base64: Option<String>,
     #[serde(deserialize_with = "deserialize_comma_string_list")]
     pub admin_twitch_ids: Option<Vec<String>>,
+    pub srs_hook_secret: Option<String>,
+    pub srs_api_url: Option<String>,
     #[serde(skip)]
     _sealed: (),
 }
@@ -38,6 +40,8 @@ impl Default for StaticConfig {
             vk_video_live: None,
             google_service_account_key_base64: None,
             admin_twitch_ids: None,
+            srs_hook_secret: None,
+            srs_api_url: None,
             _sealed: (),
         }
     }
@@ -61,8 +65,16 @@ impl StaticConfig {
             vk_video_live,
             google_service_account_key_base64,
             admin_twitch_ids,
+            srs_hook_secret: None,
+            srs_api_url: None,
             _sealed: (),
         }
+    }
+
+    pub fn with_srs(mut self, hook_secret: Option<String>, api_url: Option<String>) -> Self {
+        self.srs_hook_secret = hook_secret;
+        self.srs_api_url = api_url;
+        self
     }
 
     pub fn load() -> (Self, Option<RuntimeConfig>) {
@@ -90,6 +102,8 @@ impl StaticConfig {
             vk_video_live: raw.vk_video_live,
             google_service_account_key_base64: raw.google_service_account_key_base64,
             admin_twitch_ids: raw.admin_twitch_ids,
+            srs_hook_secret: raw.srs_hook_secret,
+            srs_api_url: raw.srs_api_url,
             _sealed: (),
         };
         let seed = RuntimeConfig::new(
@@ -126,6 +140,8 @@ struct RawConfig {
     google_spreadsheet_id: String,
     #[serde(deserialize_with = "deserialize_comma_string_list")]
     admin_twitch_ids: Option<Vec<String>>,
+    srs_hook_secret: Option<String>,
+    srs_api_url: Option<String>,
 }
 
 impl Default for RawConfig {
@@ -147,6 +163,8 @@ impl Default for RawConfig {
             google_service_account_key_base64: None,
             google_spreadsheet_id: String::new(),
             admin_twitch_ids: None,
+            srs_hook_secret: None,
+            srs_api_url: None,
         }
     }
 }
@@ -199,6 +217,13 @@ impl StaticConfig {
     pub fn with_vk_video_live(vk: Option<Arc<VkVideoLiveConfig>>) -> Self {
         Self {
             vk_video_live: vk,
+            ..Self::default()
+        }
+    }
+
+    pub fn with_srs_hook_secret(secret: Option<String>) -> Self {
+        Self {
+            srs_hook_secret: secret,
             ..Self::default()
         }
     }

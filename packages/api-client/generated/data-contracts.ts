@@ -431,6 +431,18 @@ export interface SheetsStatusResponse {
   spreadsheet_id: string;
 }
 
+export interface SrsHookPayload {
+  action: string;
+  app: string;
+  stream: string;
+}
+
+export interface SrsHookResponse {
+  /** @format int32 */
+  code: number;
+  message: string;
+}
+
 export interface StreamStatusResponse {
   online: boolean;
 }

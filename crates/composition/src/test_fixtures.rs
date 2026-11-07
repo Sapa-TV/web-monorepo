@@ -41,7 +41,13 @@ use storage_sqlite::test_pool;
 /// Empty slots/rarities (like pre-sqlite `with_empty_repos`), default queue repo.
 pub async fn test_state() -> AppState {
     let (pool, _path) = test_pool().await;
-    build_state(pool, false, None).await
+    build_state(pool, false, None, StaticConfig::test_config()).await
+}
+
+/// Same as [`test_state`] but with a custom static configuration.
+pub async fn test_state_with_static(static_cfg: StaticConfig) -> AppState {
+    let (pool, _path) = test_pool().await;
+    build_state(pool, false, None, static_cfg).await
 }
 
 /// Empty slots/rarities with an explicit pool and optional queue repo override.
@@ -49,7 +55,7 @@ pub async fn test_state_with(
     pool: SqlitePool,
     queue_repo: Option<Arc<SqliteQueueRepository>>,
 ) -> AppState {
-    build_state(pool, false, queue_repo).await
+    build_state(pool, false, queue_repo, StaticConfig::test_config()).await
 }
 
 pub type InMemoryAppState = UniAppState<
@@ -145,9 +151,10 @@ async fn build_state(
     pool: SqlitePool,
     seeded: bool,
     queue_repo: Option<Arc<SqliteQueueRepository>>,
+    static_cfg: StaticConfig,
 ) -> AppState {
     let config_store = Arc::new(AppConfigStore::new(
-        Arc::new(StaticConfig::test_config()),
+        Arc::new(static_cfg),
         RuntimeConfig::test_runtime("test-key"),
         Arc::new(SqliteConfigRepository::new(pool.clone())),
     ));

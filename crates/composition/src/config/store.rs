@@ -95,6 +95,14 @@ impl<R: ConfigRepository> ConfigStore<R> {
         self.static_cfg.google_service_account_key_base64.as_deref()
     }
 
+    pub fn srs_hook_secret(&self) -> Option<&str> {
+        self.static_cfg.srs_hook_secret.as_deref()
+    }
+
+    pub fn srs_api_url(&self) -> Option<&str> {
+        self.static_cfg.srs_api_url.as_deref()
+    }
+
     pub fn sheets_spreadsheet_id(&self) -> String {
         self.settings.read().sheets.spreadsheet_id.clone()
     }

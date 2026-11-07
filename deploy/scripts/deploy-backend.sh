@@ -20,6 +20,12 @@ cd "$APP_DIR"
 sops -d --input-type dotenv --output-type dotenv .env.sops > .env
 chmod 600 .env
 
+# -- SRS config ---------------------------------------------------------------
+# Render the hook secret into the SRS config; keep the template in git.
+SRS_HOOK_SECRET="$(sed -n 's/^SRS_HOOK_SECRET=//p' .env | tail -n1)"
+export SRS_HOOK_SECRET
+envsubst '${SRS_HOOK_SECRET}' < srs.conf.template > srs.conf
+
 # -- Remember current image ---------------------------------------------------
 # Whatever is actually running now (resolved image ID) becomes the rollback target.
 OLD_IMAGE=""
@@ -102,6 +108,8 @@ fi
 echo "Smoke test passed"
 
 # -- Apply new image ----------------------------------------------------------
+# The legacy SRS container kept its fixed name and held the RTMP/HTTP ports.
+docker rm -f srs >/dev/null 2>&1 || true
 docker compose up -d
 
 health_rc=0

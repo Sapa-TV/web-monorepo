@@ -36,6 +36,8 @@ import {
   RuleResponse,
   SessionResponse,
   SheetsStatusResponse,
+  SrsHookPayload,
+  SrsHookResponse,
   StreamStatusResponse,
   SyncReportResponse,
   TwitchAuthCallbackResponse,
@@ -908,6 +910,30 @@ export class Api<
     this.request<void, void>({
       path: `/api/sessions/me`,
       method: "DELETE",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags stream
+   * @name SrsHook
+   * @request POST:/api/srs/hooks
+   */
+  srsHook = (
+    query: {
+      /** Shared secret configured in SRS */
+      token: string;
+    },
+    data: SrsHookPayload,
+    params: RequestParams = {},
+  ) =>
+    this.request<SrsHookResponse, SrsHookResponse>({
+      path: `/api/srs/hooks`,
+      method: "POST",
+      query: query,
+      body: data,
+      type: ContentType.Json,
+      format: "json",
       ...params,
     });
   /**

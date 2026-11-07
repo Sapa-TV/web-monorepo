@@ -9,6 +9,7 @@ use utoipa::ToSchema;
 #[non_exhaustive]
 pub struct StreamStatus {
     manual: AtomicBool,
+    rtmp: AtomicBool,
     platforms: RwLock<HashMap<PlatformId, bool>>,
 }
 
@@ -21,12 +22,18 @@ impl StreamStatus {
         self.manual.store(online, Ordering::Release);
     }
 
+    pub fn set_rtmp_online(&self, online: bool) {
+        self.rtmp.store(online, Ordering::Release);
+    }
+
     pub fn set_platform(&self, platform: PlatformId, online: bool) {
         self.platforms.write().insert(platform, online);
     }
 
     pub fn is_online(&self) -> bool {
-        self.manual.load(Ordering::Acquire) || self.platforms.read().values().any(|online| *online)
+        self.manual.load(Ordering::Acquire)
+            || self.rtmp.load(Ordering::Acquire)
+            || self.platforms.read().values().any(|online| *online)
     }
 }
 

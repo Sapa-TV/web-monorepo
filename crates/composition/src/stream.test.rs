@@ -30,3 +30,12 @@ fn any_online_platform_keeps_status_online() {
     status.set_platform(PlatformId::VK_VIDEO_LIVE, true);
     assert!(status.is_online());
 }
+
+#[test]
+fn rtmp_flag_brings_online() {
+    let status = StreamStatus::new();
+    status.set_rtmp_online(true);
+    assert!(status.is_online());
+    status.set_rtmp_online(false);
+    assert!(!status.is_online());
+}
