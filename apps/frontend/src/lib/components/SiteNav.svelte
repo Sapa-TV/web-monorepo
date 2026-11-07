@@ -1,13 +1,20 @@
 <script lang="ts">
 	import { page } from "$app/state";
 	import { resolve } from "$app/paths";
+	import { afterNavigate } from "$app/navigation";
+	import { onMount } from "svelte";
 	import IconMoon from "~icons/lucide/moon";
 	import IconSun from "~icons/lucide/sun";
+	import IconMenu from "~icons/lucide/menu";
+	import IconX from "~icons/lucide/x";
 	import DonateToggle from "./DonateToggle.svelte";
 	import { GIT_SHA } from "#lib/build-info";
 	import { setLocalStorage } from "#lib/internal/storage";
 
 	let isStream = $derived(page.url.pathname === "/stream");
+	let menuOpen = $state(false);
+
+	let navEl: HTMLElement;
 
 	let dark = $state<"light" | "dark">(
 		typeof document !== "undefined"
@@ -23,9 +30,37 @@
 		document.documentElement.dataset.theme = theme;
 		setLocalStorage("theme", theme);
 	});
+
+	afterNavigate(() => {
+		menuOpen = false;
+	});
+
+	onMount(() => {
+		const query = window.matchMedia("(min-width: 641px)");
+		const close = () => {
+			menuOpen = false;
+		};
+		query.addEventListener("change", close);
+		return () => query.removeEventListener("change", close);
+	});
+
+	function handleWindowClick(event: MouseEvent) {
+		if (!menuOpen) return;
+		const target = event.target;
+		if (!(target instanceof Node)) return;
+		if (navEl?.querySelector(".site-menu")?.contains(target)) return;
+		if (navEl?.querySelector(".menu-toggle")?.contains(target)) return;
+		menuOpen = false;
+	}
+
+	function handleWindowKeydown(event: KeyboardEvent) {
+		if (event.key === "Escape") menuOpen = false;
+	}
 </script>
 
-<nav class="site-nav" aria-label="Навигация по сайту">
+<svelte:window onclick={handleWindowClick} onkeydown={handleWindowKeydown} />
+
+<nav class="site-nav" aria-label="Навигация по сайту" bind:this={navEl}>
 	<div class="site-nav-inner">
 		<a class="brand" href={resolve("")}>
 			<span class="brand-badge" aria-hidden="true">ST</span>
@@ -51,7 +86,28 @@
 					<IconMoon aria-hidden="true" />
 				{/if}
 			</button>
+			<button
+				class="menu-toggle"
+				type="button"
+				aria-label="Меню"
+				aria-expanded={menuOpen}
+				aria-controls="site-menu"
+				onclick={() => (menuOpen = !menuOpen)}
+			>
+				{#if menuOpen}
+					<IconX aria-hidden="true" />
+				{:else}
+					<IconMenu aria-hidden="true" />
+				{/if}
+			</button>
 		</div>
+	</div>
+
+	<div id="site-menu" class="site-menu" class:open={menuOpen}>
+		<a class="menu-link" href={resolve("games")}>Игры</a>
+		<a class="menu-link" href={resolve("movies")}>Фильмы</a>
+		<DonateToggle />
+		<span class="menu-sha" title="Build commit">{GIT_SHA}</span>
 	</div>
 </nav>
 
@@ -110,7 +166,8 @@
 		gap: 0.5rem;
 	}
 
-	.theme-toggle {
+	.theme-toggle,
+	.menu-toggle {
 		appearance: none;
 		display: inline-flex;
 		align-items: center;
@@ -130,15 +187,22 @@
 		font-family: inherit;
 	}
 
-	.theme-toggle:hover {
+	.theme-toggle:hover,
+	.menu-toggle:hover {
 		border-color: var(--primary);
 		color: var(--primary);
 	}
 
-	.theme-toggle :global(svg) {
+	.theme-toggle :global(svg),
+	.menu-toggle :global(svg) {
 		width: 1rem;
 		height: 1rem;
 		flex-shrink: 0;
+	}
+
+	.menu-toggle {
+		display: none;
+		padding: 0.45rem;
 	}
 
 	.nav-link {
@@ -162,7 +226,8 @@
 		color: var(--primary);
 	}
 
-	.build-sha {
+	.build-sha,
+	.menu-sha {
 		font-family: var(--font-mono);
 		font-size: 0.72rem;
 		color: var(--on-surface-variant);
@@ -189,6 +254,77 @@
 		border-radius: 50%;
 		background: currentColor;
 		animation: pulse 1.6s ease-in-out infinite;
+	}
+
+	.site-menu {
+		display: none;
+	}
+
+	@media (max-width: 640px) {
+		.site-nav-inner {
+			padding: 0 0.875rem;
+			gap: 0.5rem;
+		}
+
+		.nav-actions {
+			gap: 0.375rem;
+		}
+
+		.build-sha,
+		.nav-link,
+		.nav-actions :global(.donate-link) {
+			display: none;
+		}
+
+		.menu-toggle {
+			display: inline-flex;
+		}
+
+		.site-menu {
+			position: absolute;
+			top: calc(100% + 0.5rem);
+			left: 0.75rem;
+			right: 0.75rem;
+			flex-direction: column;
+			align-items: stretch;
+			gap: 0.4rem;
+			padding: 0.6rem;
+			background: var(--surface-bright);
+			border: 1px solid var(--outline-variant);
+			border-radius: 0.85rem;
+			box-shadow: 0 16px 40px color-mix(in oklch, black 40%, transparent);
+		}
+
+		.site-menu.open {
+			display: flex;
+		}
+
+		.menu-link {
+			display: flex;
+			align-items: center;
+			min-height: 2.75rem;
+			padding: 0 0.9rem;
+			border-radius: 0.5rem;
+			color: var(--on-surface);
+			text-decoration: none;
+			font-size: 0.9rem;
+			font-weight: 600;
+		}
+
+		.menu-link:hover {
+			background: var(--surface-container-low);
+			color: var(--primary);
+		}
+
+		.site-menu :global(.donate-link) {
+			width: 100%;
+			min-height: 2.75rem;
+			justify-content: center;
+		}
+
+		.menu-sha {
+			padding: 0.25rem 0.9rem 0;
+		}
 	}
 
 	@keyframes pulse {
