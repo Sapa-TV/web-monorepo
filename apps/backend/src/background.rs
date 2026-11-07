@@ -1,4 +1,3 @@
-use std::future::pending;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -7,6 +6,11 @@ use tokio::signal::ctrl_c;
 use tokio::time;
 use tokio_util::sync::CancellationToken;
 use tracing::info;
+
+#[cfg(not(unix))]
+use std::future::pending;
+#[cfg(unix)]
+use tokio::signal::unix::{SignalKind, signal};
 
 use composition::runtime;
 use composition::state::{
@@ -44,7 +48,7 @@ pub async fn signal_listener(token: CancellationToken) {
 
     #[cfg(unix)]
     let terminate = async {
-        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+        signal(SignalKind::terminate())
             .expect("failed to install SIGTERM handler")
             .recv()
             .await;
