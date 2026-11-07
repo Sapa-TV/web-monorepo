@@ -14,6 +14,7 @@
 #   just astg-pat   — check an ast-grep pattern against Rust code from stdin
 #   just check-layers — check the crate dependency graph against arch/layers.json
 #   just check      — everything CI runs: layers, ast-grep, fmt, clippy, tests
+#   just clippy-linux — clippy on Linux in Docker (Windows never compiles cfg(unix) code)
 
 set dotenv-load
 set dotenv-filename := ".env.dev"
@@ -85,6 +86,10 @@ check: check-layers lint lint-test
     cargo clippy --workspace --all-targets
     cargo test --doc -p domain
     cargo nextest run --workspace
+
+# Clippy against Linux targets in Docker; Windows skips cfg(unix) code, CI does not
+clippy-linux:
+    MSYS_NO_PATHCONV=1 docker run --rm -v "{{justfile_directory()}}:/app" -w /app -e SQLX_OFFLINE=true -v sapa-rustup:/usr/local/rustup -v sapa-cargo:/usr/local/cargo -v sapa-target-linux:/app/target rust:1 sh -ce "rustup toolchain install --profile minimal && rustup component add clippy && cargo clippy --workspace --all-targets"
 
 # Encrypt .env -> .env.sops (needs sops + age, uses .sops.yaml)
 encrypt-env:
