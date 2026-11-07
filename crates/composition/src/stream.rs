@@ -1,25 +1,32 @@
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::nonpoison::RwLock;
+
+use model::platform::PlatformId;
 use utoipa::ToSchema;
 
 #[derive(Debug, Default)]
 #[non_exhaustive]
 pub struct StreamStatus {
-    online: AtomicBool,
+    manual: AtomicBool,
+    platforms: RwLock<HashMap<PlatformId, bool>>,
 }
 
 impl StreamStatus {
     pub fn new() -> Self {
-        Self {
-            online: AtomicBool::new(false),
-        }
+        Self::default()
     }
 
     pub fn set_online(&self, online: bool) {
-        self.online.store(online, Ordering::Release);
+        self.manual.store(online, Ordering::Release);
+    }
+
+    pub fn set_platform(&self, platform: PlatformId, online: bool) {
+        self.platforms.write().insert(platform, online);
     }
 
     pub fn is_online(&self) -> bool {
-        self.online.load(Ordering::Acquire)
+        self.manual.load(Ordering::Acquire) || self.platforms.read().values().any(|online| *online)
     }
 }
 
@@ -39,3 +46,7 @@ impl StreamStatusResponse {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "stream.test.rs"]
+mod tests;

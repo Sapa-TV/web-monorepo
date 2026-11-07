@@ -47,8 +47,41 @@ fn reward_demand_frame_parses() {
 }
 
 #[test]
-fn unknown_push_type_is_ignored() {
+fn stream_status_frame_parses() {
+    let frame = r#"{"push":{"channel":"api-channel-info:1","pub":{"data":{"type":"stream_status","data":{"stream":{"status":"online"}}}}}}"#;
+    assert_eq!(
+        parse_push(frame).unwrap(),
+        Some(PushEvent::StreamStatus(StreamStatusEvent::new(true)))
+    );
+}
+
+#[test]
+fn stream_status_offline_frame_parses() {
+    let frame = r#"{"push":{"channel":"api-channel-info:1","pub":{"data":{"type":"stream_status","data":{"stream":{"status":"ended"}}}}}}"#;
+    assert_eq!(
+        parse_push(frame).unwrap(),
+        Some(PushEvent::StreamStatus(StreamStatusEvent::new(false)))
+    );
+}
+
+#[test]
+fn stream_status_bool_payload_parses() {
+    let frame = r#"{"push":{"channel":"api-channel-info:1","pub":{"data":{"type":"stream_status","data":{"online":true}}}}}"#;
+    assert_eq!(
+        parse_push(frame).unwrap(),
+        Some(PushEvent::StreamStatus(StreamStatusEvent::new(true)))
+    );
+}
+
+#[test]
+fn unknown_stream_status_is_ignored() {
     let frame = r#"{"push":{"channel":"api-channel-info:1","pub":{"data":{"type":"stream_status","data":{}}}}}"#;
+    assert_eq!(parse_push(frame).unwrap(), None);
+}
+
+#[test]
+fn unknown_push_type_is_ignored() {
+    let frame = r#"{"push":{"channel":"api-channel-info:1","pub":{"data":{"type":"something_else","data":{}}}}}"#;
     assert_eq!(parse_push(frame).unwrap(), None);
 }
 

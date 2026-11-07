@@ -30,7 +30,7 @@ pub async fn set_stream_status(
     Json(body): Json<SetStreamStatusRequest>,
 ) -> Json<StreamStatusResponse> {
     state.stream_status.set_online(body.online);
-    Json(StreamStatusResponse::new(body.online))
+    Json(StreamStatusResponse::new(state.stream_status.is_online()))
 }
 
 pub fn router() -> OpenApiRouter<AppState> {

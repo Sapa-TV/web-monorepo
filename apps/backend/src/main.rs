@@ -53,7 +53,11 @@ async fn main() {
     let shutdown = CancellationToken::new();
     let twitch_config = config_store.twitch().map(|t| Arc::new(t.clone()));
     let vk_config = config_store.vk_video_live().map(|t| Arc::new(t.clone()));
-    let (platforms, build_ingress) = ingress_factory::ingress_factory(twitch_config, vk_config);
+    let (platforms, build_ingress) = ingress_factory::ingress_factory(
+        twitch_config,
+        vk_config,
+        Arc::clone(&state.stream_status),
+    );
     let supervisor = IngressSupervisor::new(
         Arc::clone(&state.credentials),
         state.ingress.sink(),

@@ -11,6 +11,7 @@ use vk_video_live::transport::Transport;
 
 use crate::ingress::platform::{EventSink, PlatformService};
 use crate::ingress::vk_video_live_auth::{VkTransport, VkVideoLiveAuthService};
+use crate::stream::StreamStatus;
 use domain::error::ingress::PlatformError;
 use model::consts::ingress::{VK_RECONNECT_INITIAL_DELAY, VK_RECONNECT_MAX_DELAY};
 use model::event::PlatformEvent;
@@ -23,6 +24,7 @@ where
     T: Transport,
 {
     auth: Arc<VkVideoLiveAuthService<R, T>>,
+    stream_status: Arc<StreamStatus>,
 }
 
 impl<R, T> VkVideoLivePlatformService<R, T>
@@ -30,8 +32,21 @@ where
     R: PlatformCredentialRepository,
     T: Transport,
 {
-    pub fn new(auth: Arc<VkVideoLiveAuthService<R, T>>) -> Self {
-        Self { auth }
+    pub fn new(auth: Arc<VkVideoLiveAuthService<R, T>>, stream_status: Arc<StreamStatus>) -> Self {
+        Self {
+            auth,
+            stream_status,
+        }
+    }
+
+    fn apply_stream_info(&self, stream: &Option<api::StreamInfo>) {
+        let online = stream.as_ref().map_or(Some(false), |info| {
+            info.status.as_deref().and_then(events::live_from_status)
+        });
+        if let Some(online) = online {
+            self.stream_status
+                .set_platform(PlatformId::VK_VIDEO_LIVE, online);
+        }
     }
 
     async fn consume_loop(
@@ -44,6 +59,7 @@ where
         let channel = api::channel(self.auth.transport(), &bearer, &channel_url)
             .await
             .map_err(|e| PlatformError::VkApi(e.to_string()))?;
+        self.apply_stream_info(&channel.data.stream);
         let ws_channels = channel.data.channel.web_socket_channels;
         let channels = [
             ws_channels.chat,
@@ -89,8 +105,15 @@ where
             tracing::debug!(%frame, "vk pubsub push");
             let parsed =
                 events::parse_push(&frame).map_err(|e| PlatformError::Parse(e.to_string()))?;
-            let Some(event) = parsed.and_then(|e| push_event_from(PlatformId::VK_VIDEO_LIVE, e))
-            else {
+            let Some(event) = parsed else {
+                continue;
+            };
+            if let events::PushEvent::StreamStatus(status) = &event {
+                self.stream_status
+                    .set_platform(PlatformId::VK_VIDEO_LIVE, status.online);
+                continue;
+            }
+            let Some(event) = push_event_from(PlatformId::VK_VIDEO_LIVE, event) else {
                 continue;
             };
             if sink.send(event).await.is_err() {
@@ -165,6 +188,7 @@ fn push_event_from(platform: PlatformId, event: events::PushEvent) -> Option<Pla
             String::new(),
             demand.status,
         )),
+        events::PushEvent::StreamStatus(_) => None,
     }
 }
 

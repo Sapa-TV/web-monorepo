@@ -69,9 +69,22 @@ impl RewardDemandEvent {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
+pub struct StreamStatusEvent {
+    pub online: bool,
+}
+
+impl StreamStatusEvent {
+    pub fn new(online: bool) -> Self {
+        Self { online }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum PushEvent {
     ChatMessage(ChatMessageEvent),
     RewardDemand(RewardDemandEvent),
+    StreamStatus(StreamStatusEvent),
 }
 
 pub fn parse_push(frame: &str) -> Result<Option<PushEvent>> {
@@ -83,6 +96,7 @@ pub fn parse_push(frame: &str) -> Result<Option<PushEvent>> {
     match data.get("type").and_then(Value::as_str) {
         Some("channel_chat_message_send") => parse_chat_message(data),
         Some("channel_points_reward_demand_create") => parse_reward_demand(data),
+        Some("stream_status") => parse_stream_status(data),
         _ => Ok(None),
     }
 }
@@ -150,6 +164,33 @@ fn parse_reward_demand(data: &Value) -> Result<Option<PushEvent>> {
             .to_string(),
         created_at: required_i64(demand, "created_at")?,
     })))
+}
+
+fn parse_stream_status(data: &Value) -> Result<Option<PushEvent>> {
+    let payload = data.get("data").unwrap_or(data);
+    let status = payload
+        .pointer("/stream/status")
+        .or_else(|| payload.get("status"))
+        .or_else(|| payload.get("online"));
+    Ok(status
+        .and_then(status_online)
+        .map(|online| PushEvent::StreamStatus(StreamStatusEvent::new(online))))
+}
+
+fn status_online(value: &Value) -> Option<bool> {
+    match value {
+        Value::Bool(online) => Some(*online),
+        Value::String(status) => live_from_status(status),
+        _ => None,
+    }
+}
+
+pub fn live_from_status(status: &str) -> Option<bool> {
+    match status.to_ascii_lowercase().as_str() {
+        "online" | "live" | "started" => Some(true),
+        "offline" | "ended" | "finished" | "idle" => Some(false),
+        _ => None,
+    }
 }
 
 fn required_u64(value: &Value, key: &str) -> Result<u64> {

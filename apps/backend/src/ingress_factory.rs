@@ -12,6 +12,7 @@ use composition::ingress::vk_video_live::VkVideoLivePlatformService;
 use composition::ingress::vk_video_live_auth::VkVideoLiveAuthService;
 use composition::platform::{PlatformCredentialService, PlatformId};
 use composition::state::AppConfigStore;
+use composition::stream::StreamStatus;
 use storage_sqlite::platform_credential::SqlitePlatformCredentialRepository;
 
 pub fn log_platform_config(config: &AppConfigStore) {
@@ -72,6 +73,7 @@ impl<F> IngressSpawner for F where
 pub fn ingress_factory(
     twitch_config: Option<Arc<TwitchConfig>>,
     vk_config: Option<Arc<VkVideoLiveConfig>>,
+    stream_status: Arc<StreamStatus>,
 ) -> (&'static [PlatformId], Box<dyn IngressSpawner>) {
     let mut platform_ids = Vec::new();
     if twitch_config.is_some() {
@@ -107,9 +109,10 @@ pub fn ingress_factory(
                 PlatformId::VK_VIDEO_LIVE => match &vk_config {
                     Some(config) => {
                         let config = Arc::clone(config);
+                        let stream_status = Arc::clone(&stream_status);
                         Some(tokio::spawn(async move {
                             let auth = Arc::new(VkVideoLiveAuthService::new(config, credentials));
-                            let service = VkVideoLivePlatformService::new(auth);
+                            let service = VkVideoLivePlatformService::new(auth, stream_status);
                             if let Err(e) = service.run(sink, token).await {
                                 tracing::error!(
                                     "{} ingress stopped: {e}",
