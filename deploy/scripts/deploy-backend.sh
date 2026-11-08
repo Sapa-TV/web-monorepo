@@ -22,9 +22,13 @@ chmod 600 .env
 
 # -- SRS config ---------------------------------------------------------------
 # Render the hook secret into the SRS config; keep the template in git.
+SRS_CONF_BEFORE="$(sha256sum srs.conf 2>/dev/null | cut -d' ' -f1 || true)"
 SRS_HOOK_SECRET="$(sed -n 's/^SRS_HOOK_SECRET=//p' .env | tail -n1)"
 export SRS_HOOK_SECRET
 envsubst '${SRS_HOOK_SECRET}' < srs.conf.template > srs.conf
+SRS_CONF_AFTER="$(sha256sum srs.conf | cut -d' ' -f1)"
+SRS_CONF_CHANGED=0
+[ "$SRS_CONF_BEFORE" = "$SRS_CONF_AFTER" ] || SRS_CONF_CHANGED=1
 
 # -- Remember current image ---------------------------------------------------
 # Whatever is actually running now (resolved image ID) becomes the rollback target.
@@ -108,9 +112,12 @@ fi
 echo "Smoke test passed"
 
 # -- Apply new image ----------------------------------------------------------
-# The legacy SRS container kept its fixed name and held the RTMP/HTTP ports.
 docker rm -f srs >/dev/null 2>&1 || true
 docker compose up -d
+if [ "$SRS_CONF_CHANGED" -eq 1 ]; then
+  srs_container="$(docker compose ps -q srs)"
+  [ -z "$srs_container" ] || docker restart "$srs_container" >/dev/null
+fi
 
 health_rc=0
 wait_healthy "$HEALTH_URL" cid_primary || health_rc=$?

@@ -16,6 +16,8 @@ pub struct SrsHookPayload {
     pub action: String,
     pub app: String,
     pub stream: String,
+    #[serde(default)]
+    pub param: String,
 }
 
 #[derive(Debug)]
@@ -42,18 +44,34 @@ impl SrsHookOutcome {
             message: "invalid token",
         }
     }
+
+    fn denied() -> Self {
+        Self {
+            status: 200,
+            code: 1,
+            message: "publish denied",
+        }
+    }
 }
 
 pub fn handle_hook(
     status: &StreamStatus,
     expected_token: Option<&str>,
     token: &str,
+    expected_stream_key: Option<&str>,
     payload: &SrsHookPayload,
 ) -> SrsHookOutcome {
     if !token_matches(expected_token, token) {
         return SrsHookOutcome::unauthorized();
     }
-    if payload.app == SRS_APP && payload.stream == SRS_STREAM {
+    let tracked = payload.app == SRS_APP && payload.stream == SRS_STREAM;
+    if payload.action == "on_publish"
+        && let Some(key) = expected_stream_key
+        && (!tracked || !publish_key_matches(&payload.param, key))
+    {
+        return SrsHookOutcome::denied();
+    }
+    if tracked {
         match payload.action.as_str() {
             "on_publish" => status.set_rtmp_online(true),
             "on_unpublish" => status.set_rtmp_online(false),
@@ -61,6 +79,16 @@ pub fn handle_hook(
         }
     }
     SrsHookOutcome::accepted()
+}
+
+fn publish_key_matches(param: &str, expected: &str) -> bool {
+    param
+        .trim_start_matches('?')
+        .split('&')
+        .filter_map(|pair| pair.split_once('='))
+        .any(|(name, value)| {
+            name == "key" && bool::from(value.as_bytes().ct_eq(expected.as_bytes()))
+        })
 }
 
 fn token_matches(expected: Option<&str>, given: &str) -> bool {

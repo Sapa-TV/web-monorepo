@@ -99,6 +99,10 @@ impl<R: ConfigRepository> ConfigStore<R> {
         self.static_cfg.srs_hook_secret.as_deref()
     }
 
+    pub fn srs_stream_key(&self) -> Option<&str> {
+        self.static_cfg.srs_stream_key.as_deref()
+    }
+
     pub fn srs_api_url(&self) -> Option<&str> {
         self.static_cfg.srs_api_url.as_deref()
     }

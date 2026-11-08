@@ -25,6 +25,7 @@ pub struct StaticConfig {
     #[serde(deserialize_with = "deserialize_comma_string_list")]
     pub admin_twitch_ids: Option<Vec<String>>,
     pub srs_hook_secret: Option<String>,
+    pub srs_stream_key: Option<String>,
     pub srs_api_url: Option<String>,
     #[serde(skip)]
     _sealed: (),
@@ -41,6 +42,7 @@ impl Default for StaticConfig {
             google_service_account_key_base64: None,
             admin_twitch_ids: None,
             srs_hook_secret: None,
+            srs_stream_key: None,
             srs_api_url: None,
             _sealed: (),
         }
@@ -66,6 +68,7 @@ impl StaticConfig {
             google_service_account_key_base64,
             admin_twitch_ids,
             srs_hook_secret: None,
+            srs_stream_key: None,
             srs_api_url: None,
             _sealed: (),
         }
@@ -103,6 +106,7 @@ impl StaticConfig {
             google_service_account_key_base64: raw.google_service_account_key_base64,
             admin_twitch_ids: raw.admin_twitch_ids,
             srs_hook_secret: raw.srs_hook_secret,
+            srs_stream_key: raw.srs_stream_key,
             srs_api_url: raw.srs_api_url,
             _sealed: (),
         };
@@ -141,6 +145,7 @@ struct RawConfig {
     #[serde(deserialize_with = "deserialize_comma_string_list")]
     admin_twitch_ids: Option<Vec<String>>,
     srs_hook_secret: Option<String>,
+    srs_stream_key: Option<String>,
     srs_api_url: Option<String>,
 }
 
@@ -164,6 +169,7 @@ impl Default for RawConfig {
             google_spreadsheet_id: String::new(),
             admin_twitch_ids: None,
             srs_hook_secret: None,
+            srs_stream_key: None,
             srs_api_url: None,
         }
     }
@@ -226,6 +232,11 @@ impl StaticConfig {
             srs_hook_secret: secret,
             ..Self::default()
         }
+    }
+
+    pub fn with_srs_stream_key(mut self, key: Option<String>) -> Self {
+        self.srs_stream_key = key;
+        self
     }
 }
 

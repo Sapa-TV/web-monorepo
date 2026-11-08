@@ -46,6 +46,7 @@ pub async fn srs_hook(
         &state.stream_status,
         state.config.srs_hook_secret(),
         &query.token,
+        state.config.srs_stream_key(),
         &payload,
     );
     let status = StatusCode::from_u16(outcome.status).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);

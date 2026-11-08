@@ -35,6 +35,7 @@ vhost __defaultVhost__ {
     }
     http_hooks {
         enabled         on;
+        on_publish      http://backend:3000/api/srs/hooks?token=${SRS_HOOK_SECRET};
         on_unpublish    http://backend:3000/api/srs/hooks?token=${SRS_HOOK_SECRET};
     }
 }

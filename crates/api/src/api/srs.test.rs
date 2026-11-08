@@ -80,6 +80,54 @@ async fn unpublish_hook_takes_stream_offline() {
 }
 
 #[tokio::test]
+async fn publish_without_key_is_denied() {
+    let state = test_state_with_static(
+        StaticConfig::with_srs_hook_secret(Some("secret".to_string()))
+            .with_srs_stream_key(Some("stream-key".to_string())),
+    )
+    .await;
+    let app = test_router(state.clone());
+
+    let response = app
+        .oneshot(hook_request(
+            "secret",
+            r#"{"action":"on_publish","app":"live","stream":"stream1"}"#,
+        ))
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), 200);
+    let body: Value =
+        serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap()).unwrap();
+    assert_eq!(body["code"], 1);
+    assert!(!state.stream_status.is_online());
+}
+
+#[tokio::test]
+async fn publish_with_key_is_accepted() {
+    let state = test_state_with_static(
+        StaticConfig::with_srs_hook_secret(Some("secret".to_string()))
+            .with_srs_stream_key(Some("stream-key".to_string())),
+    )
+    .await;
+    let app = test_router(state.clone());
+
+    let response = app
+        .oneshot(hook_request(
+            "secret",
+            r#"{"action":"on_publish","app":"live","stream":"stream1","param":"?key=stream-key"}"#,
+        ))
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), 200);
+    let body: Value =
+        serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap()).unwrap();
+    assert_eq!(body["code"], 0);
+    assert!(state.stream_status.is_online());
+}
+
+#[tokio::test]
 async fn wrong_token_is_rejected() {
     let state = test_state_with_static(StaticConfig::with_srs_hook_secret(Some(
         "secret".to_string(),
