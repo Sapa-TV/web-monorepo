@@ -30,6 +30,15 @@ SRS_CONF_AFTER="$(sha256sum srs.conf | cut -d' ' -f1)"
 SRS_CONF_CHANGED=0
 [ "$SRS_CONF_BEFORE" = "$SRS_CONF_AFTER" ] || SRS_CONF_CHANGED=1
 
+# -- Pre-deploy snapshot ------------------------------------------------------
+# Migrations run at startup, so a rollback needs a consistent database copy.
+BACKUP_SCRIPT="$APP_DIR/deploy/backup/backup-db.sh"
+if [ -x "$BACKUP_SCRIPT" ]; then
+  "$BACKUP_SCRIPT" || echo "WARNING: pre-deploy database snapshot failed" >&2
+else
+  echo "WARNING: $BACKUP_SCRIPT is not executable, skipping snapshot" >&2
+fi
+
 # -- Remember current image ---------------------------------------------------
 # Whatever is actually running now (resolved image ID) becomes the rollback target.
 OLD_IMAGE=""

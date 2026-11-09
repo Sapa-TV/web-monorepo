@@ -1,0 +1,10 @@
+[Unit]
+Description=Back up the sapa-tv SQLite database
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+ExecStart=/srv/web-app/app/deploy/backup/backup-db.sh
+Nice=10
+IOSchedulingClass=idle

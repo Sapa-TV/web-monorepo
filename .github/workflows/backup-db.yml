@@ -1,0 +1,59 @@
+name: Backup database
+
+on:
+  schedule:
+    - cron: "17 1 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup-db
+  cancel-in-progress: false
+
+env:
+  AGE_RECIPIENT: age1sjndx40yvfcm789gyfus2l7wkulszyhy60s53gc0wg5r6w28mctqgup3vx
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: ./.github/actions/setup-ssh
+        with:
+          ssh-key: ${{ secrets.VPS_SSH_KEY }}
+          host: ${{ secrets.VPS_HOST }}
+          port: ${{ secrets.VPS_PORT }}
+          user: ${{ secrets.VPS_USER }}
+
+      - name: Run backup on VPS and fetch it
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          ssh -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" \
+            "bash /srv/web-app/app/deploy/backup/backup-db.sh"
+          remote_file="$(ssh -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" \
+            "ls -1t /srv/backups/sapa/sapa-*.db.gz | head -n1")"
+          scp -P "$VPS_PORT" "$VPS_USER@$VPS_HOST:$remote_file" sapa-db.db.gz
+          gzip -t sapa-db.db.gz
+          echo "fetched $remote_file"
+
+      - name: Encrypt
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq age
+          age -r "$AGE_RECIPIENT" -o sapa-db.db.gz.age sapa-db.db.gz
+          rm sapa-db.db.gz
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sapa-db-${{ github.run_id }}
+          path: sapa-db.db.gz.age
+          retention-days: 30
+          if-no-files-found: error
