@@ -4,6 +4,7 @@ use chrono::{DateTime, Utc};
 
 use crate::error::RepositoryError;
 use crate::session::{LoginTicket, LoginTicketToken, Session, SessionToken};
+use crate::user::UserId;
 
 pub trait SessionRepository: Send + Sync {
     fn save_session(
@@ -20,6 +21,12 @@ pub trait SessionRepository: Send + Sync {
         &self,
         token: &SessionToken,
     ) -> impl Future<Output = Result<bool, RepositoryError>> + Send;
+
+    fn reassign_user(
+        &self,
+        from: UserId,
+        to: UserId,
+    ) -> impl Future<Output = Result<usize, RepositoryError>> + Send;
 
     fn purge_expired_sessions(
         &self,

@@ -254,6 +254,42 @@ impl UserRepository for SqliteUserRepository {
             .map_err(map_err)?;
         Ok(result.rows_affected() > 0)
     }
+
+    async fn merge_users(&self, source: UserId, target: UserId) -> Result<(), RepositoryError> {
+        if source == target {
+            return Ok(());
+        }
+        let mut tx = self.pool.begin().await.map_err(map_err)?;
+        let target_exists = sqlx::query!("SELECT id FROM users WHERE id = ?", target.get())
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(map_err)?;
+        if target_exists.is_none() {
+            return Err(RepositoryError::Database(
+                "target user not found".to_string(),
+            ));
+        }
+        for query in [
+            "UPDATE user_platforms SET user_id = ? WHERE user_id = ?",
+            "UPDATE queue_entries SET user_id = ? WHERE user_id = ?",
+            "UPDATE game_orders SET user_id = ? WHERE user_id = ?",
+            "UPDATE movie_orders SET user_id = ? WHERE user_id = ?",
+            "UPDATE vip_records SET user_id = ? WHERE user_id = ?",
+        ] {
+            sqlx::query(query)
+                .bind(target.get())
+                .bind(source.get())
+                .execute(&mut *tx)
+                .await
+                .map_err(map_err)?;
+        }
+        sqlx::query!("DELETE FROM users WHERE id = ?", source.get())
+            .execute(&mut *tx)
+            .await
+            .map_err(map_err)?;
+        tx.commit().await.map_err(map_err)?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]

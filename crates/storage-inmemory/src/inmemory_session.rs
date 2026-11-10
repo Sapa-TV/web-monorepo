@@ -6,6 +6,7 @@ use chrono::{DateTime, Utc};
 use model::error::RepositoryError;
 use model::session::repository::SessionRepository;
 use model::session::{LoginTicket, LoginTicketToken, Session, SessionToken};
+use model::user::UserId;
 
 #[non_exhaustive]
 pub struct InMemorySessionRepository {
@@ -42,6 +43,18 @@ impl SessionRepository for InMemorySessionRepository {
 
     async fn delete_session(&self, token: &SessionToken) -> Result<bool, RepositoryError> {
         Ok(self.sessions.lock().remove(token.as_str()).is_some())
+    }
+
+    async fn reassign_user(&self, from: UserId, to: UserId) -> Result<usize, RepositoryError> {
+        let mut sessions = self.sessions.lock();
+        let mut changed = 0;
+        for session in sessions.values_mut() {
+            if session.user_id == from {
+                session.user_id = to;
+                changed += 1;
+            }
+        }
+        Ok(changed)
     }
 
     async fn purge_expired_sessions(&self, now: DateTime<Utc>) -> Result<usize, RepositoryError> {

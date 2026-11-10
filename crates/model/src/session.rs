@@ -3,6 +3,8 @@ pub mod repository;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+use crate::user::UserId;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
 #[non_exhaustive]
@@ -28,7 +30,8 @@ impl From<SessionToken> for String {
 #[non_exhaustive]
 pub struct Session {
     pub token: SessionToken,
-    pub twitch_user_id: String,
+    pub user_id: UserId,
+    pub twitch_user_id: Option<String>,
     pub twitch_user_name: Option<String>,
     pub created_at: DateTime<Utc>,
     pub expires_at: DateTime<Utc>,
@@ -38,13 +41,15 @@ pub struct Session {
 impl Session {
     pub fn new(
         token: SessionToken,
-        twitch_user_id: String,
+        user_id: UserId,
+        twitch_user_id: Option<String>,
         twitch_user_name: Option<String>,
         created_at: DateTime<Utc>,
         expires_at: DateTime<Utc>,
     ) -> Self {
         Self {
             token,
+            user_id,
             twitch_user_id,
             twitch_user_name,
             created_at,

@@ -1605,6 +1605,26 @@
         }
       }
     },
+    "/api/sessions/guest": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "operationId": "create_guest_session",
+        "responses": {
+          "200": {
+            "description": "Guest session, sapa_session cookie set",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/sessions/me": {
       "get": {
         "tags": [
@@ -3439,7 +3459,8 @@
       "SessionResponse": {
         "type": "object",
         "required": [
-          "twitch_user_id",
+          "user_id",
+          "is_guest",
           "is_root",
           "expires_at"
         ],
@@ -3447,17 +3468,28 @@
           "expires_at": {
             "type": "string"
           },
+          "is_guest": {
+            "type": "boolean"
+          },
           "is_root": {
             "type": "boolean"
           },
           "twitch_user_id": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "twitch_user_name": {
             "type": [
               "string",
               "null"
             ]
+          },
+          "user_id": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
           }
         }
       },
@@ -3505,6 +3537,9 @@
             "type": "string"
           },
           "app": {
+            "type": "string"
+          },
+          "param": {
             "type": "string"
           },
           "stream": {

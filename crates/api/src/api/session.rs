@@ -5,6 +5,7 @@ use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum_extra::extract::CookieJar;
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use utoipa::IntoParams;
 use utoipa::ToSchema;
@@ -67,8 +68,10 @@ pub struct CreateSessionRequest {
 #[derive(Debug, Serialize, ToSchema)]
 #[non_exhaustive]
 pub struct SessionResponse {
-    pub twitch_user_id: String,
+    pub user_id: u32,
+    pub twitch_user_id: Option<String>,
     pub twitch_user_name: Option<String>,
+    pub is_guest: bool,
     pub is_root: bool,
     pub expires_at: String,
     #[serde(skip)]
@@ -78,13 +81,19 @@ pub struct SessionResponse {
 impl From<(&Session, bool)> for SessionResponse {
     fn from((session, is_root): (&Session, bool)) -> Self {
         Self {
+            user_id: session.user_id.get(),
             twitch_user_id: session.twitch_user_id.clone(),
             twitch_user_name: session.twitch_user_name.clone(),
+            is_guest: session.twitch_user_id.is_none(),
             is_root,
             expires_at: session.expires_at.to_rfc3339(),
             _sealed: (),
         }
     }
+}
+
+fn cookie_max_age(session: &Session) -> i64 {
+    (session.expires_at - Utc::now()).num_seconds().max(0)
 }
 
 #[utoipa::path(
@@ -141,6 +150,33 @@ pub async fn twitch_login_callback(
 
 #[utoipa::path(
     post,
+    path = "/sessions/guest",
+    tag = "auth",
+    responses(
+        (status = 200, description = "Guest session, sapa_session cookie set", body = SessionResponse),
+    )
+)]
+pub async fn create_guest_session(
+    State(state): State<AppState>,
+    jar: CookieJar,
+) -> Result<(StatusCode, CookieJar, Json<SessionResponse>), ApiError> {
+    let current = jar.get(SESSION_COOKIE).map(|c| c.value().to_string());
+    let (session, is_root) = state.account_service.guest(current.as_deref()).await?;
+    let response = SessionResponse::from((&session, is_root));
+    Ok((
+        StatusCode::OK,
+        jar.add(auth_cookie(
+            SESSION_COOKIE,
+            session.token.as_str(),
+            cookie_max_age(&session),
+            state.config.cookie_secure(),
+        )),
+        Json(response),
+    ))
+}
+
+#[utoipa::path(
+    post,
     path = "/sessions",
     tag = "auth",
     request_body = CreateSessionRequest,
@@ -155,9 +191,10 @@ pub async fn create_session(
     Json(body): Json<CreateSessionRequest>,
 ) -> Result<(StatusCode, CookieJar, Json<SessionResponse>), ApiError> {
     let login_ticket = jar.get(LOGIN_COOKIE).map(|c| c.value().to_string());
+    let current = jar.get(SESSION_COOKIE).map(|c| c.value().to_string());
     let (session, is_root) = state
-        .session_service
-        .login(login_ticket.as_deref(), &body.ticket)
+        .account_service
+        .login(current.as_deref(), login_ticket.as_deref(), &body.ticket)
         .await?;
     let response = SessionResponse::from((&session, is_root));
     Ok((
@@ -165,7 +202,7 @@ pub async fn create_session(
         jar.add(auth_cookie(
             SESSION_COOKIE,
             session.token.as_str(),
-            state.config.session_ttl_secs() as i64,
+            cookie_max_age(&session),
             state.config.cookie_secure(),
         )),
         Json(response),
@@ -187,7 +224,7 @@ pub async fn get_me(
 ) -> Result<Json<SessionResponse>, Unauthorized> {
     let is_root = state
         .admin_service
-        .is_root(&session.twitch_user_id)
+        .is_root(session.twitch_user_id.as_deref().unwrap_or_default())
         .await
         .map_err(|_| Unauthorized)?;
     Ok(Json(SessionResponse::from((&session, is_root))))
@@ -237,6 +274,7 @@ pub fn public_router() -> OpenApiRouter<AppState> {
         .routes(routes!(start_twitch_login))
         .routes(routes!(twitch_login_callback))
         .routes(routes!(create_session))
+        .routes(routes!(create_guest_session))
 }
 
 pub fn session_router() -> OpenApiRouter<AppState> {

@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::Duration;
 
 use sqlx::SqlitePool;
 
@@ -23,6 +24,7 @@ use domain::roulette::machine::RouletteService;
 use domain::roulette::rarity_service::RarityService;
 use domain::roulette::slot_service::RouletteSlotService;
 use domain::rules::service::RuleService;
+use domain::session::account::AccountService;
 use domain::session::service::SessionService;
 use domain::sheets::service::SheetsService;
 use domain::user::service::UserService;
@@ -46,6 +48,13 @@ pub type AppQueueService =
 
 pub type AppSessionService = SessionService<SqliteSessionRepository, SqliteAdminRepository>;
 
+pub type AppAccountService = AccountService<
+    SqliteSessionRepository,
+    SqliteAdminRepository,
+    SqliteUserRepository,
+    SqlitePlatformRepository,
+>;
+
 pub type AppConfigStore = ConfigStore<SqliteConfigRepository>;
 
 pub type AppSheetsService = SheetsService<
@@ -64,6 +73,7 @@ pub struct AppState {
     pub user_service: Arc<UserService<SqliteUserRepository, SqlitePlatformRepository>>,
     pub admin_service: Arc<AdminService<SqliteAdminRepository>>,
     pub session_service: Arc<AppSessionService>,
+    pub account_service: Arc<AppAccountService>,
     pub queue_service: Arc<AppQueueService>,
     pub config: Arc<AppConfigStore>,
     pub event_publisher: BroadcastEventPublisher,
@@ -213,6 +223,11 @@ impl AppStateBuilder {
             Arc::clone(&admin_service),
             settings,
         ));
+        let account_service = Arc::new(AccountService::new(
+            Arc::clone(&session_service),
+            Arc::clone(&user_service),
+            Duration::from_secs(self.config.guest_session_ttl_secs()),
+        ));
         let action_service = Arc::new(ActionService::new(action_repo));
         let rule_service = Arc::new(RuleService::new(rule_repo, Arc::clone(&action_service)));
 
@@ -234,6 +249,7 @@ impl AppStateBuilder {
             user_service,
             admin_service,
             session_service,
+            account_service,
             queue_service,
             config: self.config,
             event_publisher,

@@ -132,7 +132,7 @@ pub async fn remove_admin(
     Extension(session): Extension<Session>,
     Path(params): Path<TwitchIdParam>,
 ) -> Result<StatusCode, ApiError> {
-    if session.twitch_user_id == params.twitch_id {
+    if session.twitch_user_id.as_deref() == Some(params.twitch_id.as_str()) {
         return Err(AdminServiceError::CannotRemoveSelf.into());
     }
     state.admin_service.remove(&params.twitch_id).await?;

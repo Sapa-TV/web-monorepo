@@ -136,6 +136,21 @@ where
         Ok(())
     }
 
+    pub async fn merge_users(
+        &self,
+        source: UserId,
+        target: UserId,
+    ) -> Result<(), UserServiceError> {
+        if self.user_repo.get_by_id(target).await?.is_none() {
+            return Err(UserServiceError::UserNotFound);
+        }
+        if self.user_repo.get_by_id(source).await?.is_none() {
+            return Ok(());
+        }
+        self.user_repo.merge_users(source, target).await?;
+        Ok(())
+    }
+
     pub async fn link_platform(
         &self,
         user_id: UserId,

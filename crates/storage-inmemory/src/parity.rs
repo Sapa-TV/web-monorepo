@@ -137,13 +137,15 @@ async fn parity_admin_sqlite() {
 
 // ---------------------------------------------------------------- session
 
-async fn suite_session_lifecycle<S: SessionRepository>(repo: &S) {
+async fn suite_session_lifecycle<S: SessionRepository, U: UserRepository>(repo: &S, users: &U) {
     let now = Utc::now();
+    let user_id = users.create("tester").await.unwrap().id;
 
     for (token, ttl_secs) in [("expired", -3600i64), ("edge", 0), ("fresh", 3600)] {
         let session = Session::new(
             SessionToken::new(token),
-            token.to_string(),
+            user_id,
+            Some(token.to_string()),
             None,
             now,
             now + ChronoDuration::seconds(ttl_secs),
@@ -154,14 +156,15 @@ async fn suite_session_lifecycle<S: SessionRepository>(repo: &S) {
     // upsert same token replaces data
     let fresh = Session::new(
         SessionToken::new("fresh"),
-        "42".to_string(),
+        user_id,
+        Some("42".to_string()),
         Some("n".to_string()),
         now,
         now + ChronoDuration::hours(2),
     );
     repo.save_session(&fresh).await.unwrap();
     let fetched = repo.get_session(&fresh.token).await.unwrap().unwrap();
-    assert_eq!(fetched.twitch_user_id, "42");
+    assert_eq!(fetched.twitch_user_id.as_deref(), Some("42"));
 
     // destructive ticket take
     let ticket = LoginTicket::new(
@@ -205,13 +208,21 @@ async fn suite_session_lifecycle<S: SessionRepository>(repo: &S) {
 
 #[tokio::test]
 async fn parity_session_in_memory() {
-    suite_session_lifecycle(&InMemorySessionRepository::new()).await;
+    suite_session_lifecycle(
+        &InMemorySessionRepository::new(),
+        &InMemoryUserRepository::new(),
+    )
+    .await;
 }
 
 #[tokio::test]
 async fn parity_session_sqlite() {
     let (pool, _path) = test_pool().await;
-    suite_session_lifecycle(&SqliteSessionRepository::new(pool)).await;
+    suite_session_lifecycle(
+        &SqliteSessionRepository::new(pool.clone()),
+        &SqliteUserRepository::new(pool),
+    )
+    .await;
 }
 
 // ---------------------------------------------------------------- user

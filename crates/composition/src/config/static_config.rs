@@ -9,7 +9,7 @@ use model::config::runtime::{
     QueueRuntimeConfig, RouletteRuntimeConfig, RuntimeConfig, SessionRuntimeConfig,
     SheetsRuntimeConfig,
 };
-use model::consts::server;
+use model::consts::{server, session};
 
 #[derive(Clone, Deserialize)]
 #[serde(default)]
@@ -19,6 +19,7 @@ pub struct StaticConfig {
     #[serde(deserialize_with = "deserialize_comma_string_list")]
     pub cors_origins: Option<Vec<String>>,
     pub cookie_secure: bool,
+    pub guest_session_ttl_secs: u64,
     pub twitch: Option<Arc<TwitchConfig>>,
     pub vk_video_live: Option<Arc<VkVideoLiveConfig>>,
     pub google_service_account_key_base64: Option<String>,
@@ -37,6 +38,7 @@ impl Default for StaticConfig {
             port: server::PORT,
             cors_origins: None,
             cookie_secure: true,
+            guest_session_ttl_secs: session::GUEST_TTL_SECS,
             twitch: None,
             vk_video_live: None,
             google_service_account_key_base64: None,
@@ -63,6 +65,7 @@ impl StaticConfig {
             port,
             cors_origins,
             cookie_secure,
+            guest_session_ttl_secs: session::GUEST_TTL_SECS,
             twitch,
             vk_video_live,
             google_service_account_key_base64,
@@ -101,6 +104,7 @@ impl StaticConfig {
             port: raw.port,
             cors_origins: raw.cors_origins,
             cookie_secure: raw.cookie_secure,
+            guest_session_ttl_secs: raw.guest_session_ttl_secs,
             twitch: raw.twitch,
             vk_video_live: raw.vk_video_live,
             google_service_account_key_base64: raw.google_service_account_key_base64,
@@ -139,6 +143,7 @@ struct RawConfig {
     twitch: Option<Arc<TwitchConfig>>,
     vk_video_live: Option<Arc<VkVideoLiveConfig>>,
     session_ttl_secs: u64,
+    guest_session_ttl_secs: u64,
     cookie_secure: bool,
     google_service_account_key_base64: Option<String>,
     google_spreadsheet_id: String,
@@ -160,6 +165,7 @@ impl Default for RawConfig {
             sessions_cleanup_interval_secs: runtime.session.cleanup_interval_secs,
             queue_default_limit: runtime.queue.default_limit,
             session_ttl_secs: runtime.session.ttl_secs,
+            guest_session_ttl_secs: static_cfg.guest_session_ttl_secs,
             port: static_cfg.port,
             cors_origins: static_cfg.cors_origins,
             twitch: static_cfg.twitch,

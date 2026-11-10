@@ -55,4 +55,10 @@ pub trait UserRepository: Send + Sync {
 
     fn delete_user(&self, id: UserId)
     -> impl Future<Output = Result<bool, RepositoryError>> + Send;
+
+    fn merge_users(
+        &self,
+        source: UserId,
+        target: UserId,
+    ) -> impl Future<Output = Result<(), RepositoryError>> + Send;
 }

@@ -889,6 +889,20 @@ export class Api<
    * No description
    *
    * @tags auth
+   * @name CreateGuestSession
+   * @request POST:/api/sessions/guest
+   */
+  createGuestSession = (params: RequestParams = {}) =>
+    this.request<SessionResponse, any>({
+      path: `/api/sessions/guest`,
+      method: "POST",
+      format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags auth
    * @name GetMe
    * @request GET:/api/sessions/me
    */

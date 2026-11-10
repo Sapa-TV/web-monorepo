@@ -1,7 +1,9 @@
 use std::sync::Arc;
+use std::time::Duration;
 
 use crate::admin::service::AdminService;
 use model::config::runtime::RuntimeConfig;
+use model::user::UserId;
 use storage_inmemory::inmemory_admin::InMemoryAdminRepository;
 use storage_inmemory::inmemory_session::InMemorySessionRepository;
 
@@ -53,26 +55,24 @@ async fn unknown_ticket_is_rejected() {
 }
 
 #[tokio::test]
-async fn login_ticket_creates_a_session() {
+async fn issue_session_generates_token_and_ttl() {
     let svc = test_service();
-    let ticket = svc.create_login_ticket("123", None).await.unwrap();
-    let consumed = svc
-        .consume_login_ticket(ticket.ticket.as_str())
-        .await
-        .unwrap();
-
     let session = svc
-        .issue_session(
-            &consumed.twitch_user_id,
-            consumed.twitch_user_name.as_deref(),
+        .issue_session_for(
+            UserId::new(7),
+            Some("123"),
+            None,
+            Duration::from_secs(60 * 60),
         )
         .await
         .unwrap();
-    assert_eq!(session.twitch_user_id, "123");
+    assert_eq!(session.user_id, UserId::new(7));
+    assert_eq!(session.twitch_user_id.as_deref(), Some("123"));
     assert_eq!(session.token.as_str().len(), 64);
 
     let validated = svc.validate_session(session.token.as_str()).await.unwrap();
-    assert_eq!(validated.twitch_user_id, "123");
+    assert_eq!(validated.user_id, UserId::new(7));
+    assert_eq!(validated.twitch_user_id.as_deref(), Some("123"));
 }
 
 #[tokio::test]
@@ -85,95 +85,16 @@ async fn validate_rejects_unknown_session() {
 #[tokio::test]
 async fn logout_invalidates_session() {
     let svc = test_service();
-    let session = svc.issue_session("123", None).await.unwrap();
+    let session = svc
+        .issue_session_for(UserId::new(1), Some("123"), None, Duration::from_secs(60))
+        .await
+        .unwrap();
     svc.logout(session.token.as_str()).await.unwrap();
     let err = svc
         .validate_session(session.token.as_str())
         .await
         .unwrap_err();
     assert!(matches!(err, SessionServiceError::SessionNotFound));
-}
-
-async fn login_ticket(svc: &TestService, twitch_id: &str, name: Option<&str>) -> String {
-    svc.create_login_ticket(twitch_id, name)
-        .await
-        .unwrap()
-        .ticket
-        .as_str()
-        .to_string()
-}
-
-#[tokio::test]
-async fn login_updates_display_name_for_admin() {
-    let svc = test_service();
-    svc.admin().add("123", Some("old_name")).await.unwrap();
-
-    let ticket = login_ticket(&svc, "123", Some("new_name")).await;
-    let (session, is_root) = svc
-        .login(Some(ticket.as_str()), ticket.as_str())
-        .await
-        .unwrap();
-
-    assert_eq!(session.twitch_user_id, "123");
-    assert_eq!(session.twitch_user_name.as_deref(), Some("new_name"));
-    assert!(!is_root);
-    assert_eq!(
-        svc.admin()
-            .get("123")
-            .await
-            .unwrap()
-            .unwrap()
-            .display_name
-            .as_deref(),
-        Some("new_name")
-    );
-}
-
-#[tokio::test]
-async fn login_allows_regular_user() {
-    let svc = test_service();
-
-    let ticket = login_ticket(&svc, "999", Some("viewer")).await;
-    let (session, is_root) = svc
-        .login(Some(ticket.as_str()), ticket.as_str())
-        .await
-        .unwrap();
-
-    assert_eq!(session.twitch_user_id, "999");
-    assert_eq!(session.twitch_user_name.as_deref(), Some("viewer"));
-    assert!(!is_root);
-    assert!(svc.admin().get("999").await.unwrap().is_none());
-}
-
-#[tokio::test]
-async fn login_reports_is_root_for_root_admin() {
-    let svc = test_service();
-    svc.admin().add("123", None).await.unwrap();
-    svc.admin().set_root("123", true).await.unwrap();
-
-    let ticket = login_ticket(&svc, "123", None).await;
-    let (session, is_root) = svc
-        .login(Some(ticket.as_str()), ticket.as_str())
-        .await
-        .unwrap();
-
-    assert_eq!(session.twitch_user_id, "123");
-    assert!(is_root);
-}
-
-#[tokio::test]
-async fn login_rejects_ticket_without_matching_cookie() {
-    let svc = test_service();
-    let ticket = login_ticket(&svc, "123", None).await;
-
-    let err = svc.login(None, ticket.as_str()).await.unwrap_err();
-    assert!(matches!(err, SessionServiceError::InvalidTicket));
-
-    let err = svc
-        .login(Some("stolen"), ticket.as_str())
-        .await
-        .unwrap_err();
-    assert!(matches!(err, SessionServiceError::InvalidTicket));
 }
 
 #[tokio::test]
@@ -185,10 +106,14 @@ async fn expired_sessions_are_pruned() {
         test_settings(60),
     );
 
-    let fresh = svc.issue_session("123", None).await.unwrap();
+    let fresh = svc
+        .issue_session_for(UserId::new(1), Some("123"), None, Duration::from_secs(60))
+        .await
+        .unwrap();
     let stale = Session::new(
         SessionToken::new("stale"),
-        "9".to_string(),
+        UserId::new(9),
+        Some("9".to_string()),
         None,
         Utc::now() - Duration::from_secs(3600),
         Utc::now() - Duration::from_secs(60),
@@ -210,22 +135,11 @@ async fn session_ttl_follows_live_settings() {
         settings.clone(),
     );
 
-    let first = svc.issue_session("123", None).await.unwrap();
-    let first_ttl = first
-        .expires_at
-        .signed_duration_since(first.created_at)
-        .num_seconds();
+    assert_eq!(svc.ttl(), Duration::from_secs(24 * 60 * 60));
 
     let mut next = RuntimeConfig::test_runtime("test-key");
     next.session.ttl_secs = 30;
     settings.set(next);
 
-    let second = svc.issue_session("456", None).await.unwrap();
-    let second_ttl = second
-        .expires_at
-        .signed_duration_since(second.created_at)
-        .num_seconds();
-
-    assert_eq!(first_ttl, 24 * 60 * 60);
-    assert_eq!(second_ttl, 30);
+    assert_eq!(svc.ttl(), Duration::from_secs(30));
 }

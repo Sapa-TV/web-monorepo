@@ -28,6 +28,8 @@ const apiMock = api as unknown as Record<string, Mock>;
 
 const session = {
 	expires_at: "2026-08-15T12:00:00Z",
+	user_id: 1,
+	is_guest: false,
 	is_root: false,
 	twitch_user_id: "1000",
 	twitch_user_name: "viewer",

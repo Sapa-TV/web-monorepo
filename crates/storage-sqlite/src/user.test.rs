@@ -186,6 +186,40 @@ async fn delete_platform_reports_presence_and_bumps_user() {
 }
 
 #[tokio::test]
+async fn merge_users_moves_links_and_deletes_source() {
+    let repo = repo().await;
+    let source = repo.create("guest").await.unwrap();
+    let target = repo.create("viewer").await.unwrap();
+    repo.link_platform(source.id, TWITCH, "t-1", "viewer_ttv")
+        .await
+        .unwrap();
+
+    repo.merge_users(source.id, target.id).await.unwrap();
+
+    assert!(repo.get_by_id(source.id).await.unwrap().is_none());
+    let platforms = repo.get_platforms(target.id).await.unwrap();
+    assert_eq!(platforms.len(), 1);
+    assert_eq!(platforms[0].platform_user_id, "t-1");
+    assert!(
+        repo.find_by_platform(TWITCH, "t-1")
+            .await
+            .unwrap()
+            .is_some()
+    );
+}
+
+#[tokio::test]
+async fn merge_users_missing_target_is_error() {
+    let repo = repo().await;
+    let source = repo.create("guest").await.unwrap();
+    let err = repo
+        .merge_users(source.id, UserId::new(9999))
+        .await
+        .unwrap_err();
+    assert!(matches!(err, RepositoryError::Database(_)));
+}
+
+#[tokio::test]
 async fn delete_user_cascades_links() {
     let repo = repo().await;
     let user = repo.create("Viewer").await.unwrap();

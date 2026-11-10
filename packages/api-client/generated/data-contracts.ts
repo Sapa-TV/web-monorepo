@@ -416,9 +416,15 @@ export interface RuleResponse {
 
 export interface SessionResponse {
   expires_at: string;
+  is_guest: boolean;
   is_root: boolean;
-  twitch_user_id: string;
+  twitch_user_id?: string | null;
   twitch_user_name?: string | null;
+  /**
+   * @format int32
+   * @min 0
+   */
+  user_id: number;
 }
 
 export interface SetStreamStatusRequest {
@@ -434,6 +440,7 @@ export interface SheetsStatusResponse {
 export interface SrsHookPayload {
   action: string;
   app: string;
+  param?: string;
   stream: string;
 }
 

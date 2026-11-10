@@ -193,6 +193,24 @@ impl UserRepository for InMemoryUserRepository {
         user_platforms.retain(|up| up.user_id != id);
         Ok(true)
     }
+
+    async fn merge_users(&self, source: UserId, target: UserId) -> Result<(), RepositoryError> {
+        if source == target {
+            return Ok(());
+        }
+        if !self.users.lock().iter().any(|u| u.id == target) {
+            return Err(RepositoryError::Database(
+                "target user not found".to_string(),
+            ));
+        }
+        for up in self.user_platforms.lock().iter_mut() {
+            if up.user_id == source {
+                up.user_id = target;
+            }
+        }
+        self.users.lock().retain(|u| u.id != source);
+        Ok(())
+    }
 }
 
 #[cfg(test)]

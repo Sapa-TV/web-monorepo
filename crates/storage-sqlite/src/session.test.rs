@@ -3,19 +3,26 @@ use std::time::Duration;
 use chrono::{Duration as ChronoDuration, Utc};
 
 use crate::test_pool;
+use crate::user::SqliteUserRepository;
 
 use super::*;
+use model::user::repository::UserRepository;
 
-async fn repo() -> SqliteSessionRepository {
+async fn repo() -> (SqliteSessionRepository, UserId) {
     let (pool, _path) = test_pool().await;
-    SqliteSessionRepository::new(pool)
+    let user = SqliteUserRepository::new(pool.clone())
+        .create("tester")
+        .await
+        .unwrap();
+    (SqliteSessionRepository::new(pool), user.id)
 }
 
-fn sample_session(token: &str) -> Session {
+fn sample_session(token: &str, user_id: UserId) -> Session {
     let now = Utc::now();
     Session::new(
         SessionToken::new(token),
-        "123".to_string(),
+        user_id,
+        Some("123".to_string()),
         Some("tester".to_string()),
         now,
         now + Duration::from_secs(3600),
@@ -24,13 +31,14 @@ fn sample_session(token: &str) -> Session {
 
 #[tokio::test]
 async fn session_roundtrip_and_double_delete() {
-    let repo = repo().await;
-    let session = sample_session("tok");
+    let (repo, user_id) = repo().await;
+    let session = sample_session("tok", user_id);
 
     repo.save_session(&session).await.unwrap();
 
     let fetched = repo.get_session(&session.token).await.unwrap().unwrap();
-    assert_eq!(fetched.twitch_user_id, "123");
+    assert_eq!(fetched.user_id, user_id);
+    assert_eq!(fetched.twitch_user_id.as_deref(), Some("123"));
     assert_eq!(fetched.twitch_user_name.as_deref(), Some("tester"));
 
     assert!(repo.delete_session(&session.token).await.unwrap());
@@ -40,20 +48,20 @@ async fn session_roundtrip_and_double_delete() {
 
 #[tokio::test]
 async fn save_session_upserts_same_token() {
-    let repo = repo().await;
-    let mut session = sample_session("tok");
+    let (repo, user_id) = repo().await;
+    let mut session = sample_session("tok", user_id);
 
     repo.save_session(&session).await.unwrap();
-    session.twitch_user_id = "456".to_string();
+    session.twitch_user_id = Some("456".to_string());
     repo.save_session(&session).await.unwrap();
 
     let fetched = repo.get_session(&session.token).await.unwrap().unwrap();
-    assert_eq!(fetched.twitch_user_id, "456");
+    assert_eq!(fetched.twitch_user_id.as_deref(), Some("456"));
 }
 
 #[tokio::test]
 async fn ticket_take_is_destructive() {
-    let repo = repo().await;
+    let (repo, _user_id) = repo().await;
     let now = Utc::now();
     let ticket = LoginTicket::new(
         LoginTicketToken::new("tic"),
@@ -74,7 +82,7 @@ async fn ticket_take_is_destructive() {
 
 #[tokio::test]
 async fn purge_removes_only_expired_boundary_inclusive() {
-    let repo = repo().await;
+    let (repo, user_id) = repo().await;
     let now = Utc::now();
 
     for (token, ttl) in [
@@ -84,7 +92,8 @@ async fn purge_removes_only_expired_boundary_inclusive() {
     ] {
         let session = Session::new(
             SessionToken::new(token),
-            "1".to_string(),
+            user_id,
+            Some("1".to_string()),
             None,
             now,
             now + ttl,

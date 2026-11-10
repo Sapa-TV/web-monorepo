@@ -10,9 +10,9 @@ use crate::random::generate_secret;
 use crate::session::exchange::{ExchangedToken, LoginExchange};
 use model::admin::repository::AdminRepository;
 use model::consts::session::LOGIN_TICKET_TTL;
-use model::error::RepositoryError;
 use model::session::repository::SessionRepository;
 use model::session::{LoginTicket, LoginTicketToken, Session, SessionToken};
+use model::user::UserId;
 
 #[non_exhaustive]
 pub struct SessionService<R, A>
@@ -92,22 +92,41 @@ where
         Ok(ticket)
     }
 
-    pub async fn issue_session(
+    pub fn ttl(&self) -> Duration {
+        Duration::from_secs(self.settings.read().session.ttl_secs)
+    }
+
+    pub async fn issue_session_for(
         &self,
-        twitch_user_id: &str,
+        user_id: UserId,
+        twitch_user_id: Option<&str>,
         twitch_user_name: Option<&str>,
+        ttl: Duration,
     ) -> Result<Session, SessionServiceError> {
         let now = Utc::now();
-        let ttl = Duration::from_secs(self.settings.read().session.ttl_secs);
         let session = Session::new(
             SessionToken::new(generate_secret()),
-            twitch_user_id.to_string(),
+            user_id,
+            twitch_user_id.map(str::to_string),
             twitch_user_name.map(str::to_string),
             now,
             now + ttl,
         );
         self.repo.save_session(&session).await?;
         Ok(session)
+    }
+
+    pub async fn save_session(&self, session: &Session) -> Result<(), SessionServiceError> {
+        self.repo.save_session(session).await?;
+        Ok(())
+    }
+
+    pub async fn reassign_user(
+        &self,
+        from: UserId,
+        to: UserId,
+    ) -> Result<usize, SessionServiceError> {
+        Ok(self.repo.reassign_user(from, to).await?)
     }
 
     pub async fn validate_session(&self, token: &str) -> Result<Session, SessionServiceError> {
@@ -129,60 +148,6 @@ where
             .delete_session(&SessionToken::new(token.to_string()))
             .await?;
         Ok(())
-    }
-
-    pub async fn login(
-        &self,
-        login_cookie: Option<&str>,
-        ticket: &str,
-    ) -> Result<(Session, bool), SessionServiceError> {
-        if login_cookie != Some(ticket) {
-            return Err(SessionServiceError::InvalidTicket);
-        }
-
-        let ticket = self.consume_login_ticket(ticket).await?;
-
-        let is_admin = self
-            .admin
-            .is_admin(&ticket.twitch_user_id)
-            .await
-            .map_err(|_| {
-                SessionServiceError::Repo(RepositoryError::Database("admin service".to_string()))
-            })?;
-        tracing::debug!(
-            "login: twitch_user_id={}, is_admin={}",
-            ticket.twitch_user_id,
-            is_admin
-        );
-        if is_admin {
-            self.admin
-                .update_display_name(
-                    &ticket.twitch_user_id,
-                    ticket.twitch_user_name.as_deref().unwrap_or(""),
-                )
-                .await
-                .ok();
-        }
-
-        let session = self
-            .issue_session(&ticket.twitch_user_id, ticket.twitch_user_name.as_deref())
-            .await?;
-
-        let is_root = self
-            .admin
-            .is_root(&session.twitch_user_id)
-            .await
-            .map_err(|_| {
-                SessionServiceError::Repo(RepositoryError::Database("admin service".to_string()))
-            })?;
-
-        tracing::debug!(
-            "session issued: twitch_user_id={}, is_root={}",
-            session.twitch_user_id,
-            is_root
-        );
-
-        Ok((session, is_root))
     }
 
     pub async fn prune_expired(&self) -> Result<usize, SessionServiceError> {

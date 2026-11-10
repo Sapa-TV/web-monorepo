@@ -68,6 +68,10 @@ impl<R: ConfigRepository> ConfigStore<R> {
         self.static_cfg.cookie_secure
     }
 
+    pub fn guest_session_ttl_secs(&self) -> u64 {
+        self.static_cfg.guest_session_ttl_secs
+    }
+
     pub fn admin_twitch_id(&self) -> Option<&str> {
         self.static_cfg
             .twitch
