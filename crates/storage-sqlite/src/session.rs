@@ -121,6 +121,32 @@ impl SessionRepository for SqliteSessionRepository {
         Ok(())
     }
 
+    async fn get_ticket(
+        &self,
+        ticket: &LoginTicketToken,
+    ) -> Result<Option<LoginTicket>, RepositoryError> {
+        let row = sqlx::query!(
+            r#"SELECT ticket, platform_id AS "platform_id!: i64", platform_user_id, platform_username,
+                      created_at AS "created_at: DateTime<Utc>",
+                      expires_at AS "expires_at: DateTime<Utc>"
+               FROM login_tickets WHERE ticket = ?"#,
+            ticket.as_str()
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(map_err)?;
+        Ok(row.map(|row| {
+            LoginTicket::new(
+                LoginTicketToken::new(row.ticket),
+                PlatformId::new(row.platform_id as u32),
+                row.platform_user_id,
+                row.platform_username,
+                row.created_at,
+                row.expires_at,
+            )
+        }))
+    }
+
     async fn take_ticket(
         &self,
         ticket: &LoginTicketToken,

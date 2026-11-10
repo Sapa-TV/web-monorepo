@@ -235,6 +235,17 @@ export interface LinkPlatformRequest {
   platform_username: string;
 }
 
+export interface LinkSessionRequest {
+  merge?: boolean;
+  ticket: string;
+}
+
+export interface LinkedPlatformResponse {
+  platform: string;
+  platform_user_id: string;
+  platform_username?: string | null;
+}
+
 export interface LoginCallbackResponse {
   platform: string;
   platform_user_id: string;

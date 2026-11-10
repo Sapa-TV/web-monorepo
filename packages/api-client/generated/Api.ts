@@ -24,6 +24,8 @@ import {
   ImportReportResponse,
   ImportRequest,
   IngressCredentialsResponse,
+  LinkSessionRequest,
+  LinkedPlatformResponse,
   LoginCallbackResponse,
   LoginStartResponse,
   MovieKind,
@@ -990,6 +992,22 @@ export class Api<
    * No description
    *
    * @tags auth
+   * @name LinkSession
+   * @request POST:/api/sessions/link
+   */
+  linkSession = (data: LinkSessionRequest, params: RequestParams = {}) =>
+    this.request<SessionResponse, void>({
+      path: `/api/sessions/link`,
+      method: "POST",
+      body: data,
+      type: ContentType.Json,
+      format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags auth
    * @name GetMe
    * @request GET:/api/sessions/me
    */
@@ -1011,6 +1029,20 @@ export class Api<
     this.request<void, void>({
       path: `/api/sessions/me`,
       method: "DELETE",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags auth
+   * @name GetLinks
+   * @request GET:/api/sessions/me/links
+   */
+  getLinks = (params: RequestParams = {}) =>
+    this.request<LinkedPlatformResponse[], void>({
+      path: `/api/sessions/me/links`,
+      method: "GET",
+      format: "json",
       ...params,
     });
   /**

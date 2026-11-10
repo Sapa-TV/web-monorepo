@@ -38,6 +38,11 @@ pub trait SessionRepository: Send + Sync {
         ticket: &LoginTicket,
     ) -> impl Future<Output = Result<(), RepositoryError>> + Send;
 
+    fn get_ticket(
+        &self,
+        ticket: &LoginTicketToken,
+    ) -> impl Future<Output = Result<Option<LoginTicket>, RepositoryError>> + Send;
+
     fn take_ticket(
         &self,
         ticket: &LoginTicketToken,

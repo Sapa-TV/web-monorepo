@@ -1,0 +1,86 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT ticket, platform_id AS \"platform_id!: i64\", platform_user_id, platform_username,\n                      created_at AS \"created_at: DateTime<Utc>\",\n                      expires_at AS \"expires_at: DateTime<Utc>\"\n               FROM login_tickets WHERE ticket = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "ticket",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "login_tickets",
+            "name": "ticket"
+          }
+        }
+      },
+      {
+        "name": "platform_id!: i64",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "login_tickets",
+            "name": "platform_id"
+          }
+        }
+      },
+      {
+        "name": "platform_user_id",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "login_tickets",
+            "name": "platform_user_id"
+          }
+        }
+      },
+      {
+        "name": "platform_username",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "login_tickets",
+            "name": "platform_username"
+          }
+        }
+      },
+      {
+        "name": "created_at: DateTime<Utc>",
+        "ordinal": 4,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "login_tickets",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "name": "expires_at: DateTime<Utc>",
+        "ordinal": 5,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "login_tickets",
+            "name": "expires_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "b53be6cb29ea8b55240b197897daef9d63ae3e85c2fa80fb53f1b9f2620bf86e"
+}

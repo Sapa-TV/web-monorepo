@@ -82,6 +82,23 @@ where
         Ok(ticket)
     }
 
+    pub async fn peek_login_ticket(
+        &self,
+        ticket: &str,
+    ) -> Result<LoginTicket, SessionServiceError> {
+        let Some(ticket) = self
+            .repo
+            .get_ticket(&LoginTicketToken::new(ticket.to_string()))
+            .await?
+        else {
+            return Err(SessionServiceError::InvalidTicket);
+        };
+        if Utc::now() > ticket.expires_at {
+            return Err(SessionServiceError::InvalidTicket);
+        }
+        Ok(ticket)
+    }
+
     pub async fn consume_login_ticket(
         &self,
         ticket: &str,

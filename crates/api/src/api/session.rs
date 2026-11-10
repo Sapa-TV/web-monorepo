@@ -67,6 +67,22 @@ pub struct CreateSessionRequest {
     _sealed: (),
 }
 
+#[derive(Debug, Deserialize, ToSchema)]
+#[non_exhaustive]
+pub struct LinkSessionRequest {
+    pub ticket: String,
+    #[serde(default)]
+    pub merge: bool,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+#[non_exhaustive]
+pub struct LinkedPlatformResponse {
+    pub platform: String,
+    pub platform_user_id: String,
+    pub platform_username: Option<String>,
+}
+
 #[derive(Debug, Serialize, ToSchema)]
 #[non_exhaustive]
 pub struct SessionResponse {
@@ -266,6 +282,76 @@ pub async fn create_session(
 }
 
 #[utoipa::path(
+    post,
+    path = "/sessions/link",
+    tag = "auth",
+    request_body = LinkSessionRequest,
+    responses(
+        (status = 200, description = "Provider linked to the current account", body = SessionResponse),
+        (status = 401, description = "Not authenticated"),
+        (status = 409, description = "Provider belongs to another account; retry with merge"),
+    )
+)]
+pub async fn link_session(
+    State(state): State<AppState>,
+    jar: CookieJar,
+    Json(body): Json<LinkSessionRequest>,
+) -> Result<(StatusCode, CookieJar, Json<SessionResponse>), ApiError> {
+    let login_ticket = jar.get(LOGIN_COOKIE).map(|c| c.value().to_string());
+    let current = jar.get(SESSION_COOKIE).map(|c| c.value().to_string());
+    let (session, is_root) = state
+        .account_service
+        .link(
+            current.as_deref(),
+            login_ticket.as_deref(),
+            &body.ticket,
+            body.merge,
+        )
+        .await?;
+    let response = SessionResponse::from((&session, is_root));
+    Ok((
+        StatusCode::OK,
+        jar.add(auth_cookie(
+            SESSION_COOKIE,
+            session.token.as_str(),
+            cookie_max_age(&session),
+            state.config.cookie_secure(),
+        )),
+        Json(response),
+    ))
+}
+
+#[utoipa::path(
+    get,
+    path = "/sessions/me/links",
+    tag = "auth",
+    responses(
+        (status = 200, description = "Platforms linked to the current account", body = [LinkedPlatformResponse]),
+        (status = 401, description = "Not authenticated"),
+    )
+)]
+pub async fn get_links(
+    State(state): State<AppState>,
+    Extension(session): Extension<Session>,
+) -> Result<Json<Vec<LinkedPlatformResponse>>, Unauthorized> {
+    let platforms = state
+        .user_service
+        .get_platforms(session.user_id)
+        .await
+        .map_err(|_| Unauthorized)?;
+    Ok(Json(
+        platforms
+            .into_iter()
+            .map(|platform| LinkedPlatformResponse {
+                platform: platform.platform_id.name().to_string(),
+                platform_user_id: platform.platform_user_id,
+                platform_username: Some(platform.platform_username),
+            })
+            .collect(),
+    ))
+}
+
+#[utoipa::path(
     get,
     path = "/sessions/me",
     tag = "auth",
@@ -344,7 +430,11 @@ pub fn public_router() -> OpenApiRouter<AppState> {
 }
 
 pub fn session_router() -> OpenApiRouter<AppState> {
-    OpenApiRouter::new().routes(routes!(get_me, logout))
+    OpenApiRouter::new()
+        .routes(routes!(get_me))
+        .routes(routes!(get_links))
+        .routes(routes!(link_session))
+        .routes(routes!(logout))
 }
 
 #[cfg(test)]

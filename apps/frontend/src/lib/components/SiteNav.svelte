@@ -6,6 +6,7 @@
 	import IconMoon from "~icons/lucide/moon";
 	import IconSun from "~icons/lucide/sun";
 	import IconMenu from "~icons/lucide/menu";
+	import IconUserRound from "~icons/lucide/user-round";
 	import IconX from "~icons/lucide/x";
 	import DonateToggle from "./DonateToggle.svelte";
 	import PushToggle from "./PushToggle.svelte";
@@ -75,6 +76,14 @@
 			<span class="build-sha" title="Build commit">{GIT_SHA}</span>
 			<a class="nav-link" href={resolve("games")}>Игры</a>
 			<a class="nav-link" href={resolve("movies")}>Фильмы</a>
+			<a
+				class="nav-link nav-link--icon"
+				href={resolve("account")}
+				aria-label="Аккаунт"
+				title="Аккаунт"
+			>
+				<IconUserRound aria-hidden="true" />
+			</a>
 			<PushToggle />
 			<DonateToggle />
 			<button
@@ -108,6 +117,7 @@
 	<div id="site-menu" class="site-menu" class:open={menuOpen}>
 		<a class="menu-link" href={resolve("games")}>Игры</a>
 		<a class="menu-link" href={resolve("movies")}>Фильмы</a>
+		<a class="menu-link" href={resolve("account")}>Аккаунт</a>
 		<DonateToggle />
 		<PushToggle label />
 		<span class="menu-sha" title="Build commit">{GIT_SHA}</span>
@@ -222,6 +232,12 @@
 		transition:
 			border-color 0.15s,
 			color 0.15s;
+	}
+
+	.nav-link--icon {
+		justify-content: center;
+		width: 2.25rem;
+		padding: 0;
 	}
 
 	.nav-link:hover {

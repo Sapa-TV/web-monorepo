@@ -71,6 +71,13 @@ impl SessionRepository for InMemorySessionRepository {
         Ok(())
     }
 
+    async fn get_ticket(
+        &self,
+        ticket: &LoginTicketToken,
+    ) -> Result<Option<LoginTicket>, RepositoryError> {
+        Ok(self.tickets.lock().get(ticket.as_str()).cloned())
+    }
+
     async fn take_ticket(
         &self,
         ticket: &LoginTicketToken,

@@ -162,6 +162,127 @@ async fn guest_session_creates_identity_and_reuses_it() {
 }
 
 #[tokio::test]
+async fn link_adds_new_provider_to_current_account() {
+    let state = test_state().await;
+    let app = test_router(state.clone());
+    let cookie = session_cookie(&state, "alice").await;
+    let ticket = state
+        .session_service
+        .create_login_ticket(PlatformId::VK, "vk-alice", Some("Alice VK"))
+        .await
+        .unwrap()
+        .ticket
+        .as_str()
+        .to_string();
+
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(api_path("/sessions/link"))
+                .header(header::CONTENT_TYPE, "application/json")
+                .header(header::COOKIE, format!("{cookie}; {LOGIN_COOKIE}={ticket}"))
+                .body(Body::from(format!(
+                    r#"{{"ticket":"{ticket}","merge":false}}"#
+                )))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: Value =
+        serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap()).unwrap();
+    assert_eq!(body["platform"], "vk");
+    assert_eq!(body["platform_user_id"], "vk-alice");
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri(api_path("/sessions/me/links"))
+                .header(header::COOKIE, cookie)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let links: Value =
+        serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap()).unwrap();
+    let platforms: Vec<&str> = links
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|link| link["platform"].as_str().unwrap())
+        .collect();
+    assert!(platforms.contains(&"twitch"));
+    assert!(platforms.contains(&"vk"));
+}
+
+#[tokio::test]
+async fn link_conflict_requires_merge_and_keeps_current_account() {
+    let state = test_state().await;
+    let app = test_router(state.clone());
+    let cookie = session_cookie(&state, "alice").await;
+    state
+        .user_service
+        .ensure_user_by_platform("vk", "vk-bob", "Bob")
+        .await
+        .unwrap();
+    let ticket = state
+        .session_service
+        .create_login_ticket(PlatformId::VK, "vk-bob", Some("Bob"))
+        .await
+        .unwrap()
+        .ticket
+        .as_str()
+        .to_string();
+    let request = |merge: bool| {
+        Request::builder()
+            .method("POST")
+            .uri(api_path("/sessions/link"))
+            .header(header::CONTENT_TYPE, "application/json")
+            .header(header::COOKIE, format!("{cookie}; {LOGIN_COOKIE}={ticket}"))
+            .body(Body::from(format!(
+                r#"{{"ticket":"{ticket}","merge":{merge}}}"#
+            )))
+            .unwrap()
+    };
+
+    let response = app.clone().oneshot(request(false)).await.unwrap();
+    assert_eq!(response.status(), StatusCode::CONFLICT);
+
+    let response = app.clone().oneshot(request(true)).await.unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: Value =
+        serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap()).unwrap();
+    assert_eq!(body["platform_user_id"], "vk-bob");
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri(api_path("/sessions/me/links"))
+                .header(header::COOKIE, cookie)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let links: Value =
+        serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap()).unwrap();
+    let platforms: Vec<&str> = links
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|link| link["platform"].as_str().unwrap())
+        .collect();
+    assert!(platforms.contains(&"twitch"));
+    assert!(platforms.contains(&"vk"));
+}
+
+#[tokio::test]
 async fn me_works_for_regular_user() {
     let state = test_state().await;
     let app = test_router(state.clone());

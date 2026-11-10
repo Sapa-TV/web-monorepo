@@ -174,6 +174,80 @@ where
         Ok((session, is_root))
     }
 
+    pub async fn link(
+        &self,
+        current_token: Option<&str>,
+        login_cookie: Option<&str>,
+        ticket: &str,
+        merge: bool,
+    ) -> Result<(Session, bool), SessionServiceError> {
+        let Some(token) = current_token else {
+            return Err(SessionServiceError::SessionNotFound);
+        };
+        let mut session = self.sessions.validate_session(token).await?;
+        let platforms = self.users.get_platforms(session.user_id).await?;
+        if platforms.is_empty() {
+            return self.login(Some(token), login_cookie, ticket).await;
+        }
+        if login_cookie != Some(ticket) {
+            return Err(SessionServiceError::InvalidTicket);
+        }
+        let ticket = self.sessions.peek_login_ticket(ticket).await?;
+        let platform_id = ticket.platform_id;
+        let platform_name = platform_id.name();
+        let platform_user_id = ticket.platform_user_id.as_str();
+        let platform_username = ticket.platform_username.as_deref();
+        let display_name = platform_username.unwrap_or(platform_user_id);
+
+        match self
+            .users
+            .find_by_platform(platform_name, platform_user_id)
+            .await?
+        {
+            Some(existing) if existing.id != session.user_id => {
+                if !merge {
+                    return Err(SessionServiceError::AccountConflict);
+                }
+                self.sessions
+                    .reassign_user(existing.id, session.user_id)
+                    .await?;
+                self.users.merge_users(existing.id, session.user_id).await?;
+            }
+            Some(_) => {}
+            None => {
+                self.users
+                    .link_platform(
+                        session.user_id,
+                        platform_name,
+                        platform_user_id,
+                        display_name,
+                    )
+                    .await?;
+            }
+        }
+        self.sessions
+            .consume_login_ticket(ticket.ticket.as_str())
+            .await?;
+        self.apply_identity(
+            &mut session,
+            platform_id,
+            platform_user_id,
+            platform_username,
+        );
+        self.users
+            .update_user(session.user_id, display_name)
+            .await
+            .ok();
+        self.sessions.save_session(&session).await?;
+
+        let twitch_id = self.twitch_user_id(session.user_id).await?;
+        let is_root = match twitch_id.as_deref() {
+            Some(id) => self.admin().is_root(id).await.map_err(admin_error)?,
+            None => false,
+        };
+        Ok((session, is_root))
+    }
+
     pub async fn twitch_user_id(
         &self,
         user_id: UserId,

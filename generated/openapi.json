@@ -1766,6 +1766,42 @@
         }
       }
     },
+    "/api/sessions/link": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "operationId": "link_session",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkSessionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Provider linked to the current account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated"
+          },
+          "409": {
+            "description": "Provider belongs to another account; retry with merge"
+          }
+        }
+      }
+    },
     "/api/sessions/me": {
       "get": {
         "tags": [
@@ -1796,6 +1832,32 @@
         "responses": {
           "204": {
             "description": "Session destroyed"
+          },
+          "401": {
+            "description": "Not authenticated"
+          }
+        }
+      }
+    },
+    "/api/sessions/me/links": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "operationId": "get_links",
+        "responses": {
+          "200": {
+            "description": "Platforms linked to the current account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LinkedPlatformResponse"
+                  }
+                }
+              }
+            }
           },
           "401": {
             "description": "Not authenticated"
@@ -3075,6 +3137,41 @@
           },
           "platform_username": {
             "type": "string"
+          }
+        }
+      },
+      "LinkSessionRequest": {
+        "type": "object",
+        "required": [
+          "ticket"
+        ],
+        "properties": {
+          "merge": {
+            "type": "boolean"
+          },
+          "ticket": {
+            "type": "string"
+          }
+        }
+      },
+      "LinkedPlatformResponse": {
+        "type": "object",
+        "required": [
+          "platform",
+          "platform_user_id"
+        ],
+        "properties": {
+          "platform": {
+            "type": "string"
+          },
+          "platform_user_id": {
+            "type": "string"
+          },
+          "platform_username": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },

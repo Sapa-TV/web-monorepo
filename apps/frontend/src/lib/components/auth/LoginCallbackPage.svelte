@@ -4,31 +4,34 @@
 	import { resolve } from "$app/paths";
 	import { AuthCard, Button } from "@sapa-tv-ru/ui-kit";
 	import IconTwitch from "~icons/lucide/twitch";
+	import { guardAdmin, GuardStatus } from "#lib/admin/session";
 	import {
-		completeLogin,
-		getSession,
-		guardAdmin,
-		GuardStatus,
-		startLogin,
-	} from "#lib/admin/session";
+		confirmMerge,
+		finishProvider,
+		providerLabel,
+		startProvider,
+		type Provider,
+	} from "#lib/auth/provider";
 	import { ApiError, ApiErrorKind } from "#lib/internal/api-error";
 
 	interface Props {
+		provider?: Provider;
 		/** Platforms with a working site-login flow. */
 		loginSupported?: boolean;
 	}
 
-	let { loginSupported = true }: Props = $props();
+	let { provider = "twitch", loginSupported = true }: Props = $props();
 
 	let busy = $state(true);
 	let error = $state("");
+	let pendingTicket = $state<string | null>(null);
 
 	function loginErrorText(err: ApiError): string {
 		switch (err.kind) {
 			case ApiErrorKind.BadRequest:
-				return "Ошибка запуска авторизации: платформа не настроена.";
+				return "Ссылка входа устарела. Начните вход заново.";
 			default:
-				return "Не удалось завершить вход. Попробуй ещё раз.";
+				return "Не удалось войти. Попробуйте ещё раз.";
 		}
 	}
 
@@ -44,22 +47,63 @@
 		return null;
 	}
 
-	async function go(where: "panel" | "home" | null) {
-		if (where === "panel")
+	async function go(where: "panel" | "home" | "account") {
+		if (where === "panel") {
 			await goto(resolve("admin/panel"), { replaceState: true });
-		else if (where === "home") await goto(resolve(""), { replaceState: true });
+			return;
+		}
+		if (where === "account") {
+			await goto(resolve("account"), { replaceState: true });
+			return;
+		}
+		await goto(resolve(""), { replaceState: true });
+	}
+
+	async function afterLogin() {
+		const returnToAccount = sessionStorage.getItem("auth_return") === "account";
+		sessionStorage.removeItem("auth_return");
+		if (provider === "vk" || returnToAccount) {
+			await go("account");
+			return;
+		}
+		const where = await decideWhereToGo();
+		if (!where) {
+			error = "Не удалось определить, куда перейти.";
+			busy = false;
+			return;
+		}
+		await go(where);
 	}
 
 	async function handleLogin() {
 		busy = true;
 		error = "";
-		const res = await startLogin();
+		const res = await startProvider(provider);
 		if (res.isErr()) {
 			error = loginErrorText(res.error);
 			busy = false;
 			return;
 		}
 		location.assign(res.value);
+	}
+
+	async function handleMerge() {
+		if (!pendingTicket) return;
+		busy = true;
+		error = "";
+		const res = await confirmMerge(pendingTicket);
+		if (res.isErr()) {
+			error = loginErrorText(res.error);
+			busy = false;
+			return;
+		}
+		pendingTicket = null;
+		await afterLogin();
+	}
+
+	async function handleCancelMerge() {
+		pendingTicket = null;
+		await go("account");
 	}
 
 	onMount(async () => {
@@ -76,22 +120,19 @@
 		const code = params.get("code");
 		const state = params.get("state");
 		if (code && state) {
-			const res = await completeLogin(code, state);
+			const res = await finishProvider(provider, code, state);
 			if (res.isErr()) {
 				error = loginErrorText(res.error);
 				busy = false;
 				return;
 			}
-			const where = await decideWhereToGo();
-			if (!where) {
-				error = "Не удалось определить, куда перенаправить.";
+			if (res.value.kind === "merge") {
+				pendingTicket = res.value.ticket;
 				busy = false;
 				return;
 			}
-			await go(where);
-		} else if (await getSession()) {
-			const where = await decideWhereToGo();
-			if (where) await go(where);
+			await afterLogin();
+			return;
 		}
 		busy = false;
 	});
@@ -102,13 +143,34 @@
 </svelte:head>
 
 <main class="login">
-	<AuthCard title="Sapa TV" subtitle="Вход в админ-панель" {error}>
-		{#if !loginSupported}
-			<p class="login__status">Вход через эту платформу пока недоступен.</p>
+	<AuthCard title="Sapa TV" subtitle="Вход в аккаунт" {error}>
+		{#if pendingTicket}
+			<p class="login__status">
+				Этот аккаунт {providerLabel(provider)} уже привязан к другому профилю. Объединить
+				его с текущим? Заявки и подписки переедут в текущий аккаунт.
+			</p>
+			<div class="login__actions">
+				<Button variant="primary" onclick={handleMerge} disabled={busy}>
+					Объединить
+				</Button>
+				<Button variant="cancel" onclick={handleCancelMerge} disabled={busy}>
+					Отмена
+				</Button>
+			</div>
+		{:else if !loginSupported}
+			<p class="login__status">Вход через этот сервис пока недоступен.</p>
 		{:else}
-			<Button variant="twitch" onclick={handleLogin} disabled={busy}>
-				<IconTwitch aria-hidden="true" />
-				{busy ? "Ожидание..." : "Войти через Twitch"}
+			<Button
+				variant={provider === "twitch" ? "twitch" : "default"}
+				onclick={handleLogin}
+				disabled={busy}
+			>
+				{#if provider === "twitch"}
+					<IconTwitch aria-hidden="true" />
+				{:else}
+					<span class="login__vk">VK</span>
+				{/if}
+				{busy ? "Подождите..." : `Войти через ${providerLabel(provider)}`}
 			</Button>
 		{/if}
 	</AuthCard>
@@ -123,8 +185,28 @@
 	}
 
 	.login__status {
-		margin: 0;
+		margin: 0 0 16px;
 		font-size: 13px;
+		line-height: 1.5;
 		color: var(--on-surface);
+	}
+
+	.login__actions {
+		display: flex;
+		gap: 8px;
+		justify-content: center;
+	}
+
+	.login__vk {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 18px;
+		height: 18px;
+		border-radius: 4px;
+		background: var(--vk-brand);
+		color: var(--vk-ink);
+		font-size: 9px;
+		font-weight: 800;
 	}
 </style>
