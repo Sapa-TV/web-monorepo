@@ -31,8 +31,9 @@ const session = {
 	user_id: 1,
 	is_guest: false,
 	is_root: false,
-	twitch_user_id: "1000",
-	twitch_user_name: "viewer",
+	platform: "twitch",
+	platform_user_id: "1000",
+	platform_username: "viewer",
 };
 
 describe("admin session helpers", () => {

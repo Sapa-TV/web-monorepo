@@ -3,6 +3,7 @@ use sqlx::SqlitePool;
 
 use crate::map_err;
 use model::error::RepositoryError;
+use model::platform::PlatformId;
 use model::session::repository::SessionRepository;
 use model::session::{LoginTicket, LoginTicketToken, Session, SessionToken};
 use model::user::UserId;
@@ -21,18 +22,20 @@ impl SqliteSessionRepository {
 impl SessionRepository for SqliteSessionRepository {
     async fn save_session(&self, session: &Session) -> Result<(), RepositoryError> {
         sqlx::query!(
-            "INSERT INTO sessions (token, user_id, twitch_user_id, twitch_user_name, created_at, expires_at)
-             VALUES (?, ?, ?, ?, ?, ?)
+            "INSERT INTO sessions (token, user_id, platform_id, platform_user_id, platform_username, created_at, expires_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(token) DO UPDATE SET
                 user_id = excluded.user_id,
-                twitch_user_id = excluded.twitch_user_id,
-                twitch_user_name = excluded.twitch_user_name,
+                platform_id = excluded.platform_id,
+                platform_user_id = excluded.platform_user_id,
+                platform_username = excluded.platform_username,
                 created_at = excluded.created_at,
                 expires_at = excluded.expires_at",
             session.token.as_str(),
             session.user_id.get(),
-            session.twitch_user_id,
-            session.twitch_user_name,
+            session.platform_id.map(PlatformId::get),
+            session.platform_user_id,
+            session.platform_username,
             session.created_at,
             session.expires_at
         )
@@ -44,7 +47,8 @@ impl SessionRepository for SqliteSessionRepository {
 
     async fn get_session(&self, token: &SessionToken) -> Result<Option<Session>, RepositoryError> {
         let row = sqlx::query!(
-            r#"SELECT token, user_id AS "user_id!: i64", twitch_user_id, twitch_user_name,
+            r#"SELECT token, user_id AS "user_id!: i64",
+                      platform_id AS "platform_id: i64", platform_user_id, platform_username,
                       created_at AS "created_at: DateTime<Utc>",
                       expires_at AS "expires_at: DateTime<Utc>"
                FROM sessions WHERE token = ?"#,
@@ -57,8 +61,9 @@ impl SessionRepository for SqliteSessionRepository {
             Session::new(
                 SessionToken::new(row.token),
                 UserId::new(row.user_id as u32),
-                row.twitch_user_id,
-                row.twitch_user_name,
+                row.platform_id.map(|id| PlatformId::new(id as u32)),
+                row.platform_user_id,
+                row.platform_username,
                 row.created_at,
                 row.expires_at,
             )
@@ -95,16 +100,18 @@ impl SessionRepository for SqliteSessionRepository {
 
     async fn save_ticket(&self, ticket: &LoginTicket) -> Result<(), RepositoryError> {
         sqlx::query!(
-            "INSERT INTO login_tickets (ticket, twitch_user_id, twitch_user_name, created_at, expires_at)
-             VALUES (?, ?, ?, ?, ?)
+            "INSERT INTO login_tickets (ticket, platform_id, platform_user_id, platform_username, created_at, expires_at)
+             VALUES (?, ?, ?, ?, ?, ?)
              ON CONFLICT(ticket) DO UPDATE SET
-                twitch_user_id = excluded.twitch_user_id,
-                twitch_user_name = excluded.twitch_user_name,
+                platform_id = excluded.platform_id,
+                platform_user_id = excluded.platform_user_id,
+                platform_username = excluded.platform_username,
                 created_at = excluded.created_at,
                 expires_at = excluded.expires_at",
             ticket.ticket.as_str(),
-            ticket.twitch_user_id,
-            ticket.twitch_user_name,
+            ticket.platform_id.get(),
+            ticket.platform_user_id,
+            ticket.platform_username,
             ticket.created_at,
             ticket.expires_at
         )
@@ -120,7 +127,7 @@ impl SessionRepository for SqliteSessionRepository {
     ) -> Result<Option<LoginTicket>, RepositoryError> {
         let row = sqlx::query!(
             r#"DELETE FROM login_tickets WHERE ticket = ?
-               RETURNING ticket, twitch_user_id, twitch_user_name,
+               RETURNING ticket, platform_id AS "platform_id!: i64", platform_user_id, platform_username,
                          created_at AS "created_at: DateTime<Utc>",
                          expires_at AS "expires_at: DateTime<Utc>""#,
             ticket.as_str()
@@ -131,8 +138,9 @@ impl SessionRepository for SqliteSessionRepository {
         Ok(row.map(|row| {
             LoginTicket::new(
                 LoginTicketToken::new(row.ticket),
-                row.twitch_user_id,
-                row.twitch_user_name,
+                PlatformId::new(row.platform_id as u32),
+                row.platform_user_id,
+                row.platform_username,
                 row.created_at,
                 row.expires_at,
             )

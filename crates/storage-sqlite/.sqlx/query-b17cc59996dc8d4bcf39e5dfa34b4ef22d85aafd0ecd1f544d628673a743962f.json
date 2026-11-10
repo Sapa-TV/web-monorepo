@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO login_tickets (ticket, platform_id, platform_user_id, platform_username, created_at, expires_at)\n             VALUES (?, ?, ?, ?, ?, ?)\n             ON CONFLICT(ticket) DO UPDATE SET\n                platform_id = excluded.platform_id,\n                platform_user_id = excluded.platform_user_id,\n                platform_username = excluded.platform_username,\n                created_at = excluded.created_at,\n                expires_at = excluded.expires_at",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": []
+  },
+  "hash": "b17cc59996dc8d4bcf39e5dfa34b4ef22d85aafd0ecd1f544d628673a743962f"
+}

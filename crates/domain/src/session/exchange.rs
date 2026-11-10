@@ -1,16 +1,23 @@
 use std::future::Future;
 use std::sync::Arc;
 
+use model::platform::PlatformId;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct ExchangedToken {
+    pub platform_id: PlatformId,
     pub user_id: String,
     pub user_name: Option<String>,
 }
 
 impl ExchangedToken {
-    pub fn new(user_id: String, user_name: Option<String>) -> Self {
-        Self { user_id, user_name }
+    pub fn new(platform_id: PlatformId, user_id: String, user_name: Option<String>) -> Self {
+        Self {
+            platform_id,
+            user_id,
+            user_name,
+        }
     }
 }
 

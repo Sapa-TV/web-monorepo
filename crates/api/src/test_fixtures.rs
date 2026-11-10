@@ -6,10 +6,12 @@ use axum::http::StatusCode;
 use axum::http::header;
 use tower::ServiceExt;
 
+use composition::state::AppState;
+use model::platform::PlatformId;
+
 use crate::api;
 use crate::api::auth::LOGIN_COOKIE;
 use crate::widget_api;
-use composition::state::AppState;
 
 pub use composition::test_fixtures::*;
 
@@ -25,7 +27,7 @@ pub async fn session_cookie(state: &AppState, twitch_id: &str) -> String {
     let app = test_router(state.clone());
     let ticket = state
         .session_service
-        .create_login_ticket(twitch_id, Some("viewer"))
+        .create_login_ticket(PlatformId::TWITCH, twitch_id, Some("viewer"))
         .await
         .unwrap()
         .ticket

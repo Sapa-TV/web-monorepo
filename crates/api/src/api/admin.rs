@@ -132,7 +132,12 @@ pub async fn remove_admin(
     Extension(session): Extension<Session>,
     Path(params): Path<TwitchIdParam>,
 ) -> Result<StatusCode, ApiError> {
-    if session.twitch_user_id.as_deref() == Some(params.twitch_id.as_str()) {
+    let current_twitch_id = state
+        .account_service
+        .twitch_user_id(session.user_id)
+        .await
+        .map_err(|_| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "session lookup failed"))?;
+    if current_twitch_id.as_deref() == Some(params.twitch_id.as_str()) {
         return Err(AdminServiceError::CannotRemoveSelf.into());
     }
     state.admin_service.remove(&params.twitch_id).await?;

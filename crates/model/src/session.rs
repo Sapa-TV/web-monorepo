@@ -3,6 +3,7 @@ pub mod repository;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+use crate::platform::PlatformId;
 use crate::user::UserId;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -31,8 +32,9 @@ impl From<SessionToken> for String {
 pub struct Session {
     pub token: SessionToken,
     pub user_id: UserId,
-    pub twitch_user_id: Option<String>,
-    pub twitch_user_name: Option<String>,
+    pub platform_id: Option<PlatformId>,
+    pub platform_user_id: Option<String>,
+    pub platform_username: Option<String>,
     pub created_at: DateTime<Utc>,
     pub expires_at: DateTime<Utc>,
     _sealed: (),
@@ -42,16 +44,18 @@ impl Session {
     pub fn new(
         token: SessionToken,
         user_id: UserId,
-        twitch_user_id: Option<String>,
-        twitch_user_name: Option<String>,
+        platform_id: Option<PlatformId>,
+        platform_user_id: Option<String>,
+        platform_username: Option<String>,
         created_at: DateTime<Utc>,
         expires_at: DateTime<Utc>,
     ) -> Self {
         Self {
             token,
             user_id,
-            twitch_user_id,
-            twitch_user_name,
+            platform_id,
+            platform_user_id,
+            platform_username,
             created_at,
             expires_at,
             _sealed: (),
@@ -77,8 +81,9 @@ impl LoginTicketToken {
 #[non_exhaustive]
 pub struct LoginTicket {
     pub ticket: LoginTicketToken,
-    pub twitch_user_id: String,
-    pub twitch_user_name: Option<String>,
+    pub platform_id: PlatformId,
+    pub platform_user_id: String,
+    pub platform_username: Option<String>,
     pub created_at: DateTime<Utc>,
     pub expires_at: DateTime<Utc>,
     _sealed: (),
@@ -87,15 +92,17 @@ pub struct LoginTicket {
 impl LoginTicket {
     pub fn new(
         ticket: LoginTicketToken,
-        twitch_user_id: String,
-        twitch_user_name: Option<String>,
+        platform_id: PlatformId,
+        platform_user_id: String,
+        platform_username: Option<String>,
         created_at: DateTime<Utc>,
         expires_at: DateTime<Utc>,
     ) -> Self {
         Self {
             ticket,
-            twitch_user_id,
-            twitch_user_name,
+            platform_id,
+            platform_user_id,
+            platform_username,
             created_at,
             expires_at,
             _sealed: (),

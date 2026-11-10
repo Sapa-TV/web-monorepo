@@ -22,6 +22,7 @@ fn sample_session(token: &str, user_id: UserId) -> Session {
     Session::new(
         SessionToken::new(token),
         user_id,
+        Some(PlatformId::TWITCH),
         Some("123".to_string()),
         Some("tester".to_string()),
         now,
@@ -38,8 +39,9 @@ async fn session_roundtrip_and_double_delete() {
 
     let fetched = repo.get_session(&session.token).await.unwrap().unwrap();
     assert_eq!(fetched.user_id, user_id);
-    assert_eq!(fetched.twitch_user_id.as_deref(), Some("123"));
-    assert_eq!(fetched.twitch_user_name.as_deref(), Some("tester"));
+    assert_eq!(fetched.platform_id, Some(PlatformId::TWITCH));
+    assert_eq!(fetched.platform_user_id.as_deref(), Some("123"));
+    assert_eq!(fetched.platform_username.as_deref(), Some("tester"));
 
     assert!(repo.delete_session(&session.token).await.unwrap());
     assert!(!repo.delete_session(&session.token).await.unwrap());
@@ -52,11 +54,11 @@ async fn save_session_upserts_same_token() {
     let mut session = sample_session("tok", user_id);
 
     repo.save_session(&session).await.unwrap();
-    session.twitch_user_id = Some("456".to_string());
+    session.platform_user_id = Some("456".to_string());
     repo.save_session(&session).await.unwrap();
 
     let fetched = repo.get_session(&session.token).await.unwrap().unwrap();
-    assert_eq!(fetched.twitch_user_id.as_deref(), Some("456"));
+    assert_eq!(fetched.platform_user_id.as_deref(), Some("456"));
 }
 
 #[tokio::test]
@@ -65,6 +67,7 @@ async fn ticket_take_is_destructive() {
     let now = Utc::now();
     let ticket = LoginTicket::new(
         LoginTicketToken::new("tic"),
+        PlatformId::TWITCH,
         "123".to_string(),
         None,
         now,
@@ -74,8 +77,8 @@ async fn ticket_take_is_destructive() {
     repo.save_ticket(&ticket).await.unwrap();
 
     let taken = repo.take_ticket(&ticket.ticket).await.unwrap().unwrap();
-    assert_eq!(taken.twitch_user_id, "123");
-    assert!(taken.twitch_user_name.is_none());
+    assert_eq!(taken.platform_user_id, "123");
+    assert!(taken.platform_username.is_none());
 
     assert!(repo.take_ticket(&ticket.ticket).await.unwrap().is_none());
 }
@@ -93,6 +96,7 @@ async fn purge_removes_only_expired_boundary_inclusive() {
         let session = Session::new(
             SessionToken::new(token),
             user_id,
+            Some(PlatformId::TWITCH),
             Some("1".to_string()),
             None,
             now,

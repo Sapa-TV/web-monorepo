@@ -55,7 +55,7 @@ fn harness() -> Harness {
 async fn login_ticket(account: &TestAccount, twitch_id: &str, name: Option<&str>) -> String {
     account
         .sessions()
-        .create_login_ticket(twitch_id, name)
+        .create_login_ticket(PlatformId::TWITCH, twitch_id, name)
         .await
         .unwrap()
         .ticket
@@ -68,7 +68,8 @@ async fn guest_creates_user_and_reuses_session() {
     let h = harness();
     let (session, is_root) = h.account.guest(None).await.unwrap();
     assert!(!is_root);
-    assert_eq!(session.twitch_user_id, None);
+    assert_eq!(session.platform_id, None);
+    assert_eq!(session.platform_user_id, None);
     assert!(h.users.get_by_id(session.user_id).await.unwrap().is_some());
 
     let (same, _) = h.account.guest(Some(session.token.as_str())).await.unwrap();
@@ -91,7 +92,8 @@ async fn login_links_twitch_to_guest_without_changing_token() {
     assert!(!is_root);
     assert_eq!(session.token.as_str(), guest.token.as_str());
     assert_eq!(session.user_id, guest.user_id);
-    assert_eq!(session.twitch_user_id.as_deref(), Some("123"));
+    assert_eq!(session.platform_id, Some(PlatformId::TWITCH));
+    assert_eq!(session.platform_user_id.as_deref(), Some("123"));
     let platforms = h.users.get_platforms(guest.user_id).await.unwrap();
     assert_eq!(platforms.len(), 1);
     assert_eq!(platforms[0].platform_id, PlatformId::TWITCH);

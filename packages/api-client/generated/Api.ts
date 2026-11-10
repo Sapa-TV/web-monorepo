@@ -24,6 +24,8 @@ import {
   ImportReportResponse,
   ImportRequest,
   IngressCredentialsResponse,
+  LoginCallbackResponse,
+  LoginStartResponse,
   MovieKind,
   MovieOrderResponse,
   OrderSource,
@@ -46,8 +48,6 @@ import {
   SyncReportResponse,
   TwitchAuthCallbackResponse,
   TwitchAuthStartResponse,
-  TwitchLoginCallbackResponse,
-  TwitchLoginStartResponse,
   TwitchUserResponse,
   UpdateVipRecordRequest,
   UpsertActionRequest,
@@ -787,7 +787,7 @@ export class Api<
    * @request GET:/api/auth/twitch
    */
   startTwitchLogin = (params: RequestParams = {}) =>
-    this.request<TwitchLoginStartResponse, void>({
+    this.request<LoginStartResponse, void>({
       path: `/api/auth/twitch`,
       method: "GET",
       format: "json",
@@ -807,8 +807,43 @@ export class Api<
     },
     params: RequestParams = {},
   ) =>
-    this.request<TwitchLoginCallbackResponse, void>({
+    this.request<LoginCallbackResponse, void>({
       path: `/api/auth/twitch/callback`,
+      method: "GET",
+      query: query,
+      format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags auth
+   * @name StartVkLogin
+   * @request GET:/api/auth/vk
+   */
+  startVkLogin = (params: RequestParams = {}) =>
+    this.request<LoginStartResponse, void>({
+      path: `/api/auth/vk`,
+      method: "GET",
+      format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags auth
+   * @name VkLoginCallback
+   * @request GET:/api/auth/vk/callback
+   */
+  vkLoginCallback = (
+    query: {
+      code: string;
+      state: string;
+    },
+    params: RequestParams = {},
+  ) =>
+    this.request<LoginCallbackResponse, void>({
+      path: `/api/auth/vk/callback`,
       method: "GET",
       query: query,
       format: "json",

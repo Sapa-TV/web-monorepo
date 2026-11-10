@@ -145,6 +145,7 @@ async fn suite_session_lifecycle<S: SessionRepository, U: UserRepository>(repo: 
         let session = Session::new(
             SessionToken::new(token),
             user_id,
+            Some(PlatformId::TWITCH),
             Some(token.to_string()),
             None,
             now,
@@ -157,6 +158,7 @@ async fn suite_session_lifecycle<S: SessionRepository, U: UserRepository>(repo: 
     let fresh = Session::new(
         SessionToken::new("fresh"),
         user_id,
+        Some(PlatformId::TWITCH),
         Some("42".to_string()),
         Some("n".to_string()),
         now,
@@ -164,11 +166,12 @@ async fn suite_session_lifecycle<S: SessionRepository, U: UserRepository>(repo: 
     );
     repo.save_session(&fresh).await.unwrap();
     let fetched = repo.get_session(&fresh.token).await.unwrap().unwrap();
-    assert_eq!(fetched.twitch_user_id.as_deref(), Some("42"));
+    assert_eq!(fetched.platform_user_id.as_deref(), Some("42"));
 
     // destructive ticket take
     let ticket = LoginTicket::new(
         LoginTicketToken::new("tic"),
+        PlatformId::TWITCH,
         "7".to_string(),
         None,
         now,
@@ -180,7 +183,7 @@ async fn suite_session_lifecycle<S: SessionRepository, U: UserRepository>(repo: 
             .await
             .unwrap()
             .unwrap()
-            .twitch_user_id,
+            .platform_user_id,
         "7"
     );
     assert!(repo.take_ticket(&ticket.ticket).await.unwrap().is_none());

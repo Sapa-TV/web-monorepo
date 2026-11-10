@@ -1335,7 +1335,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TwitchLoginStartResponse"
+                  "$ref": "#/components/schemas/LoginStartResponse"
                 }
               }
             }
@@ -1376,13 +1376,80 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TwitchLoginCallbackResponse"
+                  "$ref": "#/components/schemas/LoginCallbackResponse"
                 }
               }
             }
           },
           "400": {
             "description": "Twitch not configured"
+          },
+          "403": {
+            "description": "CSRF state mismatch or flow never started"
+          }
+        }
+      }
+    },
+    "/api/auth/vk": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "operationId": "start_vk_login",
+        "responses": {
+          "200": {
+            "description": "VK ID login authorization URL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginStartResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VK ID not configured"
+          }
+        }
+      }
+    },
+    "/api/auth/vk/callback": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "operationId": "vk_login_callback",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "VK identity exchanged, one-time login ticket issued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginCallbackResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VK ID not configured"
           },
           "403": {
             "description": "CSRF state mismatch or flow never started"
@@ -3011,6 +3078,42 @@
           }
         }
       },
+      "LoginCallbackResponse": {
+        "type": "object",
+        "required": [
+          "ticket",
+          "platform",
+          "platform_user_id"
+        ],
+        "properties": {
+          "platform": {
+            "type": "string"
+          },
+          "platform_user_id": {
+            "type": "string"
+          },
+          "platform_username": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ticket": {
+            "type": "string"
+          }
+        }
+      },
+      "LoginStartResponse": {
+        "type": "object",
+        "required": [
+          "auth_url"
+        ],
+        "properties": {
+          "auth_url": {
+            "type": "string"
+          }
+        }
+      },
       "MessageConditions": {
         "type": "object",
         "required": [
@@ -3623,13 +3726,19 @@
           "is_root": {
             "type": "boolean"
           },
-          "twitch_user_id": {
+          "platform": {
             "type": [
               "string",
               "null"
             ]
           },
-          "twitch_user_name": {
+          "platform_user_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "platform_username": {
             "type": [
               "string",
               "null"
@@ -3770,38 +3879,6 @@
         }
       },
       "TwitchAuthStartResponse": {
-        "type": "object",
-        "required": [
-          "auth_url"
-        ],
-        "properties": {
-          "auth_url": {
-            "type": "string"
-          }
-        }
-      },
-      "TwitchLoginCallbackResponse": {
-        "type": "object",
-        "required": [
-          "ticket",
-          "twitch_user_id"
-        ],
-        "properties": {
-          "ticket": {
-            "type": "string"
-          },
-          "twitch_user_id": {
-            "type": "string"
-          },
-          "twitch_user_name": {
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        }
-      },
-      "TwitchLoginStartResponse": {
         "type": "object",
         "required": [
           "auth_url"

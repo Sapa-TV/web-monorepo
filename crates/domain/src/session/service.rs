@@ -10,6 +10,7 @@ use crate::random::generate_secret;
 use crate::session::exchange::{ExchangedToken, LoginExchange};
 use model::admin::repository::AdminRepository;
 use model::consts::session::LOGIN_TICKET_TTL;
+use model::platform::PlatformId;
 use model::session::repository::SessionRepository;
 use model::session::{LoginTicket, LoginTicketToken, Session, SessionToken};
 use model::user::UserId;
@@ -53,21 +54,27 @@ where
             .await
             .map_err(|e| SessionServiceError::Exchange(e.to_string()))?;
         let ticket = self
-            .create_login_ticket(&exchanged.user_id, exchanged.user_name.as_deref())
+            .create_login_ticket(
+                exchanged.platform_id,
+                &exchanged.user_id,
+                exchanged.user_name.as_deref(),
+            )
             .await?;
         Ok((exchanged, ticket))
     }
 
     pub async fn create_login_ticket(
         &self,
-        twitch_user_id: &str,
-        twitch_user_name: Option<&str>,
+        platform_id: PlatformId,
+        platform_user_id: &str,
+        platform_username: Option<&str>,
     ) -> Result<LoginTicket, SessionServiceError> {
         let now = Utc::now();
         let ticket = LoginTicket::new(
             LoginTicketToken::new(generate_secret()),
-            twitch_user_id.to_string(),
-            twitch_user_name.map(str::to_string),
+            platform_id,
+            platform_user_id.to_string(),
+            platform_username.map(str::to_string),
             now,
             now + LOGIN_TICKET_TTL,
         );
@@ -99,16 +106,18 @@ where
     pub async fn issue_session_for(
         &self,
         user_id: UserId,
-        twitch_user_id: Option<&str>,
-        twitch_user_name: Option<&str>,
+        platform_id: Option<PlatformId>,
+        platform_user_id: Option<&str>,
+        platform_username: Option<&str>,
         ttl: Duration,
     ) -> Result<Session, SessionServiceError> {
         let now = Utc::now();
         let session = Session::new(
             SessionToken::new(generate_secret()),
             user_id,
-            twitch_user_id.map(str::to_string),
-            twitch_user_name.map(str::to_string),
+            platform_id,
+            platform_user_id.map(str::to_string),
+            platform_username.map(str::to_string),
             now,
             now + ttl,
         );

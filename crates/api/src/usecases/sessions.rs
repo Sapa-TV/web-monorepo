@@ -6,6 +6,8 @@ use axum::http::header;
 use serde_json::json;
 use tower::ServiceExt;
 
+use model::platform::PlatformId;
+
 use super::cookie;
 use super::get_json;
 use super::post_json;
@@ -27,7 +29,7 @@ async fn create_session(app: axum::Router, ticket: &str) -> String {
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.expect("response body");
     assert_eq!(
-        serde_json::from_slice::<serde_json::Value>(&bytes).unwrap()["twitch_user_id"],
+        serde_json::from_slice::<serde_json::Value>(&bytes).unwrap()["platform_user_id"],
         "100"
     );
     parts
@@ -59,7 +61,7 @@ async fn session_lifecycle_from_ticket_to_logout() {
     state.admin_service.seed("100").await.unwrap();
     let ticket = state
         .session_service
-        .create_login_ticket("100", Some("root"))
+        .create_login_ticket(PlatformId::TWITCH, "100", Some("root"))
         .await
         .unwrap()
         .ticket
@@ -75,7 +77,7 @@ async fn session_lifecycle_from_ticket_to_logout() {
 
     let (status, me) = get_json(app.clone(), &api_path("/sessions/me"), &session_headers).await;
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(me["twitch_user_id"], "100");
+    assert_eq!(me["platform_user_id"], "100");
 
     let (status, _) = get_json(app.clone(), &api_path("/admin"), &session_headers).await;
     assert_eq!(status, StatusCode::OK);

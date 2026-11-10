@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use crate::config::static_config::StaticConfig;
 use crate::config::twitch::TwitchConfig;
+use crate::config::vk_id::VkIdConfig;
 use crate::config::vk_video_live::VkVideoLiveConfig;
 use domain::error::SheetsError;
 use domain::random::generate_secret;
@@ -89,6 +90,10 @@ impl<R: ConfigRepository> ConfigStore<R> {
 
     pub fn twitch(&self) -> Option<&TwitchConfig> {
         self.static_cfg.twitch.as_deref()
+    }
+
+    pub fn vk_id(&self) -> Option<&VkIdConfig> {
+        self.static_cfg.vk_id.as_deref()
     }
 
     pub fn vk_video_live(&self) -> Option<&VkVideoLiveConfig> {

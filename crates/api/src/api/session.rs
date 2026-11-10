@@ -21,7 +21,7 @@ use model::session::{LoginTicket, Session};
 
 #[derive(Debug, Serialize, ToSchema)]
 #[non_exhaustive]
-pub struct TwitchLoginStartResponse {
+pub struct LoginStartResponse {
     pub auth_url: String,
     #[serde(skip)]
     _sealed: (),
@@ -38,20 +38,22 @@ pub struct TwitchLoginCallbackQuery {
 
 #[derive(Debug, Serialize, ToSchema)]
 #[non_exhaustive]
-pub struct TwitchLoginCallbackResponse {
+pub struct LoginCallbackResponse {
     pub ticket: String,
-    pub twitch_user_id: String,
-    pub twitch_user_name: Option<String>,
+    pub platform: String,
+    pub platform_user_id: String,
+    pub platform_username: Option<String>,
     #[serde(skip)]
     _sealed: (),
 }
 
-impl From<(&ExchangedToken, &LoginTicket)> for TwitchLoginCallbackResponse {
+impl From<(&ExchangedToken, &LoginTicket)> for LoginCallbackResponse {
     fn from((exchanged, ticket): (&ExchangedToken, &LoginTicket)) -> Self {
         Self {
             ticket: ticket.ticket.as_str().to_string(),
-            twitch_user_id: exchanged.user_id.clone(),
-            twitch_user_name: exchanged.user_name.clone(),
+            platform: exchanged.platform_id.name().to_string(),
+            platform_user_id: exchanged.user_id.clone(),
+            platform_username: exchanged.user_name.clone(),
             _sealed: (),
         }
     }
@@ -69,8 +71,9 @@ pub struct CreateSessionRequest {
 #[non_exhaustive]
 pub struct SessionResponse {
     pub user_id: u32,
-    pub twitch_user_id: Option<String>,
-    pub twitch_user_name: Option<String>,
+    pub platform: Option<String>,
+    pub platform_user_id: Option<String>,
+    pub platform_username: Option<String>,
     pub is_guest: bool,
     pub is_root: bool,
     pub expires_at: String,
@@ -82,9 +85,10 @@ impl From<(&Session, bool)> for SessionResponse {
     fn from((session, is_root): (&Session, bool)) -> Self {
         Self {
             user_id: session.user_id.get(),
-            twitch_user_id: session.twitch_user_id.clone(),
-            twitch_user_name: session.twitch_user_name.clone(),
-            is_guest: session.twitch_user_id.is_none(),
+            platform: session.platform_id.map(|id| id.name().to_string()),
+            platform_user_id: session.platform_user_id.clone(),
+            platform_username: session.platform_username.clone(),
+            is_guest: session.platform_user_id.is_none(),
             is_root,
             expires_at: session.expires_at.to_rfc3339(),
             _sealed: (),
@@ -101,15 +105,34 @@ fn cookie_max_age(session: &Session) -> i64 {
     path = "/auth/twitch",
     tag = "auth",
     responses(
-        (status = 200, description = "Twitch login authorization URL", body = TwitchLoginStartResponse),
+        (status = 200, description = "Twitch login authorization URL", body = LoginStartResponse),
         (status = 400, description = "Twitch not configured"),
     )
 )]
 pub async fn start_twitch_login(
     State(state): State<AppState>,
-) -> Result<Json<TwitchLoginStartResponse>, StatusCode> {
+) -> Result<Json<LoginStartResponse>, StatusCode> {
     let auth_url = state.admin_auth.start_login()?;
-    Ok(Json(TwitchLoginStartResponse {
+    Ok(Json(LoginStartResponse {
+        auth_url,
+        _sealed: (),
+    }))
+}
+
+#[utoipa::path(
+    get,
+    path = "/auth/vk",
+    tag = "auth",
+    responses(
+        (status = 200, description = "VK ID login authorization URL", body = LoginStartResponse),
+        (status = 400, description = "VK ID not configured"),
+    )
+)]
+pub async fn start_vk_login(
+    State(state): State<AppState>,
+) -> Result<Json<LoginStartResponse>, StatusCode> {
+    let auth_url = state.vk_id_auth.start_login()?;
+    Ok(Json(LoginStartResponse {
         auth_url,
         _sealed: (),
     }))
@@ -121,7 +144,7 @@ pub async fn start_twitch_login(
     tag = "auth",
     params(TwitchLoginCallbackQuery),
     responses(
-        (status = 200, description = "Identity exchanged, one-time login ticket issued", body = TwitchLoginCallbackResponse),
+        (status = 200, description = "Identity exchanged, one-time login ticket issued", body = LoginCallbackResponse),
         (status = 400, description = "Twitch not configured"),
         (status = 403, description = "CSRF state mismatch or flow never started"),
     )
@@ -130,12 +153,45 @@ pub async fn twitch_login_callback(
     State(state): State<AppState>,
     jar: CookieJar,
     Query(query): Query<TwitchLoginCallbackQuery>,
-) -> Result<(StatusCode, CookieJar, Json<TwitchLoginCallbackResponse>), ApiError> {
+) -> Result<(StatusCode, CookieJar, Json<LoginCallbackResponse>), ApiError> {
     let (exchanged, ticket) = state
         .session_service
         .exchange_login(&state.admin_auth, &query.code, &query.state)
         .await?;
-    let response = TwitchLoginCallbackResponse::from((&exchanged, &ticket));
+    let response = LoginCallbackResponse::from((&exchanged, &ticket));
+    Ok((
+        StatusCode::OK,
+        jar.add(auth_cookie(
+            LOGIN_COOKIE,
+            &response.ticket,
+            session::LOGIN_TICKET_TTL.as_secs() as i64,
+            state.config.cookie_secure(),
+        )),
+        Json(response),
+    ))
+}
+
+#[utoipa::path(
+    get,
+    path = "/auth/vk/callback",
+    tag = "auth",
+    params(TwitchLoginCallbackQuery),
+    responses(
+        (status = 200, description = "VK identity exchanged, one-time login ticket issued", body = LoginCallbackResponse),
+        (status = 400, description = "VK ID not configured"),
+        (status = 403, description = "CSRF state mismatch or flow never started"),
+    )
+)]
+pub async fn vk_login_callback(
+    State(state): State<AppState>,
+    jar: CookieJar,
+    Query(query): Query<TwitchLoginCallbackQuery>,
+) -> Result<(StatusCode, CookieJar, Json<LoginCallbackResponse>), ApiError> {
+    let (exchanged, ticket) = state
+        .session_service
+        .exchange_login(&state.vk_id_auth, &query.code, &query.state)
+        .await?;
+    let response = LoginCallbackResponse::from((&exchanged, &ticket));
     Ok((
         StatusCode::OK,
         jar.add(auth_cookie(
@@ -222,11 +278,19 @@ pub async fn get_me(
     State(state): State<AppState>,
     Extension(session): Extension<Session>,
 ) -> Result<Json<SessionResponse>, Unauthorized> {
-    let is_root = state
-        .admin_service
-        .is_root(session.twitch_user_id.as_deref().unwrap_or_default())
+    let twitch_id = state
+        .account_service
+        .twitch_user_id(session.user_id)
         .await
         .map_err(|_| Unauthorized)?;
+    let is_root = match twitch_id {
+        Some(id) => state
+            .admin_service
+            .is_root(&id)
+            .await
+            .map_err(|_| Unauthorized)?,
+        None => false,
+    };
     Ok(Json(SessionResponse::from((&session, is_root))))
 }
 
@@ -273,6 +337,8 @@ pub fn public_router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
         .routes(routes!(start_twitch_login))
         .routes(routes!(twitch_login_callback))
+        .routes(routes!(start_vk_login))
+        .routes(routes!(vk_login_callback))
         .routes(routes!(create_session))
         .routes(routes!(create_guest_session))
 }

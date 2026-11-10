@@ -1,49 +1,49 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT token, user_id AS \"user_id!: i64\", twitch_user_id, twitch_user_name,\n                      created_at AS \"created_at: DateTime<Utc>\",\n                      expires_at AS \"expires_at: DateTime<Utc>\"\n               FROM sessions WHERE token = ?",
+  "query": "DELETE FROM login_tickets WHERE ticket = ?\n               RETURNING ticket, platform_id AS \"platform_id!: i64\", platform_user_id, platform_username,\n                         created_at AS \"created_at: DateTime<Utc>\",\n                         expires_at AS \"expires_at: DateTime<Utc>\"",
   "describe": {
     "columns": [
       {
-        "name": "token",
+        "name": "ticket",
         "ordinal": 0,
         "type_info": "Text",
         "origin": {
           "Table": {
-            "table": "sessions",
-            "name": "token"
+            "table": "login_tickets",
+            "name": "ticket"
           }
         }
       },
       {
-        "name": "user_id!: i64",
+        "name": "platform_id!: i64",
         "ordinal": 1,
         "type_info": "Integer",
         "origin": {
           "Table": {
-            "table": "sessions",
-            "name": "user_id"
+            "table": "login_tickets",
+            "name": "platform_id"
           }
         }
       },
       {
-        "name": "twitch_user_id",
+        "name": "platform_user_id",
         "ordinal": 2,
         "type_info": "Text",
         "origin": {
           "Table": {
-            "table": "sessions",
-            "name": "twitch_user_id"
+            "table": "login_tickets",
+            "name": "platform_user_id"
           }
         }
       },
       {
-        "name": "twitch_user_name",
+        "name": "platform_username",
         "ordinal": 3,
         "type_info": "Text",
         "origin": {
           "Table": {
-            "table": "sessions",
-            "name": "twitch_user_name"
+            "table": "login_tickets",
+            "name": "platform_username"
           }
         }
       },
@@ -53,7 +53,7 @@
         "type_info": "Text",
         "origin": {
           "Table": {
-            "table": "sessions",
+            "table": "login_tickets",
             "name": "created_at"
           }
         }
@@ -64,7 +64,7 @@
         "type_info": "Text",
         "origin": {
           "Table": {
-            "table": "sessions",
+            "table": "login_tickets",
             "name": "expires_at"
           }
         }
@@ -76,11 +76,11 @@
     "nullable": [
       false,
       false,
-      true,
+      false,
       true,
       false,
       false
     ]
   },
-  "hash": "f8b1d0d8b93d75ed3fa65795882dc0da8b0606120f470689ef6fb88683c1e4e8"
+  "hash": "24f96fc7c3ec56e506b609a4ee19692da461b1f7ceba7700925ab3a63cae577d"
 }

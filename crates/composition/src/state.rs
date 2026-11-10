@@ -5,6 +5,7 @@ use sqlx::SqlitePool;
 
 use crate::admin::auth::AdminAuthService;
 use crate::admin::vk_auth::VkVideoLiveAdminAuthService;
+use crate::admin::vk_id_auth::VkIdAuthService;
 use crate::config::store::ConfigStore;
 use crate::ingress::twitch_auth::TwitchAuthService;
 use crate::ingress::vk_video_live_auth::VkVideoLiveAuthService;
@@ -87,6 +88,7 @@ pub struct AppState {
     pub ingress: Arc<EventIngress>,
     pub presence: Arc<Presence>,
     pub admin_auth: Arc<AdminAuthService<SqlitePlatformCredentialRepository>>,
+    pub vk_id_auth: Arc<VkIdAuthService>,
     pub vk_admin_auth: Arc<VkVideoLiveAdminAuthService<SqlitePlatformCredentialRepository>>,
     pub credentials: Arc<PlatformCredentialService<SqlitePlatformCredentialRepository>>,
     pub rule_service: Arc<RuleService<SqliteRuleRepository, SqliteActionRepository>>,
@@ -153,6 +155,10 @@ impl AppStateBuilder {
         let admin_auth = Arc::new(AdminAuthService::new(
             self.config.twitch().map(|twitch| Arc::new(twitch.clone())),
             Arc::clone(&credentials),
+        ));
+
+        let vk_id_auth = Arc::new(VkIdAuthService::new(
+            self.config.vk_id().map(|vk| Arc::new(vk.clone())),
         ));
 
         let vk_config = self.config.vk_video_live().map(|vk| Arc::new(vk.clone()));
@@ -271,6 +277,7 @@ impl AppStateBuilder {
             ingress,
             presence: Presence::new(),
             admin_auth,
+            vk_id_auth,
             vk_admin_auth,
             credentials,
             rule_service,

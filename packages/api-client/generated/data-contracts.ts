@@ -235,6 +235,17 @@ export interface LinkPlatformRequest {
   platform_username: string;
 }
 
+export interface LoginCallbackResponse {
+  platform: string;
+  platform_user_id: string;
+  platform_username?: string | null;
+  ticket: string;
+}
+
+export interface LoginStartResponse {
+  auth_url: string;
+}
+
 export interface MessageConditions {
   matcher: MessageMatcher;
   pattern?: string | null;
@@ -446,8 +457,9 @@ export interface SessionResponse {
   expires_at: string;
   is_guest: boolean;
   is_root: boolean;
-  twitch_user_id?: string | null;
-  twitch_user_name?: string | null;
+  platform?: string | null;
+  platform_user_id?: string | null;
+  platform_username?: string | null;
   /**
    * @format int32
    * @min 0
@@ -507,16 +519,6 @@ export interface TwitchAuthCallbackResponse {
 }
 
 export interface TwitchAuthStartResponse {
-  auth_url: string;
-}
-
-export interface TwitchLoginCallbackResponse {
-  ticket: string;
-  twitch_user_id: string;
-  twitch_user_name?: string | null;
-}
-
-export interface TwitchLoginStartResponse {
   auth_url: string;
 }
 

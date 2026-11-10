@@ -198,7 +198,7 @@ fn exchanged_of(token: &twitch_oauth2::UserToken) -> ExchangedToken {
     let user_id = token.user_id().map(|u| u.to_string()).unwrap_or_default();
     let user_name = token.login().map(|u| u.to_string());
     debug!("twitch oauth exchanged: twitch_user_id={user_id}, twitch_user_name={user_name:?}");
-    ExchangedToken::new(user_id, user_name)
+    ExchangedToken::new(PlatformId::TWITCH, user_id, user_name)
 }
 
 #[cfg(test)]

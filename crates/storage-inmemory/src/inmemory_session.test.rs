@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use super::*;
+use model::platform::PlatformId;
 
 #[tokio::test]
 async fn session_roundtrip() {
@@ -8,6 +9,7 @@ async fn session_roundtrip() {
     let session = Session::new(
         SessionToken::new("tok"),
         UserId::new(1),
+        Some(PlatformId::TWITCH),
         Some("123".to_string()),
         Some("tester".to_string()),
         Utc::now(),
@@ -17,7 +19,7 @@ async fn session_roundtrip() {
 
     let fetched = repo.get_session(&session.token).await.unwrap().unwrap();
     assert_eq!(fetched.user_id, UserId::new(1));
-    assert_eq!(fetched.twitch_user_id.as_deref(), Some("123"));
+    assert_eq!(fetched.platform_user_id.as_deref(), Some("123"));
 
     assert!(repo.delete_session(&session.token).await.unwrap());
     assert!(!repo.delete_session(&session.token).await.unwrap());
@@ -31,6 +33,7 @@ async fn reassign_moves_every_session_of_user() {
         let session = Session::new(
             SessionToken::new(token),
             UserId::new(1),
+            None,
             None,
             None,
             now,
@@ -60,6 +63,7 @@ async fn ticket_take_is_destructive() {
     let repo = InMemorySessionRepository::new();
     let ticket = LoginTicket::new(
         LoginTicketToken::new("tic"),
+        PlatformId::TWITCH,
         "123".to_string(),
         None,
         Utc::now(),
@@ -68,7 +72,7 @@ async fn ticket_take_is_destructive() {
     repo.save_ticket(&ticket).await.unwrap();
 
     let taken = repo.take_ticket(&ticket.ticket).await.unwrap().unwrap();
-    assert_eq!(taken.twitch_user_id, "123");
+    assert_eq!(taken.platform_user_id, "123");
     assert!(repo.take_ticket(&ticket.ticket).await.unwrap().is_none());
 }
 
@@ -80,6 +84,7 @@ async fn purge_removes_only_expired() {
     let stale = Session::new(
         SessionToken::new("stale"),
         UserId::new(1),
+        Some(PlatformId::TWITCH),
         Some("1".to_string()),
         None,
         now,
@@ -88,6 +93,7 @@ async fn purge_removes_only_expired() {
     let fresh = Session::new(
         SessionToken::new("fresh"),
         UserId::new(2),
+        Some(PlatformId::TWITCH),
         Some("2".to_string()),
         None,
         now,

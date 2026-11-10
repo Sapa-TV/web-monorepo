@@ -16,9 +16,10 @@ jsonwebtoken = { workspace = true }
 model = { workspace = true }
 percent-encoding = { workspace = true }
 rand = { workspace = true, features = ["thread_rng"] }
-reqwest = { workspace = true, features = ["json"] }
+reqwest = { workspace = true, features = ["form", "json"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
+sha2 = { workspace = true }
 sqlx = { workspace = true, features = ["sqlite"] }
 storage-inmemory = { workspace = true, optional = true }
 storage-sqlite = { workspace = true }

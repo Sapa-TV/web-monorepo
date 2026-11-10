@@ -7,9 +7,10 @@ use crate::session::service::SessionService;
 use crate::user::service::UserService;
 use model::admin::repository::AdminRepository;
 use model::error::RepositoryError;
-use model::platform::PlatformRepository;
+use model::platform::{PlatformId, PlatformRepository};
 use model::session::Session;
 use model::session::repository::SessionRepository;
+use model::user::UserId;
 use model::user::repository::UserRepository;
 
 #[non_exhaustive]
@@ -64,7 +65,7 @@ where
         let user = self.users.create("guest").await?;
         let session = self
             .sessions
-            .issue_session_for(user.id, None, None, self.guest_ttl)
+            .issue_session_for(user.id, None, None, None, self.guest_ttl)
             .await?;
         Ok((session, false))
     }
@@ -79,15 +80,20 @@ where
             return Err(SessionServiceError::InvalidTicket);
         }
         let ticket = self.sessions.consume_login_ticket(ticket).await?;
-        let twitch_id = ticket.twitch_user_id.as_str();
-        let twitch_name = ticket.twitch_user_name.as_deref();
-        let display_name = twitch_name.unwrap_or(twitch_id);
+        let platform_id = ticket.platform_id;
+        let platform_name = platform_id.name();
+        let platform_user_id = ticket.platform_user_id.as_str();
+        let platform_username = ticket.platform_username.as_deref();
+        let display_name = platform_username.unwrap_or(platform_user_id);
 
         let current = match current_token {
             Some(token) => self.sessions.validate_session(token).await.ok(),
             None => None,
         };
-        let existing = self.users.find_by_platform("twitch", twitch_id).await?;
+        let existing = self
+            .users
+            .find_by_platform(platform_name, platform_user_id)
+            .await?;
 
         let target = match existing {
             Some(user) => user.id,
@@ -97,7 +103,7 @@ where
                     None => self.users.create(display_name).await?.id,
                 };
                 self.users
-                    .link_platform(user_id, "twitch", twitch_id, display_name)
+                    .link_platform(user_id, platform_name, platform_user_id, display_name)
                     .await?;
                 user_id
             }
@@ -118,39 +124,82 @@ where
                 self.sessions.reassign_user(session.user_id, target).await?;
                 self.users.merge_users(session.user_id, target).await?;
                 session.user_id = target;
-                session.twitch_user_id = Some(twitch_id.to_string());
-                session.twitch_user_name = twitch_name.map(str::to_string);
+                self.apply_identity(
+                    &mut session,
+                    platform_id,
+                    platform_user_id,
+                    platform_username,
+                );
                 self.sessions.save_session(&session).await?;
                 session
             }
             Some(mut session) => {
-                session.user_id = target;
-                session.twitch_user_id = Some(twitch_id.to_string());
-                session.twitch_user_name = twitch_name.map(str::to_string);
+                self.apply_identity(
+                    &mut session,
+                    platform_id,
+                    platform_user_id,
+                    platform_username,
+                );
                 self.sessions.save_session(&session).await?;
                 session
             }
             None => {
                 self.sessions
-                    .issue_session_for(target, Some(twitch_id), twitch_name, self.sessions.ttl())
+                    .issue_session_for(
+                        target,
+                        Some(platform_id),
+                        Some(platform_user_id),
+                        platform_username,
+                        self.sessions.ttl(),
+                    )
                     .await?
             }
         };
 
-        let is_admin = self.admin().is_admin(twitch_id).await.map_err(|_| {
-            SessionServiceError::Repo(RepositoryError::Database("admin service".into()))
-        })?;
-        if is_admin {
+        let twitch_id = self.twitch_user_id(target).await?;
+        let is_admin = match twitch_id.as_deref() {
+            Some(id) => self.admin().is_admin(id).await.map_err(admin_error)?,
+            None => false,
+        };
+        if is_admin && platform_id == PlatformId::TWITCH {
             self.admin()
-                .update_display_name(twitch_id, display_name)
+                .update_display_name(platform_user_id, display_name)
                 .await
                 .ok();
         }
-        let is_root = self.admin().is_root(twitch_id).await.map_err(|_| {
-            SessionServiceError::Repo(RepositoryError::Database("admin service".into()))
-        })?;
+        let is_root = match twitch_id.as_deref() {
+            Some(id) => self.admin().is_root(id).await.map_err(admin_error)?,
+            None => false,
+        };
         Ok((session, is_root))
     }
+
+    pub async fn twitch_user_id(
+        &self,
+        user_id: UserId,
+    ) -> Result<Option<String>, SessionServiceError> {
+        let platforms = self.users.get_platforms(user_id).await?;
+        Ok(platforms
+            .into_iter()
+            .find(|platform| platform.platform_id == PlatformId::TWITCH)
+            .map(|platform| platform.platform_user_id))
+    }
+
+    fn apply_identity(
+        &self,
+        session: &mut Session,
+        platform_id: PlatformId,
+        platform_user_id: &str,
+        platform_username: Option<&str>,
+    ) {
+        session.platform_id = Some(platform_id);
+        session.platform_user_id = Some(platform_user_id.to_string());
+        session.platform_username = platform_username.map(str::to_string);
+    }
+}
+
+fn admin_error<E>(_: E) -> SessionServiceError {
+    SessionServiceError::Repo(RepositoryError::Database("admin service".into()))
 }
 
 #[cfg(test)]

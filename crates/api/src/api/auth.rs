@@ -114,14 +114,22 @@ pub async fn require_admin(
     let Some(session) = req.extensions().get::<Session>().cloned() else {
         return Err(StatusCode::UNAUTHORIZED);
     };
-    let is_admin = state
-        .admin_service
-        .is_admin(session.twitch_user_id.as_deref().unwrap_or_default())
+    let twitch_id = state
+        .account_service
+        .twitch_user_id(session.user_id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let is_admin = match twitch_id.as_deref() {
+        Some(id) => state
+            .admin_service
+            .is_admin(id)
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+        None => false,
+    };
     tracing::debug!(
-        "require_admin: twitch_user_id={}, is_admin={}",
-        session.twitch_user_id.as_deref().unwrap_or_default(),
+        "require_admin: twitch_user_id={:?}, is_admin={}",
+        twitch_id,
         is_admin
     );
     if !is_admin {
@@ -142,14 +150,22 @@ pub async fn require_root(
     let Some(session) = req.extensions().get::<Session>().cloned() else {
         return Err(StatusCode::UNAUTHORIZED);
     };
-    let is_root = state
-        .admin_service
-        .is_root(session.twitch_user_id.as_deref().unwrap_or_default())
+    let twitch_id = state
+        .account_service
+        .twitch_user_id(session.user_id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let is_root = match twitch_id.as_deref() {
+        Some(id) => state
+            .admin_service
+            .is_root(id)
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+        None => false,
+    };
     tracing::debug!(
-        "require_root: twitch_user_id={}, is_root={}",
-        session.twitch_user_id.as_deref().unwrap_or_default(),
+        "require_root: twitch_user_id={:?}, is_root={}",
+        twitch_id,
         is_root
     );
     if !is_root {

@@ -29,7 +29,7 @@ fn test_service() -> TestService {
 async fn ticket_is_one_time_use() {
     let svc = test_service();
     let ticket = svc
-        .create_login_ticket("123", Some("tester"))
+        .create_login_ticket(PlatformId::TWITCH, "123", Some("tester"))
         .await
         .unwrap();
 
@@ -37,8 +37,8 @@ async fn ticket_is_one_time_use() {
         .consume_login_ticket(ticket.ticket.as_str())
         .await
         .unwrap();
-    assert_eq!(consumed.twitch_user_id, "123");
-    assert_eq!(consumed.twitch_user_name.as_deref(), Some("tester"));
+    assert_eq!(consumed.platform_user_id, "123");
+    assert_eq!(consumed.platform_username.as_deref(), Some("tester"));
 
     let err = svc
         .consume_login_ticket(ticket.ticket.as_str())
@@ -60,6 +60,7 @@ async fn issue_session_generates_token_and_ttl() {
     let session = svc
         .issue_session_for(
             UserId::new(7),
+            Some(PlatformId::TWITCH),
             Some("123"),
             None,
             Duration::from_secs(60 * 60),
@@ -67,12 +68,12 @@ async fn issue_session_generates_token_and_ttl() {
         .await
         .unwrap();
     assert_eq!(session.user_id, UserId::new(7));
-    assert_eq!(session.twitch_user_id.as_deref(), Some("123"));
+    assert_eq!(session.platform_user_id.as_deref(), Some("123"));
     assert_eq!(session.token.as_str().len(), 64);
 
     let validated = svc.validate_session(session.token.as_str()).await.unwrap();
     assert_eq!(validated.user_id, UserId::new(7));
-    assert_eq!(validated.twitch_user_id.as_deref(), Some("123"));
+    assert_eq!(validated.platform_user_id.as_deref(), Some("123"));
 }
 
 #[tokio::test]
@@ -86,7 +87,13 @@ async fn validate_rejects_unknown_session() {
 async fn logout_invalidates_session() {
     let svc = test_service();
     let session = svc
-        .issue_session_for(UserId::new(1), Some("123"), None, Duration::from_secs(60))
+        .issue_session_for(
+            UserId::new(1),
+            Some(PlatformId::TWITCH),
+            Some("123"),
+            None,
+            Duration::from_secs(60),
+        )
         .await
         .unwrap();
     svc.logout(session.token.as_str()).await.unwrap();
@@ -107,12 +114,19 @@ async fn expired_sessions_are_pruned() {
     );
 
     let fresh = svc
-        .issue_session_for(UserId::new(1), Some("123"), None, Duration::from_secs(60))
+        .issue_session_for(
+            UserId::new(1),
+            Some(PlatformId::TWITCH),
+            Some("123"),
+            None,
+            Duration::from_secs(60),
+        )
         .await
         .unwrap();
     let stale = Session::new(
         SessionToken::new("stale"),
         UserId::new(9),
+        Some(PlatformId::TWITCH),
         Some("9".to_string()),
         None,
         Utc::now() - Duration::from_secs(3600),

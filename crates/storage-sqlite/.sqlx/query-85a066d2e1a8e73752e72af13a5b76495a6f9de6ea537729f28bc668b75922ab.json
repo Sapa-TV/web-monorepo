@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO sessions (token, user_id, platform_id, platform_user_id, platform_username, created_at, expires_at)\n             VALUES (?, ?, ?, ?, ?, ?, ?)\n             ON CONFLICT(token) DO UPDATE SET\n                user_id = excluded.user_id,\n                platform_id = excluded.platform_id,\n                platform_user_id = excluded.platform_user_id,\n                platform_username = excluded.platform_username,\n                created_at = excluded.created_at,\n                expires_at = excluded.expires_at",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 7
+    },
+    "nullable": []
+  },
+  "hash": "85a066d2e1a8e73752e72af13a5b76495a6f9de6ea537729f28bc668b75922ab"
+}

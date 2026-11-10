@@ -58,6 +58,7 @@
 		"sqlx": ["storage-sqlite", "composition"],
 		"axum": ["api", "backend"],
 		"reqwest": ["composition"],
+		"sha2": ["composition"],
 		"tokio-tungstenite": ["composition", "vk-video-live"],
 		"twitch_api": ["composition", "api"],
 		"web-push-native": ["composition"]

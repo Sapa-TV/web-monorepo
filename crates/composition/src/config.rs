@@ -1,6 +1,7 @@
 pub mod static_config;
 pub mod store;
 pub mod twitch;
+pub mod vk_id;
 pub mod vk_video_live;
 
 use model::config::ConfigError;
@@ -9,6 +10,7 @@ pub use model::config::{ConfigRepository, RuntimeConfig, repository, runtime};
 pub use static_config::StaticConfig;
 pub use store::{ConfigStore, SharedSettings};
 pub use twitch::TwitchConfig;
+pub use vk_id::VkIdConfig;
 pub use vk_video_live::VkVideoLiveConfig;
 
 pub(crate) const DEFAULT_CSRF_TTL_SECS: u64 = 600;

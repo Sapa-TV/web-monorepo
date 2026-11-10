@@ -6,14 +6,16 @@ use axum::response::Response;
 use serde_json::Value;
 use tower::ServiceExt;
 
+use composition::state::AppState;
+use model::platform::PlatformId;
+
 use crate::api::auth::{LOGIN_COOKIE, SESSION_COOKIE};
 use crate::test_fixtures::{api_path, test_router, test_state};
-use composition::state::AppState;
 
 async fn login_ticket(state: &AppState, twitch_id: &str) -> String {
     state
         .session_service
-        .create_login_ticket(twitch_id, Some("viewer"))
+        .create_login_ticket(PlatformId::TWITCH, twitch_id, Some("viewer"))
         .await
         .unwrap()
         .ticket
@@ -87,7 +89,7 @@ async fn me_requires_session() {
     assert_eq!(response.status(), StatusCode::OK);
     let body: Value =
         serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap()).unwrap();
-    assert_eq!(body["twitch_user_id"], "123");
+    assert_eq!(body["platform_user_id"], "123");
     assert_eq!(body["is_guest"], false);
     assert!(body["user_id"].is_number());
 }
@@ -122,7 +124,7 @@ async fn guest_session_creates_identity_and_reuses_it() {
     let body: Value =
         serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap()).unwrap();
     assert_eq!(body["is_guest"], true);
-    assert_eq!(body["twitch_user_id"], Value::Null);
+    assert_eq!(body["platform_user_id"], Value::Null);
     let user_id = body["user_id"].clone();
 
     let response = app
