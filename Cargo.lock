@@ -56,7 +56,6 @@ dependencies = [
 name = "api"
 version = "0.1.0"
 dependencies = [
- "app",
  "axum",
  "axum-extra",
  "better_tokio_select",
@@ -79,15 +78,6 @@ dependencies = [
  "utoipa",
  "utoipa-axum",
  "vk-video-live",
-]
-
-[[package]]
-name = "app"
-version = "0.1.0"
-dependencies = [
- "domain",
- "model",
- "tracing",
 ]
 
 [[package]]
@@ -422,7 +412,6 @@ dependencies = [
 name = "composition"
 version = "0.1.0"
 dependencies = [
- "app",
  "base64",
  "better_tokio_select",
  "chrono",

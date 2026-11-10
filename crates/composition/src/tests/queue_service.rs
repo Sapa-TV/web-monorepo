@@ -1,6 +1,6 @@
 use chrono::Utc;
 
-use crate::test_fixtures::{InMemoryAppState, test_state_inmemory};
+use crate::test_fixtures::{InMemoryServices, test_services_inmemory};
 use domain::error::QueueServiceError;
 use domain::roulette::slot_service::{RouletteSlot, RouletteSlotId};
 use model::queue::entry::QueueStatus;
@@ -9,7 +9,7 @@ use model::user::UserId;
 
 use model::queue::repository::*;
 
-async fn setup_slots(state: &InMemoryAppState) -> UserId {
+async fn setup_slots(state: &InMemoryServices) -> UserId {
     state
         .rarity_service
         .save(Rarity::new(
@@ -37,7 +37,7 @@ async fn setup_slots(state: &InMemoryAppState) -> UserId {
 
 #[tokio::test]
 async fn dequeue_next_returns_200() {
-    let (state, _queue_repo) = test_state_inmemory().await;
+    let (state, _queue_repo) = test_services_inmemory().await;
     let user_id = setup_slots(&state).await;
     state.queue_service.enqueue(user_id, "user1").await.unwrap();
 
@@ -49,7 +49,7 @@ async fn dequeue_next_returns_200() {
 
 #[tokio::test]
 async fn dequeue_next_returns_409_when_already_active() {
-    let (state, _queue_repo) = test_state_inmemory().await;
+    let (state, _queue_repo) = test_services_inmemory().await;
     let user_id = setup_slots(&state).await;
     state.queue_service.enqueue(user_id, "user1").await.unwrap();
     state.queue_service.dequeue_next().await.unwrap();
@@ -60,7 +60,7 @@ async fn dequeue_next_returns_409_when_already_active() {
 
 #[tokio::test]
 async fn dequeue_next_parallel_only_one_spin() {
-    let (state, _queue_repo) = test_state_inmemory().await;
+    let (state, _queue_repo) = test_services_inmemory().await;
     let user_1 = setup_slots(&state).await;
     let user_2 = state.user_service.create("user2").await.unwrap().id;
     state.queue_service.enqueue(user_1, "user1").await.unwrap();
@@ -83,7 +83,7 @@ async fn dequeue_next_parallel_only_one_spin() {
 
 #[tokio::test]
 async fn dequeue_next_retries_error_entry() {
-    let (state, queue_repo) = test_state_inmemory().await;
+    let (state, queue_repo) = test_services_inmemory().await;
     let user_id = setup_slots(&state).await;
     state.queue_service.enqueue(user_id, "user1").await.unwrap();
 
@@ -96,7 +96,7 @@ async fn dequeue_next_retries_error_entry() {
 
 #[tokio::test]
 async fn dequeue_next_no_slots_no_orphan() {
-    let (state, _queue_repo) = test_state_inmemory().await;
+    let (state, _queue_repo) = test_services_inmemory().await;
     let user_id = state.user_service.create("user1").await.unwrap().id;
     state.queue_service.enqueue(user_id, "user1").await.unwrap();
 
@@ -113,7 +113,7 @@ async fn dequeue_next_no_slots_no_orphan() {
 
 #[tokio::test]
 async fn complete_parallel_only_one_success() {
-    let (state, _queue_repo) = test_state_inmemory().await;
+    let (state, _queue_repo) = test_services_inmemory().await;
     let user_id = setup_slots(&state).await;
     state.queue_service.enqueue(user_id, "user1").await.unwrap();
     let (entry, _) = state.queue_service.dequeue_next().await.unwrap();
@@ -137,7 +137,7 @@ async fn complete_parallel_only_one_success() {
 
 #[tokio::test]
 async fn list_status_query_is_case_insensitive() {
-    let (state, _queue_repo) = test_state_inmemory().await;
+    let (state, _queue_repo) = test_services_inmemory().await;
     let user_id = setup_slots(&state).await;
     state.queue_service.enqueue(user_id, "user1").await.unwrap();
 
@@ -153,7 +153,7 @@ async fn list_status_query_is_case_insensitive() {
 
 #[tokio::test]
 async fn list_is_paginated_with_cursor() {
-    let (state, _queue_repo) = test_state_inmemory().await;
+    let (state, _queue_repo) = test_services_inmemory().await;
     let user_id = state.user_service.create("user1").await.unwrap().id;
     for _ in 0..3 {
         state.queue_service.enqueue(user_id, "user1").await.unwrap();
@@ -174,7 +174,7 @@ async fn list_is_paginated_with_cursor() {
 
 #[tokio::test]
 async fn enqueue_anonymous_reuses_single_guest() {
-    let (state, _queue_repo) = test_state_inmemory().await;
+    let (state, _queue_repo) = test_services_inmemory().await;
 
     let guest_1 = state.user_service.guest_user_id().await.unwrap();
     let first = state

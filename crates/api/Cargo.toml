@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-app = { workspace = true }
 better_tokio_select = { workspace = true }
 axum = { workspace = true, features = ["macros", "ws"] }
 axum-extra = { workspace = true, features = ["cookie"] }

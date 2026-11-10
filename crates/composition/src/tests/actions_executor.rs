@@ -3,7 +3,7 @@ use std::sync::nonpoison::Mutex;
 
 use tokio::sync::mpsc;
 
-use crate::test_fixtures::test_state_inmemory;
+use crate::test_fixtures::test_services_inmemory;
 use domain::actions::event::*;
 use domain::actions::executor::*;
 use domain::actions::platform::*;
@@ -91,7 +91,7 @@ type TestExecutor = ActionExecutor<
 >;
 
 async fn setup(executor: SpyExecutor) -> TestExecutor {
-    let (state, _queue_repo) = test_state_inmemory().await;
+    let (state, _queue_repo) = test_services_inmemory().await;
     let platform_actions = Arc::new(PlatformActionService::new().with_twitch(executor));
     ActionExecutor::new(
         Arc::clone(&state.queue_service),
@@ -254,7 +254,7 @@ async fn chat_reply_platform_failure_keeps_task_alive() {
 
 #[tokio::test]
 async fn unregistered_platform_falls_back_to_unsupported_and_task_survives() {
-    let (state, _queue_repo) = test_state_inmemory().await;
+    let (state, _queue_repo) = test_services_inmemory().await;
     let platform_actions: Arc<PlatformActionService<SpyExecutor>> =
         Arc::new(PlatformActionService::new());
     let executor = ActionExecutor::new(
