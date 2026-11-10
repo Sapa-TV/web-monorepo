@@ -8,6 +8,7 @@
 	import IconMenu from "~icons/lucide/menu";
 	import IconX from "~icons/lucide/x";
 	import DonateToggle from "./DonateToggle.svelte";
+	import PushToggle from "./PushToggle.svelte";
 	import { GIT_SHA } from "#lib/build-info";
 	import { setLocalStorage } from "#lib/internal/storage";
 
@@ -74,6 +75,7 @@
 			<span class="build-sha" title="Build commit">{GIT_SHA}</span>
 			<a class="nav-link" href={resolve("games")}>Игры</a>
 			<a class="nav-link" href={resolve("movies")}>Фильмы</a>
+			<PushToggle />
 			<DonateToggle />
 			<button
 				class="theme-toggle"
@@ -107,6 +109,7 @@
 		<a class="menu-link" href={resolve("games")}>Игры</a>
 		<a class="menu-link" href={resolve("movies")}>Фильмы</a>
 		<DonateToggle />
+		<PushToggle label />
 		<span class="menu-sha" title="Build commit">{GIT_SHA}</span>
 	</div>
 </nav>
@@ -292,7 +295,8 @@
 			background: var(--surface-bright);
 			border: 1px solid var(--outline-variant);
 			border-radius: 0.85rem;
-			box-shadow: 0 16px 40px color-mix(in oklch, black 40%, transparent);
+			box-shadow: 0 16px 40px
+				color-mix(in oklch, var(--video-bg) 40%, transparent);
 		}
 
 		.site-menu.open {
