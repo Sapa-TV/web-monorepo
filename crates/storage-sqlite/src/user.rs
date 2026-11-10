@@ -271,6 +271,7 @@ impl UserRepository for SqliteUserRepository {
         }
         for query in [
             "UPDATE user_platforms SET user_id = ? WHERE user_id = ?",
+            "UPDATE push_subscriptions SET user_id = ? WHERE user_id = ?",
             "UPDATE queue_entries SET user_id = ? WHERE user_id = ?",
             "UPDATE game_orders SET user_id = ? WHERE user_id = ?",
             "UPDATE movie_orders SET user_id = ? WHERE user_id = ?",

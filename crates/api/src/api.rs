@@ -8,6 +8,7 @@
 pub mod admin;
 pub mod auth;
 pub mod orders;
+pub mod push;
 pub mod session;
 pub mod srs;
 pub mod stream;
@@ -30,6 +31,7 @@ fn public_router() -> OpenApiRouter<AppState> {
         .merge(stream::public_router())
         .merge(srs::public_router())
         .merge(orders::public_router())
+        .merge(push::public_router())
         .merge(session::public_router())
 }
 
@@ -64,6 +66,7 @@ pub fn openapi_router() -> OpenApiRouter<AppState> {
     assemble(
         public_router()
             .merge(session::session_router())
+            .merge(push::session_router())
             .merge(admin::session_router())
             .merge(admin::root_router()),
     )
@@ -78,6 +81,7 @@ pub fn router(state: AppState) -> Router {
     let admin_protected = admin::session_router().route_layer(admin_layer);
     let root_protected = admin::root_router().route_layer(root_layer);
     let session_protected = session::session_router()
+        .merge(push::session_router())
         .merge(admin_protected)
         .merge(root_protected)
         .route_layer(session_layer);

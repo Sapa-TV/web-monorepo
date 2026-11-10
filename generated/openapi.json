@@ -1572,6 +1572,80 @@
         }
       }
     },
+    "/api/push/config": {
+      "get": {
+        "tags": [
+          "push"
+        ],
+        "operationId": "get_push_config",
+        "responses": {
+          "200": {
+            "description": "Web push configuration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushConfigResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/push/subscriptions": {
+      "post": {
+        "tags": [
+          "push"
+        ],
+        "operationId": "subscribe",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PushSubscriptionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Subscription stored",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushSubscriptionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid subscription"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "push"
+        ],
+        "operationId": "unsubscribe",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeletePushSubscriptionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Subscription removed"
+          }
+        }
+      }
+    },
     "/api/sessions": {
       "post": {
         "tags": [
@@ -2770,6 +2844,17 @@
           }
         }
       },
+      "DeletePushSubscriptionRequest": {
+        "type": "object",
+        "required": [
+          "endpoint"
+        ],
+        "properties": {
+          "endpoint": {
+            "type": "string"
+          }
+        }
+      },
       "EnqueueRequest": {
         "type": "object",
         "required": [
@@ -3066,6 +3151,70 @@
           },
           "widget_count": {
             "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "PushConfigResponse": {
+        "type": "object",
+        "required": [
+          "enabled"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "public_key": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "PushKeys": {
+        "type": "object",
+        "required": [
+          "p256dh",
+          "auth"
+        ],
+        "properties": {
+          "auth": {
+            "type": "string"
+          },
+          "p256dh": {
+            "type": "string"
+          }
+        }
+      },
+      "PushSubscriptionRequest": {
+        "type": "object",
+        "required": [
+          "endpoint",
+          "keys"
+        ],
+        "properties": {
+          "endpoint": {
+            "type": "string"
+          },
+          "keys": {
+            "$ref": "#/components/schemas/PushKeys"
+          }
+        }
+      },
+      "PushSubscriptionResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "endpoint"
+        ],
+        "properties": {
+          "endpoint": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int32",
             "minimum": 0
           }
         }
@@ -4137,6 +4286,10 @@
     {
       "name": "auth",
       "description": "Sessions and login"
+    },
+    {
+      "name": "push",
+      "description": "Web push subscriptions"
     },
     {
       "name": "admin",

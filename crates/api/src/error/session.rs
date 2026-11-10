@@ -17,6 +17,9 @@ impl From<SessionServiceError> for ApiError {
             SessionServiceError::Exchange(_) => {
                 ApiError::new(StatusCode::BAD_GATEWAY, e.to_string())
             }
+            SessionServiceError::AccountConflict => {
+                ApiError::new(StatusCode::CONFLICT, e.to_string())
+            }
             _ => ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
         }
     }

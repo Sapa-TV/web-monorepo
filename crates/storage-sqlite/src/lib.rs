@@ -20,6 +20,7 @@ pub mod game_order;
 pub mod movie_order;
 pub mod platform;
 pub mod platform_credential;
+pub mod push;
 pub mod queue;
 pub mod rarity;
 pub mod roulette_slot;

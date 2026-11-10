@@ -59,7 +59,8 @@
 		"axum": ["api", "backend"],
 		"reqwest": ["composition"],
 		"tokio-tungstenite": ["composition", "vk-video-live"],
-		"twitch_api": ["composition", "api"]
+		"twitch_api": ["composition", "api"],
+		"web-push-native": ["composition"]
 	},
 	"optional_only": ["storage-inmemory"]
 }

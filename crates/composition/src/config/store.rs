@@ -111,6 +111,34 @@ impl<R: ConfigRepository> ConfigStore<R> {
         self.static_cfg.srs_api_url.as_deref()
     }
 
+    pub fn site_url(&self) -> &str {
+        &self.static_cfg.site_url
+    }
+
+    pub fn vapid_private_key(&self) -> Option<&str> {
+        self.static_cfg.vapid_private_key.as_deref()
+    }
+
+    pub fn vapid_public_key(&self) -> Option<&str> {
+        self.static_cfg.vapid_public_key.as_deref()
+    }
+
+    pub fn vapid_subject(&self) -> &str {
+        &self.static_cfg.vapid_subject
+    }
+
+    pub fn push_enabled(&self) -> bool {
+        self.static_cfg
+            .vapid_private_key
+            .as_deref()
+            .is_some_and(|key| !key.is_empty())
+            && self
+                .static_cfg
+                .vapid_public_key
+                .as_deref()
+                .is_some_and(|key| !key.is_empty())
+    }
+
     pub fn sheets_spreadsheet_id(&self) -> String {
         self.settings.read().sheets.spreadsheet_id.clone()
     }

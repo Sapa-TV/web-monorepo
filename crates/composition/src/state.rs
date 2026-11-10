@@ -11,12 +11,14 @@ use crate::ingress::vk_video_live_auth::VkVideoLiveAuthService;
 use crate::ingress::{EventIngress, spawn_logging_handler};
 use crate::platform::PlatformCredentialService;
 use crate::presence::Presence;
+use crate::push::WebPushSender;
 use crate::sheets::client::GoogleSheetsClient;
 use crate::stream::StreamStatus;
 use domain::actions::service::ActionService;
 use domain::admin::service::AdminService;
 use domain::error::RepositoryError;
 use domain::orders::service::{GameOrderService, MovieOrderService, VipService};
+use domain::push::service::PushService;
 use domain::queue::publisher::BroadcastEventPublisher;
 use domain::queue::service::QueueService;
 use domain::random::StandartRandomProvider;
@@ -35,6 +37,7 @@ use storage_sqlite::game_order::SqliteGameOrderRepository;
 use storage_sqlite::movie_order::SqliteMovieOrderRepository;
 use storage_sqlite::platform::SqlitePlatformRepository;
 use storage_sqlite::platform_credential::SqlitePlatformCredentialRepository;
+use storage_sqlite::push::SqlitePushSubscriptionRepository;
 use storage_sqlite::queue::SqliteQueueRepository;
 use storage_sqlite::rarity::SqliteRarityRepository;
 use storage_sqlite::roulette_slot::SqliteRouletteSlotRepository;
@@ -54,6 +57,8 @@ pub type AppAccountService = AccountService<
     SqliteUserRepository,
     SqlitePlatformRepository,
 >;
+
+pub type AppPushService = PushService<SqlitePushSubscriptionRepository, WebPushSender>;
 
 pub type AppConfigStore = ConfigStore<SqliteConfigRepository>;
 
@@ -75,6 +80,7 @@ pub struct AppState {
     pub session_service: Arc<AppSessionService>,
     pub account_service: Arc<AppAccountService>,
     pub queue_service: Arc<AppQueueService>,
+    pub push_service: Arc<AppPushService>,
     pub config: Arc<AppConfigStore>,
     pub event_publisher: BroadcastEventPublisher,
     pub stream_status: Arc<StreamStatus>,
@@ -198,6 +204,7 @@ impl AppStateBuilder {
         let game_order_repo = Arc::new(SqliteGameOrderRepository::new(self.pool.clone()));
         let movie_order_repo = Arc::new(SqliteMovieOrderRepository::new(self.pool.clone()));
         let vip_record_repo = Arc::new(SqliteVipRecordRepository::new(self.pool.clone()));
+        let push_repo = Arc::new(SqlitePushSubscriptionRepository::new(self.pool.clone()));
 
         let slot_service = Arc::new(RouletteSlotService::build(Arc::clone(&slot_repo)).await?);
         let rarity_service = Arc::new(RarityService::build(Arc::clone(&rarity_repo)).await?);
@@ -235,6 +242,12 @@ impl AppStateBuilder {
         let movie_order_service = Arc::new(MovieOrderService::new(Arc::clone(&movie_order_repo)));
         let vip_service = Arc::new(VipService::new(Arc::clone(&vip_record_repo)));
 
+        let push_sender = Arc::new(WebPushSender::new(
+            self.config.vapid_private_key(),
+            self.config.vapid_subject(),
+        ));
+        let push_service = Arc::new(PushService::new(push_repo, push_sender));
+
         let sheets = Arc::new(SheetsService::new(
             sheets_client,
             Arc::clone(&game_order_service),
@@ -251,6 +264,7 @@ impl AppStateBuilder {
             session_service,
             account_service,
             queue_service,
+            push_service,
             config: self.config,
             event_publisher,
             stream_status: Arc::new(StreamStatus::new()),

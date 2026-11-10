@@ -15,9 +15,11 @@ use tokio::signal::unix::{SignalKind, signal};
 use composition::runtime;
 use composition::srs::stream_status_task;
 use composition::state::{
-    AppConfigStore, AppQueueService, AppSessionService, AppSheetsService, AppState,
+    AppConfigStore, AppPushService, AppQueueService, AppSessionService, AppSheetsService, AppState,
 };
+use domain::push::service::PushPayload;
 use domain::sheets;
+use tokio::sync::broadcast;
 
 pub fn start_background_tasks(state: &AppState, shutdown: &CancellationToken) {
     tokio::spawn(queue_timeout_task(
@@ -34,17 +36,27 @@ pub fn start_background_tasks(state: &AppState, shutdown: &CancellationToken) {
         Arc::clone(&state.config),
         shutdown.child_token(),
     ));
+
     tokio::spawn(sheets_sync_task(
         Arc::clone(&state.sheets),
         shutdown.child_token(),
     ));
-    if let Some(api_url) = state.config.srs_api_url() {
-        tokio::spawn(stream_status_task(
-            Arc::clone(&state.stream_status),
-            api_url.to_string(),
-            shutdown.child_token(),
-        ));
+    match state.config.srs_api_url() {
+        Some(api_url) => {
+            tokio::spawn(stream_status_task(
+                Arc::clone(&state.stream_status),
+                api_url.to_string(),
+                shutdown.child_token(),
+            ));
+        }
+        None => state.stream_status.mark_ready(),
     }
+    tokio::spawn(stream_push_task(
+        Arc::clone(&state.push_service),
+        state.stream_status.subscribe(),
+        state.config.site_url().to_string(),
+        shutdown.child_token(),
+    ));
 
     runtime::start_rule_pipeline(state, shutdown);
 }
@@ -115,6 +127,33 @@ async fn sheets_sync_task(sheets: Arc<AppSheetsService>, shutdown: CancellationT
         }
         if let Err(e) = sheets.sync_if_due().await {
             tracing::error!("sheets sync failed: {e}");
+        }
+    }
+}
+
+async fn stream_push_task(
+    push: Arc<AppPushService>,
+    mut changes: broadcast::Receiver<bool>,
+    site_url: String,
+    shutdown: CancellationToken,
+) {
+    loop {
+        select! {
+            biased;
+            _ = shutdown.cancelled() => break,
+            event = changes.recv() => {
+                if let Ok(true) = event {
+                    let payload = PushPayload::new(
+                        "Стрим начался",
+                        "Заходи смотреть",
+                        format!("{site_url}/"),
+                        "stream-online",
+                    );
+                    if let Err(e) = push.broadcast(&payload).await {
+                        tracing::error!("stream push failed: {e}");
+                    }
+                }
+            }
         }
     }
 }

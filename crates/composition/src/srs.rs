@@ -144,10 +144,15 @@ pub async fn stream_status_task(
         .timeout(SRS_POLL_TIMEOUT)
         .build()
         .expect("failed to build SRS http client");
+    let mut first = true;
     loop {
         match fetch_online(&client, &api_url).await {
             Ok(online) => status.set_rtmp_online(online),
             Err(e) => tracing::warn!("srs stream poll failed: {e}"),
+        }
+        if first {
+            first = false;
+            status.mark_ready();
         }
         select! {
             biased;

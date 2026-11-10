@@ -1,0 +1,122 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO push_subscriptions\n                   (user_id, endpoint, p256dh, auth, user_agent, created_at, last_seen_at, failure_count)\n               VALUES (?, ?, ?, ?, ?, ?, ?, 0)\n               ON CONFLICT(endpoint) DO UPDATE SET\n                   user_id = excluded.user_id,\n                   p256dh = excluded.p256dh,\n                   auth = excluded.auth,\n                   user_agent = excluded.user_agent,\n                   last_seen_at = excluded.last_seen_at,\n                   failure_count = 0\n               RETURNING id AS \"id!: i64\", user_id AS \"user_id!: i64\", endpoint, p256dh, auth,\n                         user_agent, created_at AS \"created_at: DateTime<Utc>\",\n                         last_seen_at AS \"last_seen_at: DateTime<Utc>\",\n                         failure_count AS \"failure_count!: i64\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: i64",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "push_subscriptions",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "user_id!: i64",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "push_subscriptions",
+            "name": "user_id"
+          }
+        }
+      },
+      {
+        "name": "endpoint",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "push_subscriptions",
+            "name": "endpoint"
+          }
+        }
+      },
+      {
+        "name": "p256dh",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "push_subscriptions",
+            "name": "p256dh"
+          }
+        }
+      },
+      {
+        "name": "auth",
+        "ordinal": 4,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "push_subscriptions",
+            "name": "auth"
+          }
+        }
+      },
+      {
+        "name": "user_agent",
+        "ordinal": 5,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "push_subscriptions",
+            "name": "user_agent"
+          }
+        }
+      },
+      {
+        "name": "created_at: DateTime<Utc>",
+        "ordinal": 6,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "push_subscriptions",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "name": "last_seen_at: DateTime<Utc>",
+        "ordinal": 7,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "push_subscriptions",
+            "name": "last_seen_at"
+          }
+        }
+      },
+      {
+        "name": "failure_count!: i64",
+        "ordinal": 8,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "push_subscriptions",
+            "name": "failure_count"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 7
+    },
+    "nullable": [
+      null,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "065f6de97970bdac6f0fa7d27208ced22c0683180b4b2ed1e48b09b92a57a71a"
+}

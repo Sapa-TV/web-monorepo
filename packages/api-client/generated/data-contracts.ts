@@ -176,6 +176,10 @@ export interface CreateVipRecordRequest {
   roulette_date: string;
 }
 
+export interface DeletePushSubscriptionRequest {
+  endpoint: string;
+}
+
 export interface EnqueueRequest {
   user_id: UserId;
   user_name: string;
@@ -270,6 +274,30 @@ export interface PresenceResponse {
   dock_connected: boolean;
   /** @min 0 */
   widget_count: number;
+}
+
+export interface PushConfigResponse {
+  enabled: boolean;
+  public_key?: string | null;
+}
+
+export interface PushKeys {
+  auth: string;
+  p256dh: string;
+}
+
+export interface PushSubscriptionRequest {
+  endpoint: string;
+  keys: PushKeys;
+}
+
+export interface PushSubscriptionResponse {
+  endpoint: string;
+  /**
+   * @format int32
+   * @min 0
+   */
+  id: number;
 }
 
 /**

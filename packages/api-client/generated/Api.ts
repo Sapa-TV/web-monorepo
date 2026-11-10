@@ -18,6 +18,7 @@ import {
   AdminResponse,
   CreateSessionRequest,
   CreateVipRecordRequest,
+  DeletePushSubscriptionRequest,
   GameOrderKind,
   GameOrderResponse,
   ImportReportResponse,
@@ -28,6 +29,9 @@ import {
   OrderSource,
   OrderStatus,
   PresenceResponse,
+  PushConfigResponse,
+  PushSubscriptionRequest,
+  PushSubscriptionResponse,
   RarityId,
   RarityResponse,
   RewardResponse,
@@ -867,6 +871,54 @@ export class Api<
       method: "GET",
       query: query,
       format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags push
+   * @name GetPushConfig
+   * @request GET:/api/push/config
+   */
+  getPushConfig = (params: RequestParams = {}) =>
+    this.request<PushConfigResponse, any>({
+      path: `/api/push/config`,
+      method: "GET",
+      format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags push
+   * @name Subscribe
+   * @request POST:/api/push/subscriptions
+   */
+  subscribe = (data: PushSubscriptionRequest, params: RequestParams = {}) =>
+    this.request<PushSubscriptionResponse, void>({
+      path: `/api/push/subscriptions`,
+      method: "POST",
+      body: data,
+      type: ContentType.Json,
+      format: "json",
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags push
+   * @name Unsubscribe
+   * @request DELETE:/api/push/subscriptions
+   */
+  unsubscribe = (
+    data: DeletePushSubscriptionRequest,
+    params: RequestParams = {},
+  ) =>
+    this.request<void, any>({
+      path: `/api/push/subscriptions`,
+      method: "DELETE",
+      body: data,
+      type: ContentType.Json,
       ...params,
     });
   /**

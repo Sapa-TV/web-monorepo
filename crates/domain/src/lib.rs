@@ -14,6 +14,7 @@ pub mod admin;
 pub mod config;
 pub mod error;
 pub mod orders;
+pub mod push;
 pub mod queue;
 pub mod random;
 pub mod roulette;

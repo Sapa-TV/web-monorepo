@@ -9,6 +9,7 @@ pub mod error;
 pub mod event;
 pub mod orders;
 pub mod platform;
+pub mod push;
 pub mod queue;
 pub mod roulette;
 pub mod rules;

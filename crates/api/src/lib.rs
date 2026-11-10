@@ -31,6 +31,7 @@ use utoipa_axum::router::OpenApiRouter;
         (name = "stream", description = "Stream status"),
         (name = "orders", description = "Game/movie order directory"),
         (name = "auth", description = "Sessions and login"),
+        (name = "push", description = "Web push subscriptions"),
         (name = "admin", description = "Administrative endpoints"),
         (name = "system", description = "Service health and version")
     )

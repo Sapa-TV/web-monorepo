@@ -31,6 +31,19 @@ fn any_online_platform_keeps_status_online() {
     assert!(status.is_online());
 }
 
+#[tokio::test]
+async fn reports_only_online_transitions() {
+    let status = StreamStatus::new();
+    status.mark_ready();
+    let mut changes = status.subscribe();
+    status.set_online(true);
+    assert!(changes.recv().await.expect("online event"));
+    status.set_online(true);
+    assert!(changes.try_recv().is_err());
+    status.set_online(false);
+    assert!(!changes.recv().await.expect("offline event"));
+}
+
 #[test]
 fn rtmp_flag_brings_online() {
     let status = StreamStatus::new();

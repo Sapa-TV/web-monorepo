@@ -28,6 +28,10 @@ pub struct StaticConfig {
     pub srs_hook_secret: Option<String>,
     pub srs_stream_key: Option<String>,
     pub srs_api_url: Option<String>,
+    pub site_url: String,
+    pub vapid_private_key: Option<String>,
+    pub vapid_public_key: Option<String>,
+    pub vapid_subject: String,
     #[serde(skip)]
     _sealed: (),
 }
@@ -46,6 +50,10 @@ impl Default for StaticConfig {
             srs_hook_secret: None,
             srs_stream_key: None,
             srs_api_url: None,
+            site_url: "https://sapa-tv.ru".to_string(),
+            vapid_private_key: None,
+            vapid_public_key: None,
+            vapid_subject: "mailto:admin@sapa-tv.ru".to_string(),
             _sealed: (),
         }
     }
@@ -73,6 +81,10 @@ impl StaticConfig {
             srs_hook_secret: None,
             srs_stream_key: None,
             srs_api_url: None,
+            site_url: "https://sapa-tv.ru".to_string(),
+            vapid_private_key: None,
+            vapid_public_key: None,
+            vapid_subject: "mailto:admin@sapa-tv.ru".to_string(),
             _sealed: (),
         }
     }
@@ -112,6 +124,10 @@ impl StaticConfig {
             srs_hook_secret: raw.srs_hook_secret,
             srs_stream_key: raw.srs_stream_key,
             srs_api_url: raw.srs_api_url,
+            site_url: raw.site_url,
+            vapid_private_key: raw.vapid_private_key,
+            vapid_public_key: raw.vapid_public_key,
+            vapid_subject: raw.vapid_subject,
             _sealed: (),
         };
         let seed = RuntimeConfig::new(
@@ -152,6 +168,10 @@ struct RawConfig {
     srs_hook_secret: Option<String>,
     srs_stream_key: Option<String>,
     srs_api_url: Option<String>,
+    site_url: String,
+    vapid_private_key: Option<String>,
+    vapid_public_key: Option<String>,
+    vapid_subject: String,
 }
 
 impl Default for RawConfig {
@@ -177,6 +197,10 @@ impl Default for RawConfig {
             srs_hook_secret: None,
             srs_stream_key: None,
             srs_api_url: None,
+            site_url: static_cfg.site_url,
+            vapid_private_key: static_cfg.vapid_private_key,
+            vapid_public_key: static_cfg.vapid_public_key,
+            vapid_subject: static_cfg.vapid_subject,
         }
     }
 }
