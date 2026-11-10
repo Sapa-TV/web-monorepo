@@ -11,7 +11,7 @@
 	"keywords": [],
 	"author": "Th0rN13",
 	"license": "MIT",
-	"packageManager": "pnpm@11.21.0",
+	"packageManager": "pnpm@12.18.0",
 	"devDependencies": {
 		"@ast-grep/cli": "^0.45.0",
 		"concurrently": "^10.0.4",
