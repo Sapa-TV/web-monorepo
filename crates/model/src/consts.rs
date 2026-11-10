@@ -50,5 +50,9 @@ pub mod session {
     pub const LOGIN_TICKET_TTL: Duration = Duration::from_secs(10 * 60);
     pub const TTL_SECS: u64 = 24 * 60 * 60;
     pub const GUEST_TTL_SECS: u64 = 365 * 24 * 60 * 60;
+    pub const GUEST_RETENTION_SECS: u64 = 90 * 24 * 60 * 60;
+    pub const GUEST_CLEANUP_INTERVAL_SECS: u64 = 24 * 60 * 60;
+    pub const GUEST_RATE_LIMIT: usize = 5;
+    pub const GUEST_RATE_WINDOW_SECS: u64 = 60 * 60;
     pub const CLEANUP_INTERVAL_SECS: u64 = 60 * 60;
 }

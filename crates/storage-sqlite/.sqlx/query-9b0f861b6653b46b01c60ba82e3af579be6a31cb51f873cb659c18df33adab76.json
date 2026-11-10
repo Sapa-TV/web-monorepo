@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM users\n               WHERE created_at < ?\n                 AND NOT EXISTS (SELECT 1 FROM user_platforms WHERE user_id = users.id)\n                 AND NOT EXISTS (SELECT 1 FROM sessions WHERE user_id = users.id)\n                 AND NOT EXISTS (SELECT 1 FROM push_subscriptions WHERE user_id = users.id)\n                 AND NOT EXISTS (SELECT 1 FROM queue_entries WHERE user_id = users.id)\n                 AND NOT EXISTS (SELECT 1 FROM game_orders WHERE user_id = users.id)\n                 AND NOT EXISTS (SELECT 1 FROM movie_orders WHERE user_id = users.id)\n                 AND NOT EXISTS (SELECT 1 FROM vip_records WHERE user_id = users.id)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "9b0f861b6653b46b01c60ba82e3af579be6a31cb51f873cb659c18df33adab76"
+}

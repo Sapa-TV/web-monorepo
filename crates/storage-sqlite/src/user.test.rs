@@ -3,8 +3,11 @@ use std::time::Duration;
 use chrono::Utc;
 use tokio::time::sleep;
 
+use crate::session::SqliteSessionRepository;
 use crate::test_pool;
 use model::platform::PlatformId;
+use model::session::repository::SessionRepository;
+use model::session::{Session, SessionToken};
 
 use super::*;
 
@@ -27,6 +30,52 @@ async fn create_assigns_sequential_ids() {
     assert_eq!(first.created_at, first.updated_at);
     assert!(repo.get_by_id(first.id).await.unwrap().is_some());
     assert!(repo.get_by_id(UserId::new(999)).await.unwrap().is_none());
+}
+
+#[tokio::test]
+async fn purge_empty_guests_removes_only_old_unlinked() {
+    let repo = repo().await;
+    let old = repo.create("old").await.unwrap();
+    let old_linked = repo.create("old-linked").await.unwrap();
+    let old_with_session = repo.create("old-session").await.unwrap();
+    let fresh = repo.create("fresh").await.unwrap();
+
+    let old_at = Utc::now() - chrono::Duration::days(120);
+    sqlx::query("UPDATE users SET created_at = ? WHERE id IN (?, ?, ?)")
+        .bind(old_at)
+        .bind(old.id.get())
+        .bind(old_linked.id.get())
+        .bind(old_with_session.id.get())
+        .execute(&repo.pool)
+        .await
+        .unwrap();
+    repo.link_platform(old_linked.id, TWITCH, "t-old", "old")
+        .await
+        .unwrap();
+    let session_repo = SqliteSessionRepository::new(repo.pool.clone());
+    session_repo
+        .save_session(&Session::new(
+            SessionToken::new("session-token"),
+            old_with_session.id,
+            None,
+            None,
+            None,
+            old_at,
+            Utc::now() + chrono::Duration::days(1),
+        ))
+        .await
+        .unwrap();
+
+    let purged = repo
+        .purge_empty_guests(Utc::now() - chrono::Duration::days(90))
+        .await
+        .unwrap();
+
+    assert_eq!(purged, 1);
+    assert!(repo.get_by_id(old.id).await.unwrap().is_none());
+    assert!(repo.get_by_id(old_linked.id).await.unwrap().is_some());
+    assert!(repo.get_by_id(old_with_session.id).await.unwrap().is_some());
+    assert!(repo.get_by_id(fresh.id).await.unwrap().is_some());
 }
 
 #[tokio::test]

@@ -12,10 +12,12 @@ use std::future::pending;
 #[cfg(unix)]
 use tokio::signal::unix::{SignalKind, signal};
 
+use chrono::{Duration as ChronoDuration, Utc};
 use composition::runtime;
 use composition::srs::stream_status_task;
 use composition::state::{
     AppConfigStore, AppPushService, AppQueueService, AppSessionService, AppSheetsService, AppState,
+    AppUserService, GUEST_CLEANUP_INTERVAL_SECS, GUEST_RETENTION_SECS,
 };
 use domain::push::service::PushPayload;
 use domain::sheets;
@@ -34,6 +36,10 @@ pub fn start_background_tasks(state: &AppState, shutdown: &CancellationToken) {
     tokio::spawn(session_prune_task(
         Arc::clone(&state.session_service),
         Arc::clone(&state.config),
+        shutdown.child_token(),
+    ));
+    tokio::spawn(guest_cleanup_task(
+        Arc::clone(&state.user_service),
         shutdown.child_token(),
     ));
 
@@ -154,6 +160,22 @@ async fn stream_push_task(
                     }
                 }
             }
+        }
+    }
+}
+
+async fn guest_cleanup_task(users: Arc<AppUserService>, shutdown: CancellationToken) {
+    loop {
+        select! {
+            biased;
+            _ = shutdown.cancelled() => break,
+            _ = time::sleep(Duration::from_secs(GUEST_CLEANUP_INTERVAL_SECS)) => {},
+        }
+        let before = Utc::now() - ChronoDuration::seconds(GUEST_RETENTION_SECS as i64);
+        match users.purge_empty_guests(before).await {
+            Ok(0) => {}
+            Ok(count) => info!("purged {count} empty guest users"),
+            Err(e) => tracing::error!("guest cleanup failed: {e}"),
         }
     }
 }

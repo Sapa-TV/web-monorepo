@@ -982,7 +982,7 @@ export class Api<
    * @request POST:/api/sessions/guest
    */
   createGuestSession = (params: RequestParams = {}) =>
-    this.request<SessionResponse, any>({
+    this.request<SessionResponse, void>({
       path: `/api/sessions/guest`,
       method: "POST",
       format: "json",

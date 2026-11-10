@@ -13,6 +13,7 @@ use crate::ingress::{EventIngress, spawn_logging_handler};
 use crate::platform::PlatformCredentialService;
 use crate::presence::Presence;
 use crate::push::WebPushSender;
+use crate::rate_limit::GuestRateLimiter;
 use crate::sheets::client::GoogleSheetsClient;
 use crate::stream::StreamStatus;
 use domain::actions::service::ActionService;
@@ -47,6 +48,10 @@ use storage_sqlite::session::SqliteSessionRepository;
 use storage_sqlite::user::SqliteUserRepository;
 use storage_sqlite::vip_record::SqliteVipRecordRepository;
 
+pub use model::consts::session::{
+    GUEST_CLEANUP_INTERVAL_SECS, GUEST_RATE_LIMIT, GUEST_RATE_WINDOW_SECS, GUEST_RETENTION_SECS,
+};
+
 pub type AppQueueService =
     QueueService<SqliteQueueRepository, SqliteRarityRepository, SqliteRouletteSlotRepository>;
 
@@ -60,6 +65,8 @@ pub type AppAccountService = AccountService<
 >;
 
 pub type AppPushService = PushService<SqlitePushSubscriptionRepository, WebPushSender>;
+
+pub type AppUserService = UserService<SqliteUserRepository, SqlitePlatformRepository>;
 
 pub type AppConfigStore = ConfigStore<SqliteConfigRepository>;
 
@@ -76,12 +83,13 @@ pub type AppSheetsService = SheetsService<
 pub struct AppState {
     pub slot_service: Arc<RouletteSlotService<Arc<SqliteRouletteSlotRepository>>>,
     pub rarity_service: Arc<RarityService<Arc<SqliteRarityRepository>>>,
-    pub user_service: Arc<UserService<SqliteUserRepository, SqlitePlatformRepository>>,
+    pub user_service: Arc<AppUserService>,
     pub admin_service: Arc<AdminService<SqliteAdminRepository>>,
     pub session_service: Arc<AppSessionService>,
     pub account_service: Arc<AppAccountService>,
     pub queue_service: Arc<AppQueueService>,
     pub push_service: Arc<AppPushService>,
+    pub guest_rate_limiter: Arc<GuestRateLimiter>,
     pub config: Arc<AppConfigStore>,
     pub event_publisher: BroadcastEventPublisher,
     pub stream_status: Arc<StreamStatus>,
@@ -253,6 +261,10 @@ impl AppStateBuilder {
             self.config.vapid_subject(),
         ));
         let push_service = Arc::new(PushService::new(push_repo, push_sender));
+        let guest_rate_limiter = Arc::new(GuestRateLimiter::new(
+            GUEST_RATE_LIMIT,
+            Duration::from_secs(GUEST_RATE_WINDOW_SECS),
+        ));
 
         let sheets = Arc::new(SheetsService::new(
             sheets_client,
@@ -271,6 +283,7 @@ impl AppStateBuilder {
             account_service,
             queue_service,
             push_service,
+            guest_rate_limiter,
             config: self.config,
             event_publisher,
             stream_status: Arc::new(StreamStatus::new()),

@@ -17,6 +17,30 @@ async fn create_user() {
 }
 
 #[tokio::test]
+async fn purge_empty_guests_keeps_linked_and_fresh() {
+    let repo = InMemoryUserRepository::new();
+    let old_at = Utc::now() - chrono::Duration::days(120);
+    repo.users.lock().extend([
+        User::new(UserId::new(1), "old".to_string(), old_at, old_at),
+        User::new(UserId::new(2), "old-linked".to_string(), old_at, old_at),
+        User::new(UserId::new(3), "fresh".to_string(), Utc::now(), Utc::now()),
+    ]);
+    repo.link_platform(UserId::new(2), TWITCH, "t-2", "linked")
+        .await
+        .unwrap();
+
+    let purged = repo
+        .purge_empty_guests(Utc::now() - chrono::Duration::days(90))
+        .await
+        .unwrap();
+
+    assert_eq!(purged, 1);
+    assert!(repo.get_by_id(UserId::new(1)).await.unwrap().is_none());
+    assert!(repo.get_by_id(UserId::new(2)).await.unwrap().is_some());
+    assert!(repo.get_by_id(UserId::new(3)).await.unwrap().is_some());
+}
+
+#[tokio::test]
 async fn find_by_platform_found() {
     let repo = InMemoryUserRepository::new();
     let user = repo.create("Viewer").await.unwrap();

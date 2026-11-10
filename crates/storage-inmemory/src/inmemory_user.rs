@@ -1,7 +1,7 @@
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::nonpoison::Mutex;
 
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 
 use model::error::RepositoryError;
 use model::platform::PlatformId;
@@ -192,6 +192,19 @@ impl UserRepository for InMemoryUserRepository {
         let mut user_platforms = self.user_platforms.lock();
         user_platforms.retain(|up| up.user_id != id);
         Ok(true)
+    }
+
+    async fn purge_empty_guests(&self, before: DateTime<Utc>) -> Result<usize, RepositoryError> {
+        let linked: Vec<UserId> = self
+            .user_platforms
+            .lock()
+            .iter()
+            .map(|up| up.user_id)
+            .collect();
+        let mut users = self.users.lock();
+        let len_before = users.len();
+        users.retain(|u| !(u.created_at < before && !linked.contains(&u.id)));
+        Ok(len_before - users.len())
     }
 
     async fn merge_users(&self, source: UserId, target: UserId) -> Result<(), RepositoryError> {

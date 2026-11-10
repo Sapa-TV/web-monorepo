@@ -1,5 +1,7 @@
 use std::future::Future;
 
+use chrono::{DateTime, Utc};
+
 use crate::error::RepositoryError;
 use crate::platform::PlatformId;
 use crate::user::{User, UserId, UserPlatform};
@@ -61,4 +63,9 @@ pub trait UserRepository: Send + Sync {
         source: UserId,
         target: UserId,
     ) -> impl Future<Output = Result<(), RepositoryError>> + Send;
+
+    fn purge_empty_guests(
+        &self,
+        before: DateTime<Utc>,
+    ) -> impl Future<Output = Result<usize, RepositoryError>> + Send;
 }

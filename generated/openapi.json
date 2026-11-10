@@ -1762,6 +1762,9 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Too many guest sessions from this address"
           }
         }
       }

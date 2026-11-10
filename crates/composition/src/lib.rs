@@ -11,6 +11,7 @@ pub mod ingress;
 pub mod platform;
 pub mod presence;
 pub mod push;
+pub mod rate_limit;
 pub mod runtime;
 pub mod sheets;
 pub mod srs;

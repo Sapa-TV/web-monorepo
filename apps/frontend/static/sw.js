@@ -1,5 +1,6 @@
 const scope = new URL(self.registration.scope);
 const base = scope.pathname.replace(/\/$/, "");
+const BASE64_GROUP_SIZE = 4;
 
 self.addEventListener("install", () => {
 	self.skipWaiting();
@@ -33,6 +34,61 @@ self.addEventListener("push", (event) => {
 			badge: `${base}/icons/icon-192.png`,
 			data: { url },
 		}),
+	);
+});
+
+function decodeBase64Url(value) {
+	const remainder = value.length % BASE64_GROUP_SIZE;
+	const padding = remainder === 0 ? "" : "=".repeat(BASE64_GROUP_SIZE - remainder);
+	const padded = value.replace(/-/g, "+").replace(/_/g, "/") + padding;
+	const binary = atob(padded);
+	const bytes = new Uint8Array(binary.length);
+	for (let i = 0; i < binary.length; i += 1) {
+		bytes[i] = binary.charCodeAt(i);
+	}
+	return bytes;
+}
+
+async function saveSubscription(subscription) {
+	if (!subscription) return;
+	const keys = subscription.toJSON().keys;
+	if (!keys?.p256dh || !keys?.auth) return;
+	await fetch(`${base}/api/push/subscriptions`, {
+		method: "POST",
+		credentials: "include",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ endpoint: subscription.endpoint, keys }),
+	});
+}
+
+async function resubscribe(oldSubscription) {
+	const config = await fetch(`${base}/api/push/config`, {
+		credentials: "include",
+	}).then((response) => response.json());
+	if (!config?.public_key) return;
+	const applicationServerKey =
+		oldSubscription?.options?.applicationServerKey ??
+		decodeBase64Url(config.public_key);
+	const subscription = await self.registration.pushManager.subscribe({
+		userVisibleOnly: true,
+		applicationServerKey,
+	});
+	await saveSubscription(subscription);
+}
+
+self.addEventListener("pushsubscriptionchange", (event) => {
+	event.waitUntil(
+		(async () => {
+			if (event.newSubscription) {
+				await saveSubscription(event.newSubscription);
+				return;
+			}
+			try {
+				await resubscribe(event.oldSubscription);
+			} catch {
+				return;
+			}
+		})(),
 	);
 });
 

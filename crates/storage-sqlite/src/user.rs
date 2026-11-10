@@ -255,6 +255,25 @@ impl UserRepository for SqliteUserRepository {
         Ok(result.rows_affected() > 0)
     }
 
+    async fn purge_empty_guests(&self, before: DateTime<Utc>) -> Result<usize, RepositoryError> {
+        let result = sqlx::query!(
+            r#"DELETE FROM users
+               WHERE created_at < ?
+                 AND NOT EXISTS (SELECT 1 FROM user_platforms WHERE user_id = users.id)
+                 AND NOT EXISTS (SELECT 1 FROM sessions WHERE user_id = users.id)
+                 AND NOT EXISTS (SELECT 1 FROM push_subscriptions WHERE user_id = users.id)
+                 AND NOT EXISTS (SELECT 1 FROM queue_entries WHERE user_id = users.id)
+                 AND NOT EXISTS (SELECT 1 FROM game_orders WHERE user_id = users.id)
+                 AND NOT EXISTS (SELECT 1 FROM movie_orders WHERE user_id = users.id)
+                 AND NOT EXISTS (SELECT 1 FROM vip_records WHERE user_id = users.id)"#,
+            before
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(map_err)?;
+        Ok(result.rows_affected() as usize)
+    }
+
     async fn merge_users(&self, source: UserId, target: UserId) -> Result<(), RepositoryError> {
         if source == target {
             return Ok(());

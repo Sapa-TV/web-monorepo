@@ -136,6 +136,13 @@ where
         Ok(())
     }
 
+    pub async fn purge_empty_guests(
+        &self,
+        before: chrono::DateTime<chrono::Utc>,
+    ) -> Result<usize, UserServiceError> {
+        Ok(self.user_repo.purge_empty_guests(before).await?)
+    }
+
     pub async fn merge_users(
         &self,
         source: UserId,

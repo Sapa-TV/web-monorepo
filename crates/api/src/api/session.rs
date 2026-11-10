@@ -2,7 +2,7 @@ use axum::Json;
 use axum::extract::Extension;
 use axum::extract::rejection::ExtensionRejection;
 use axum::extract::{Query, State};
-use axum::http::StatusCode;
+use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum_extra::extract::CookieJar;
 use chrono::Utc;
@@ -116,6 +116,31 @@ fn cookie_max_age(session: &Session) -> i64 {
     (session.expires_at - Utc::now()).num_seconds().max(0)
 }
 
+fn guest_key(headers: &HeaderMap) -> String {
+    headers
+        .get("x-real-ip")
+        .or_else(|| headers.get("x-forwarded-for"))
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.split(',').next())
+        .unwrap_or("local")
+        .trim()
+        .chars()
+        .take(64)
+        .collect()
+}
+
+fn ensure_guest_allowed(state: &AppState, headers: &HeaderMap) -> Result<(), ApiError> {
+    let allowed = state.guest_rate_limiter.allow(&guest_key(headers));
+    if allowed {
+        Ok(())
+    } else {
+        Err(ApiError::new(
+            StatusCode::TOO_MANY_REQUESTS,
+            "too many guest sessions, try again later",
+        ))
+    }
+}
+
 #[utoipa::path(
     get,
     path = "/auth/twitch",
@@ -226,12 +251,15 @@ pub async fn vk_login_callback(
     tag = "auth",
     responses(
         (status = 200, description = "Guest session, sapa_session cookie set", body = SessionResponse),
+        (status = 429, description = "Too many guest sessions from this address"),
     )
 )]
 pub async fn create_guest_session(
     State(state): State<AppState>,
+    headers: HeaderMap,
     jar: CookieJar,
 ) -> Result<(StatusCode, CookieJar, Json<SessionResponse>), ApiError> {
+    ensure_guest_allowed(&state, &headers)?;
     let current = jar.get(SESSION_COOKIE).map(|c| c.value().to_string());
     let (session, is_root) = state.account_service.guest(current.as_deref()).await?;
     let response = SessionResponse::from((&session, is_root));

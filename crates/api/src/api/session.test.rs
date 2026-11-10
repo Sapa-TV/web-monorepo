@@ -356,3 +356,38 @@ async fn logout_destroys_session() {
         .unwrap();
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
+
+#[tokio::test]
+async fn guest_sessions_are_rate_limited_per_address() {
+    let state = test_state().await;
+    let app = test_router(state);
+
+    for _ in 0..5 {
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(api_path("/sessions/guest"))
+                    .header("x-real-ip", "203.0.113.7")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(api_path("/sessions/guest"))
+                .header("x-real-ip", "203.0.113.7")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::TOO_MANY_REQUESTS);
+}
