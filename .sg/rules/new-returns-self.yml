@@ -15,4 +15,5 @@ rule:
         - pattern: "fn new($$$ARGS) { $$$BODY }"
 files:
   - "apps/**/*.rs"
+  - "crates/**/*.rs"
   - "tools/**/*.rs"

@@ -9,5 +9,7 @@ rule:
     regex: utoipa::path
     stopBy: neighbor
 files:
-  - "apps/backend/src/api/**/*.rs"
-  - "apps/backend/src/widget_api/**/*.rs"
+  - "crates/api/src/api/**/*.rs"
+  - "crates/api/src/widget_api/**/*.rs"
+ignores:
+  - "crates/api/src/**/*.test.rs"

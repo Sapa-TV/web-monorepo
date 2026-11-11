@@ -8,6 +8,7 @@
 #   just google-key — print GOOGLE_SERVICE_ACCOUNT_KEY_BASE64=... from secrets/google-sa.json
 #   just lint     — run custom ast-grep lints (own code only)
 #   just lint-test — run ast-grep rule tests (CI-ready)
+#   just lint-handlers — check that utoipa handlers stay within 20 lines
 #   just astg-update — refresh ast-grep test snapshots after editing rules/cases
 #   just astg-one   — run one ast-grep rule test suite (id = rule id)
 #   just astg-inspect — show why files/rules are scanned or skipped
@@ -59,6 +60,10 @@ lint:
 # Run ast-grep rule test suites
 lint-test:
     pnpm exec ast-grep test
+
+# Check that utoipa handlers in crates/api stay within 20 lines
+lint-handlers:
+    node tools/check-handler-lines.mjs
 
 # Refresh committed ast-grep rule test snapshots after editing rules/cases
 astg-update:
