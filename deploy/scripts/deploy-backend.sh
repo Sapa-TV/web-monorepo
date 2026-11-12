@@ -12,6 +12,8 @@ SMOKE_PORT=3001
 SMOKE_URL=http://127.0.0.1:$SMOKE_PORT/api/health
 SMOKE_TRIES=30
 SMOKE_INTERVAL=5
+SMOKE_DATA="$APP_DIR/data-smoke"
+DB_FILE="$APP_DIR/data/server.db"
 
 cd "$APP_DIR"
 
@@ -93,18 +95,39 @@ dump_container_diagnostics() {
 
 cleanup_smoke() {
   docker rm -f "$SMOKE_NAME" >/dev/null 2>&1 || true
+  if [ -d "$SMOKE_DATA" ] && docker image inspect "$BASE_IMAGE" >/dev/null 2>&1; then
+    docker run --rm --user 0:0 -v "$SMOKE_DATA:/target" --entrypoint chown \
+      "$BASE_IMAGE" -R "$(id -u):$(id -g)" /target >/dev/null 2>&1 || true
+  fi
+  rm -rf "$SMOKE_DATA" >/dev/null 2>&1 || true
+}
+
+chown_path() {
+  docker run --rm --user 0:0 -v "$1:/target" --entrypoint chown "$BASE_IMAGE" \
+    -R "$APP_UID:$APP_GID" /target
 }
 trap cleanup_smoke EXIT
 
 # -- Pull new image -----------------------------------------------------------
 docker compose pull
 
+APP_UID="$(docker run --rm --entrypoint id "$BASE_IMAGE" -u)"
+APP_GID="$(docker run --rm --entrypoint id "$BASE_IMAGE" -g)"
+
+# -- Data directory -----------------------------------------------------------
+mkdir -p "$APP_DIR/data"
+
 # -- Smoke test new image before touching the running container ---------------
 cleanup_smoke
+mkdir -p "$SMOKE_DATA"
+if [ -f "$DB_FILE" ]; then
+  sqlite3 "$DB_FILE" ".backup '$SMOKE_DATA/server.db'"
+  chown_path "$SMOKE_DATA"
+fi
 docker run -d --name "$SMOKE_NAME" \
   --env-file .env \
   -v "$APP_DIR/config.toml:/app/config.toml:ro" \
-  -v "$APP_DIR/data:/app/data" \
+  -v "$SMOKE_DATA:/app/data" \
   -p "127.0.0.1:$SMOKE_PORT:3000" \
   "$BASE_IMAGE" \
   >/dev/null
@@ -121,6 +144,7 @@ fi
 echo "Smoke test passed"
 
 # -- Apply new image ----------------------------------------------------------
+chown_path "$APP_DIR/data"
 docker rm -f srs >/dev/null 2>&1 || true
 docker compose up -d
 if [ "$SRS_CONF_CHANGED" -eq 1 ]; then
@@ -141,6 +165,10 @@ echo "New backend did not become healthy, rolling back" >&2
 
 # -- Rollback -----------------------------------------------------------------
 if [ -n "$OLD_IMAGE" ]; then
+  old_uid="$(docker run --rm --entrypoint id "$OLD_IMAGE" -u 2>/dev/null || echo "$APP_UID")"
+  old_gid="$(docker run --rm --entrypoint id "$OLD_IMAGE" -g 2>/dev/null || echo "$APP_GID")"
+  docker run --rm --user 0:0 -v "$APP_DIR/data:/target" --entrypoint chown \
+    "$BASE_IMAGE" -R "$old_uid:$old_gid" /target || true
   docker tag "$OLD_IMAGE" "$BASE_IMAGE"
   docker compose up -d --force-recreate
   rollback_rc=0

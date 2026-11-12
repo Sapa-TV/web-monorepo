@@ -33,8 +33,10 @@ FROM debian:trixie-slim AS runtime
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates libssl3 \
     && rm -rf /var/lib/apt/lists/* \
-    && groupadd --system sapa \
-    && useradd --system --gid sapa --create-home sapa
+    && groupadd --system --gid 1000 sapa \
+    && useradd --system --uid 1000 --gid 1000 --create-home sapa \
+    && mkdir -p /app/logs \
+    && chown sapa:sapa /app/logs
 
 WORKDIR /app
 
