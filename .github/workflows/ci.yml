@@ -52,3 +52,5 @@ jobs:
         run: pnpm exec ast-grep scan
       - name: ast-grep rule tests
         run: pnpm exec ast-grep test
+      - name: Handler length
+        run: node tools/check-handler-lines.mjs

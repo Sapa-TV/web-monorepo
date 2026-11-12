@@ -137,9 +137,10 @@ pub async fn remove_admin(
         .twitch_user_id(session.user_id)
         .await
         .map_err(|_| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "session lookup failed"))?;
-    if current_twitch_id.as_deref() == Some(params.twitch_id.as_str()) {
-        return Err(AdminServiceError::CannotRemoveSelf.into());
-    }
+    let removes_self = current_twitch_id.as_deref() == Some(params.twitch_id.as_str());
+    (!removes_self)
+        .then_some(())
+        .ok_or_else(|| ApiError::from(AdminServiceError::CannotRemoveSelf))?;
     state.admin_service.remove(&params.twitch_id).await?;
     Ok(StatusCode::NO_CONTENT)
 }

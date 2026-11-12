@@ -16,8 +16,3 @@ ignores:
   - "crates/api/src/widget_api/auth.rs"
   - "crates/api/src/widget_api/ws.rs"
   - "crates/api/src/**/*.test.rs"
-  - "crates/api/src/api/admin.rs"
-  - "crates/api/src/api/admin/ingress.rs"
-  - "crates/api/src/api/admin/rewards.rs"
-  - "crates/api/src/api/admin/roulette.rs"
-  - "crates/api/src/api/session.rs"

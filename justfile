@@ -14,7 +14,7 @@
 #   just astg-inspect — show why files/rules are scanned or skipped
 #   just astg-pat   — check an ast-grep pattern against Rust code from stdin
 #   just check-layers — check the crate dependency graph against arch/layers.json
-#   just check      — everything CI runs: layers, ast-grep, fmt, clippy, tests
+#   just check      — everything CI runs: layers, ast-grep, handlers, fmt, clippy, tests
 #   just clippy-linux — clippy on Linux in Docker (Windows never compiles cfg(unix) code)
 
 set dotenv-load
@@ -86,7 +86,7 @@ check-layers:
     node tools/check-layers.mjs
 
 # Run every check CI runs
-check: check-layers lint lint-test
+check: check-layers lint lint-test lint-handlers
     cargo fmt --all --check
     cargo clippy --workspace --all-targets
     cargo test --doc -p domain

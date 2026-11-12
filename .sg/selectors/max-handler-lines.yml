@@ -1,7 +1,7 @@
 language: Rust
 id: max-handler-lines
 message: "api handler exceeds 20 lines: extract logic into services/helpers"
-severity: error
+severity: hint
 rule:
   kind: function_item
   follows:

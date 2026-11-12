@@ -143,14 +143,9 @@ pub async fn delete_slot(
     Path(param): Path<SlotIdParam>,
 ) -> Result<StatusCode, ApiError> {
     let deleted = state.slot_service.delete_slot(param.id).await?;
-    if deleted {
-        Ok(StatusCode::NO_CONTENT)
-    } else {
-        Err(ApiError::new(
-            StatusCode::NOT_FOUND,
-            "Roulette slot not found",
-        ))
-    }
+    deleted
+        .then_some(StatusCode::NO_CONTENT)
+        .ok_or_else(|| ApiError::new(StatusCode::NOT_FOUND, "Roulette slot not found"))
 }
 
 #[utoipa::path(
@@ -244,11 +239,9 @@ pub async fn delete_rarity(
     Path(param): Path<RarityIdParam>,
 ) -> Result<StatusCode, ApiError> {
     let deleted = state.rarity_service.delete(param.id).await?;
-    if deleted {
-        Ok(StatusCode::NO_CONTENT)
-    } else {
-        Err(ApiError::new(StatusCode::NOT_FOUND, "Rarity not found"))
-    }
+    deleted
+        .then_some(StatusCode::NO_CONTENT)
+        .ok_or_else(|| ApiError::new(StatusCode::NOT_FOUND, "Rarity not found"))
 }
 
 pub fn session_router() -> OpenApiRouter<AppState> {

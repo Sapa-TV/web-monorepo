@@ -1,3 +1,4 @@
+pub mod credentials;
 pub mod event;
 pub mod platform;
 pub mod service;

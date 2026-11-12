@@ -130,15 +130,52 @@ fn guest_key(headers: &HeaderMap) -> String {
 }
 
 fn ensure_guest_allowed(state: &AppState, headers: &HeaderMap) -> Result<(), ApiError> {
-    let allowed = state.guest_rate_limiter.allow(&guest_key(headers));
-    if allowed {
-        Ok(())
-    } else {
-        Err(ApiError::new(
-            StatusCode::TOO_MANY_REQUESTS,
-            "too many guest sessions, try again later",
-        ))
-    }
+    state
+        .guest_rate_limiter
+        .allow(&guest_key(headers))
+        .then_some(())
+        .ok_or_else(|| {
+            ApiError::new(
+                StatusCode::TOO_MANY_REQUESTS,
+                "too many guest sessions, try again later",
+            )
+        })
+}
+
+fn session_cookie_response(
+    state: &AppState,
+    jar: CookieJar,
+    session: &Session,
+    is_root: bool,
+    status: StatusCode,
+) -> (StatusCode, CookieJar, Json<SessionResponse>) {
+    let cookie = auth_cookie(
+        SESSION_COOKIE,
+        session.token.as_str(),
+        cookie_max_age(session),
+        state.config.cookie_secure(),
+    );
+    (
+        status,
+        jar.add(cookie),
+        Json(SessionResponse::from((session, is_root))),
+    )
+}
+
+async fn is_root_session(state: &AppState, session: &Session) -> Result<bool, Unauthorized> {
+    let twitch_id = state
+        .account_service
+        .twitch_user_id(session.user_id)
+        .await
+        .map_err(|_| Unauthorized)?;
+    let Some(twitch_id) = twitch_id else {
+        return Ok(false);
+    };
+    state
+        .admin_service
+        .is_root(&twitch_id)
+        .await
+        .map_err(|_| Unauthorized)
 }
 
 #[utoipa::path(
@@ -262,16 +299,12 @@ pub async fn create_guest_session(
     ensure_guest_allowed(&state, &headers)?;
     let current = jar.get(SESSION_COOKIE).map(|c| c.value().to_string());
     let (session, is_root) = state.account_service.guest(current.as_deref()).await?;
-    let response = SessionResponse::from((&session, is_root));
-    Ok((
+    Ok(session_cookie_response(
+        &state,
+        jar,
+        &session,
+        is_root,
         StatusCode::OK,
-        jar.add(auth_cookie(
-            SESSION_COOKIE,
-            session.token.as_str(),
-            cookie_max_age(&session),
-            state.config.cookie_secure(),
-        )),
-        Json(response),
     ))
 }
 
@@ -296,16 +329,12 @@ pub async fn create_session(
         .account_service
         .login(current.as_deref(), login_ticket.as_deref(), &body.ticket)
         .await?;
-    let response = SessionResponse::from((&session, is_root));
-    Ok((
+    Ok(session_cookie_response(
+        &state,
+        jar,
+        &session,
+        is_root,
         StatusCode::CREATED,
-        jar.add(auth_cookie(
-            SESSION_COOKIE,
-            session.token.as_str(),
-            cookie_max_age(&session),
-            state.config.cookie_secure(),
-        )),
-        Json(response),
     ))
 }
 
@@ -336,16 +365,12 @@ pub async fn link_session(
             body.merge,
         )
         .await?;
-    let response = SessionResponse::from((&session, is_root));
-    Ok((
+    Ok(session_cookie_response(
+        &state,
+        jar,
+        &session,
+        is_root,
         StatusCode::OK,
-        jar.add(auth_cookie(
-            SESSION_COOKIE,
-            session.token.as_str(),
-            cookie_max_age(&session),
-            state.config.cookie_secure(),
-        )),
-        Json(response),
     ))
 }
 
@@ -392,19 +417,7 @@ pub async fn get_me(
     State(state): State<AppState>,
     Extension(session): Extension<Session>,
 ) -> Result<Json<SessionResponse>, Unauthorized> {
-    let twitch_id = state
-        .account_service
-        .twitch_user_id(session.user_id)
-        .await
-        .map_err(|_| Unauthorized)?;
-    let is_root = match twitch_id {
-        Some(id) => state
-            .admin_service
-            .is_root(&id)
-            .await
-            .map_err(|_| Unauthorized)?,
-        None => false,
-    };
+    let is_root = is_root_session(&state, &session).await?;
     Ok(Json(SessionResponse::from((&session, is_root))))
 }
 

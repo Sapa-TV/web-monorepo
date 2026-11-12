@@ -68,6 +68,12 @@ pub async fn get_push_config(State(state): State<AppState>) -> Json<PushConfigRe
     })
 }
 
+fn user_agent(headers: &HeaderMap) -> Option<&str> {
+    headers
+        .get(header::USER_AGENT)
+        .and_then(|value| value.to_str().ok())
+}
+
 #[utoipa::path(
     post,
     path = "/push/subscriptions",
@@ -84,9 +90,6 @@ pub async fn subscribe(
     headers: HeaderMap,
     Json(body): Json<PushSubscriptionRequest>,
 ) -> Result<(StatusCode, Json<PushSubscriptionResponse>), ApiError> {
-    let user_agent = headers
-        .get(header::USER_AGENT)
-        .and_then(|value| value.to_str().ok());
     let subscription = state
         .push_service
         .subscribe(
@@ -94,7 +97,7 @@ pub async fn subscribe(
             &body.endpoint,
             &body.keys.p256dh,
             &body.keys.auth,
-            user_agent,
+            user_agent(&headers),
         )
         .await?;
     let response = PushSubscriptionResponse {

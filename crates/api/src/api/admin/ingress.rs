@@ -7,6 +7,7 @@ use utoipa::ToSchema;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
 
+use composition::ingress::credentials::IngressPlatform;
 use composition::state::AppState;
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -27,43 +28,6 @@ pub struct IngressPlatformQuery {
     _sealed: (),
 }
 
-#[derive(Debug, Clone, Copy, Default, Deserialize, ToSchema)]
-#[serde(rename_all = "snake_case")]
-#[non_exhaustive]
-pub enum IngressPlatform {
-    #[default]
-    Twitch,
-    VkVideoLive,
-}
-
-impl IngressPlatform {
-    async fn configured(self, state: &AppState) -> bool {
-        let res = match self {
-            IngressPlatform::Twitch => state.admin_auth.is_ingress_credentials_configured().await,
-            IngressPlatform::VkVideoLive => state.vk_admin_auth.is_configured().await,
-        };
-        match res {
-            Ok(configured) => configured,
-            Err(e) => {
-                tracing::warn!("failed to read {:?} credentials status: {e}", self);
-                false
-            }
-        }
-    }
-
-    async fn revoke(self, state: &AppState) -> Result<(), StatusCode> {
-        match self {
-            IngressPlatform::Twitch => {
-                state.admin_auth.revoke_ingress_credentials().await?;
-            }
-            IngressPlatform::VkVideoLive => {
-                state.vk_admin_auth.revoke().await?;
-            }
-        }
-        Ok(())
-    }
-}
-
 #[utoipa::path(
     get,
     path = "/admin/ingress/credentials",
@@ -76,8 +40,10 @@ pub async fn get_ingress_credentials(
     State(state): State<AppState>,
 ) -> Result<Json<IngressCredentialsResponse>, StatusCode> {
     Ok(Json(IngressCredentialsResponse {
-        twitch: IngressPlatform::Twitch.configured(&state).await,
-        vk_video_live: IngressPlatform::VkVideoLive.configured(&state).await,
+        twitch: IngressPlatform::Twitch.credentials_configured(&state).await,
+        vk_video_live: IngressPlatform::VkVideoLive
+            .credentials_configured(&state)
+            .await,
         _sealed: (),
     }))
 }
@@ -97,7 +63,7 @@ pub async fn revoke_ingress_credentials(
     State(state): State<AppState>,
     Query(query): Query<IngressPlatformQuery>,
 ) -> Result<StatusCode, StatusCode> {
-    query.platform.revoke(&state).await?;
+    query.platform.revoke_credentials(&state).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
