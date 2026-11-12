@@ -9,10 +9,6 @@
 			"depends_on": ["model"],
 			"dev_depends_on": ["model", "storage-inmemory"]
 		},
-		"app": {
-			"depends_on": ["model", "domain"],
-			"dev_depends_on": []
-		},
 		"storage-sqlite": {
 			"depends_on": ["model"],
 			"dev_depends_on": ["model"]
@@ -25,7 +21,6 @@
 			"depends_on": [
 				"model",
 				"domain",
-				"app",
 				"storage-sqlite",
 				"storage-inmemory",
 				"vk-video-live"
@@ -33,7 +28,7 @@
 			"dev_depends_on": ["model", "storage-sqlite", "storage-inmemory"]
 		},
 		"api": {
-			"depends_on": ["model", "domain", "app", "composition", "vk-video-live"],
+			"depends_on": ["model", "domain", "composition", "vk-video-live"],
 			"dev_depends_on": [
 				"model",
 				"composition",
