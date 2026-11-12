@@ -202,14 +202,14 @@ pub async fn start_twitch_login(
     path = "/auth/vk",
     tag = "auth",
     responses(
-        (status = 200, description = "VK ID login authorization URL", body = LoginStartResponse),
-        (status = 400, description = "VK ID not configured"),
+        (status = 200, description = "VK Video Live login authorization URL", body = LoginStartResponse),
+        (status = 400, description = "VK Video Live not configured"),
     )
 )]
 pub async fn start_vk_login(
     State(state): State<AppState>,
 ) -> Result<Json<LoginStartResponse>, StatusCode> {
-    let auth_url = state.vk_id_auth.start_login()?;
+    let auth_url = state.vk_admin_auth.start_login()?;
     Ok(Json(LoginStartResponse {
         auth_url,
         _sealed: (),
@@ -255,8 +255,8 @@ pub async fn twitch_login_callback(
     tag = "auth",
     params(TwitchLoginCallbackQuery),
     responses(
-        (status = 200, description = "VK identity exchanged, one-time login ticket issued", body = LoginCallbackResponse),
-        (status = 400, description = "VK ID not configured"),
+        (status = 200, description = "VK Video Live identity exchanged, one-time login ticket issued", body = LoginCallbackResponse),
+        (status = 400, description = "VK Video Live not configured"),
         (status = 403, description = "CSRF state mismatch or flow never started"),
     )
 )]
@@ -267,7 +267,7 @@ pub async fn vk_login_callback(
 ) -> Result<(StatusCode, CookieJar, Json<LoginCallbackResponse>), ApiError> {
     let (exchanged, ticket) = state
         .session_service
-        .exchange_login(&state.vk_id_auth, &query.code, &query.state)
+        .exchange_login(&state.vk_admin_auth, &query.code, &query.state)
         .await?;
     let response = LoginCallbackResponse::from((&exchanged, &ticket));
     Ok((

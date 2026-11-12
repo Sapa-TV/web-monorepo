@@ -4,7 +4,6 @@ use ::config::{Environment, File};
 use serde::Deserialize;
 
 use crate::config::twitch::TwitchConfig;
-use crate::config::vk_id::VkIdConfig;
 use crate::config::vk_video_live::VkVideoLiveConfig;
 use model::config::runtime::{
     QueueRuntimeConfig, RouletteRuntimeConfig, RuntimeConfig, SessionRuntimeConfig,
@@ -22,7 +21,6 @@ pub struct StaticConfig {
     pub cookie_secure: bool,
     pub guest_session_ttl_secs: u64,
     pub twitch: Option<Arc<TwitchConfig>>,
-    pub vk_id: Option<Arc<VkIdConfig>>,
     pub vk_video_live: Option<Arc<VkVideoLiveConfig>>,
     pub google_service_account_key_base64: Option<String>,
     #[serde(deserialize_with = "deserialize_comma_string_list")]
@@ -46,7 +44,6 @@ impl Default for StaticConfig {
             cookie_secure: true,
             guest_session_ttl_secs: session::GUEST_TTL_SECS,
             twitch: None,
-            vk_id: None,
             vk_video_live: None,
             google_service_account_key_base64: None,
             admin_twitch_ids: None,
@@ -78,7 +75,6 @@ impl StaticConfig {
             cookie_secure,
             guest_session_ttl_secs: session::GUEST_TTL_SECS,
             twitch,
-            vk_id: None,
             vk_video_live,
             google_service_account_key_base64,
             admin_twitch_ids,
@@ -122,7 +118,6 @@ impl StaticConfig {
             cookie_secure: raw.cookie_secure,
             guest_session_ttl_secs: raw.guest_session_ttl_secs,
             twitch: raw.twitch,
-            vk_id: raw.vk_id,
             vk_video_live: raw.vk_video_live,
             google_service_account_key_base64: raw.google_service_account_key_base64,
             admin_twitch_ids: raw.admin_twitch_ids,
@@ -162,7 +157,6 @@ struct RawConfig {
     #[serde(deserialize_with = "deserialize_comma_string_list")]
     cors_origins: Option<Vec<String>>,
     twitch: Option<Arc<TwitchConfig>>,
-    vk_id: Option<Arc<VkIdConfig>>,
     vk_video_live: Option<Arc<VkVideoLiveConfig>>,
     session_ttl_secs: u64,
     guest_session_ttl_secs: u64,
@@ -195,7 +189,6 @@ impl Default for RawConfig {
             port: static_cfg.port,
             cors_origins: static_cfg.cors_origins,
             twitch: static_cfg.twitch,
-            vk_id: static_cfg.vk_id,
             vk_video_live: static_cfg.vk_video_live,
             cookie_secure: static_cfg.cookie_secure,
             google_service_account_key_base64: None,

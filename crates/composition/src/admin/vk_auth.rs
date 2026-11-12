@@ -1,3 +1,4 @@
+use std::future::Future;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -9,6 +10,7 @@ use crate::admin::csrf::CsrfStore;
 use crate::config::VkVideoLiveConfig;
 use crate::ingress::platform::{ConnectedIdentity, PlatformAuth};
 use crate::ingress::vk_video_live_auth::{VkTransport, VkVideoLiveAuthService};
+use domain::session::exchange::{ExchangedToken, LoginExchange};
 use model::platform::PlatformCredentialRepository;
 
 pub struct VkVideoLiveAdminAuthService<R, T = VkTransport>
@@ -18,6 +20,7 @@ where
 {
     config: Option<Arc<VkVideoLiveConfig>>,
     csrf: CsrfStore,
+    login_csrf: CsrfStore,
     auth: Option<Arc<VkVideoLiveAuthService<R, T>>>,
 }
 
@@ -33,6 +36,7 @@ where
         Self {
             config,
             csrf: CsrfStore::new(),
+            login_csrf: CsrfStore::new(),
             auth,
         }
     }
@@ -43,6 +47,16 @@ where
         let state = self.csrf.issue(Duration::from_secs(config.csrf_ttl_secs));
         let oauth = OAuthClient::new(config.client_id.clone(), config.client_secret.clone());
         Ok(oauth.authorize_url(&config.credentials_redirect_uri, INGRESS_SCOPES, &state))
+    }
+
+    pub fn start_login(&self) -> Result<String, AdminAuthError> {
+        let config = self.config.as_ref().ok_or(AdminAuthError::NotConfigured)?;
+        self.login_csrf.prune();
+        let state = self
+            .login_csrf
+            .issue(Duration::from_secs(config.csrf_ttl_secs));
+        let oauth = OAuthClient::new(config.client_id.clone(), config.client_secret.clone());
+        Ok(oauth.authorize_url(&config.redirect_uri, INGRESS_SCOPES, &state))
     }
 
     pub async fn complete(
@@ -64,6 +78,21 @@ where
         })
     }
 
+    pub async fn complete_login(&self, code: &str, state: &str) -> Result<ExchangedToken, String> {
+        let auth = self
+            .auth
+            .as_ref()
+            .ok_or_else(|| AdminAuthError::NotConfigured.to_string())?;
+        if !self.login_csrf.consume(state) {
+            tracing::warn!("vk login csrf mismatch or flow never started (state consumed/expired)");
+            return Err(AdminAuthError::CsrfMismatch.to_string());
+        }
+        auth.login_identity(code).await.map_err(|e| {
+            tracing::error!("vk login exchange failed: {e}");
+            AdminAuthError::Exchange.to_string()
+        })
+    }
+
     pub async fn is_configured(&self) -> Result<bool, AdminAuthError> {
         let auth = self.auth.as_ref().ok_or(AdminAuthError::NotConfigured)?;
         auth.is_configured()
@@ -74,6 +103,20 @@ where
     pub async fn revoke(&self) -> Result<(), AdminAuthError> {
         let auth = self.auth.as_ref().ok_or(AdminAuthError::NotConfigured)?;
         auth.revoke().await.map_err(|_| AdminAuthError::Persist)
+    }
+}
+
+impl<R, T> LoginExchange for VkVideoLiveAdminAuthService<R, T>
+where
+    R: PlatformCredentialRepository,
+    T: Transport,
+{
+    fn complete_login(
+        &self,
+        code: &str,
+        auth_state: &str,
+    ) -> impl Future<Output = Result<ExchangedToken, String>> + Send {
+        VkVideoLiveAdminAuthService::complete_login(self, code, auth_state)
     }
 }
 

@@ -6,6 +6,7 @@ use vk_video_live::transport::Transport;
 use crate::config::vk_video_live::VkVideoLiveConfig;
 use crate::ingress::vk_video_live_auth::VkVideoLiveAuthService;
 use crate::platform::PlatformCredentialService;
+use model::platform::PlatformId;
 use storage_inmemory::inmemory_platform_credential::InMemoryPlatformCredentialRepository;
 
 use super::*;
@@ -126,6 +127,49 @@ async fn complete_exchanges_connects_and_marks_configured() {
     assert_eq!(identity.user_name, "tester");
     assert!(svc.is_configured().await.unwrap());
     assert_eq!(svc.csrf.len(), 0);
+}
+
+#[test]
+fn login_start_uses_login_redirect_uri() {
+    let svc = service(Some(config()), FakeTransport::new(vec![]));
+    let url = svc.start_login().expect("start_login");
+    assert!(
+        url.starts_with("https://auth.live.vkvideo.ru/app/oauth2/authorize"),
+        "unexpected url: {url}"
+    );
+    assert!(url.contains("redirect_uri=https%3A%2F%2Flocalhost%2Flogin-callback%2Fvk-video-live"));
+    assert_eq!(svc.login_csrf.len(), 1);
+    assert_eq!(svc.csrf.len(), 0);
+}
+
+#[tokio::test]
+async fn complete_login_rejects_unknown_state() {
+    let svc = service(Some(config()), FakeTransport::new(vec![]));
+    assert!(svc.complete_login("code", "unknown-state").await.is_err());
+}
+
+#[tokio::test]
+async fn complete_login_returns_vk_video_live_identity() {
+    let svc = service(
+        Some(config()),
+        FakeTransport::new(vec![
+            Ok(TOKEN_JSON.to_string()),
+            Ok(CURRENT_USER_JSON.to_string()),
+            Ok(CHANNEL_JSON.to_string()),
+        ]),
+    );
+    let url = svc.start_login().expect("start_login");
+    let state = url
+        .split("state=")
+        .nth(1)
+        .expect("state in url")
+        .to_string();
+
+    let token = svc.complete_login("the-code", &state).await.unwrap();
+    assert_eq!(token.platform_id, PlatformId::VK_VIDEO_LIVE);
+    assert_eq!(token.user_id, "555");
+    assert_eq!(token.user_name.as_deref(), Some("tester"));
+    assert_eq!(svc.login_csrf.len(), 0);
 }
 
 #[tokio::test]

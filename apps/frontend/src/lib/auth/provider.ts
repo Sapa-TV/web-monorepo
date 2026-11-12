@@ -21,7 +21,7 @@ export type Provider = (typeof Provider)[keyof typeof Provider];
 export const PROVIDERS: Provider[] = [Provider.Twitch, Provider.Vk];
 
 export function providerLabel(provider: Provider): string {
-	return provider === Provider.Vk ? "VK" : "Twitch";
+	return provider === Provider.Vk ? "VK Видео Live" : "Twitch";
 }
 
 export type FinishResult =

@@ -13,6 +13,7 @@ use crate::config::VkVideoLiveConfig;
 use crate::ingress::platform::{ConnectedIdentity, PlatformAuth};
 use crate::platform::PlatformCredentialService;
 use domain::error::ingress::PlatformError;
+use domain::session::exchange::ExchangedToken;
 use model::platform::{PlatformCredentialRepository, PlatformId};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -50,10 +51,16 @@ impl VkCreds {
     }
 }
 
+struct ChannelIdentity {
+    owner_id: u64,
+    owner_nick: String,
+    channel_id: u64,
+    channel_url: String,
+}
+
 pub struct VkTransport {
     http: reqwest::Client,
 }
-
 impl VkTransport {
     pub fn new() -> Self {
         Self {
@@ -268,8 +275,33 @@ where
         Ok(creds)
     }
 
+    pub async fn login_identity(&self, code: &str) -> Result<ExchangedToken, PlatformError> {
+        let token = self
+            .oauth
+            .exchange_code(&self.transport, code, &self.config.redirect_uri)
+            .await
+            .map_err(map_vk)?;
+        let identity = self.resolve_channel(&token.access_token).await?;
+        Ok(ExchangedToken::new(
+            PlatformId::VK_VIDEO_LIVE,
+            identity.owner_id.to_string(),
+            Some(identity.owner_nick),
+        ))
+    }
+
     async fn resolve_creds(&self, token: TokenResponse) -> Result<VkCreds, PlatformError> {
-        let bearer = format!("Bearer {}", token.access_token);
+        let identity = self.resolve_channel(&token.access_token).await?;
+        Ok(VkCreds::from_token(
+            token,
+            identity.owner_id,
+            &identity.owner_nick,
+            identity.channel_id,
+            &identity.channel_url,
+        ))
+    }
+
+    async fn resolve_channel(&self, access_token: &str) -> Result<ChannelIdentity, PlatformError> {
+        let bearer = format!("Bearer {access_token}");
         let user = api::current_user(&self.transport, &bearer)
             .await
             .map_err(map_vk)?;
@@ -282,16 +314,15 @@ where
             .await
             .map_err(map_vk)?;
         let (owner_id, owner_nick) = match channel.data.owner.as_ref() {
-            Some(owner) => (owner.id, owner.nick.as_str()),
-            None => (channel.data.channel.id, channel.data.channel.nick.as_str()),
+            Some(owner) => (owner.id, owner.nick.clone()),
+            None => (channel.data.channel.id, channel.data.channel.nick.clone()),
         };
-        Ok(VkCreds::from_token(
-            token,
+        Ok(ChannelIdentity {
             owner_id,
             owner_nick,
-            channel.data.channel.id,
-            &channel.data.channel.url,
-        ))
+            channel_id: channel.data.channel.id,
+            channel_url: channel.data.channel.url,
+        })
     }
 
     pub async fn access_token(&self) -> Result<String, PlatformError> {

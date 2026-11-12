@@ -1398,7 +1398,7 @@
         "operationId": "start_vk_login",
         "responses": {
           "200": {
-            "description": "VK ID login authorization URL",
+            "description": "VK Video Live login authorization URL",
             "content": {
               "application/json": {
                 "schema": {
@@ -1408,7 +1408,7 @@
             }
           },
           "400": {
-            "description": "VK ID not configured"
+            "description": "VK Video Live not configured"
           }
         }
       }
@@ -1439,7 +1439,7 @@
         ],
         "responses": {
           "200": {
-            "description": "VK identity exchanged, one-time login ticket issued",
+            "description": "VK Video Live identity exchanged, one-time login ticket issued",
             "content": {
               "application/json": {
                 "schema": {
@@ -1449,7 +1449,7 @@
             }
           },
           "400": {
-            "description": "VK ID not configured"
+            "description": "VK Video Live not configured"
           },
           "403": {
             "description": "CSRF state mismatch or flow never started"
