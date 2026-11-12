@@ -1,18 +1,12 @@
 <script lang="ts">
 	import type { Snippet } from "svelte";
-	import { onMount } from "svelte";
 	import SiteNav from "#lib/components/SiteNav.svelte";
-	import { ensureServiceWorker } from "#lib/pwa/register";
 
 	interface Props {
 		children: Snippet;
 	}
 
 	let { children }: Props = $props();
-
-	onMount(() => {
-		void ensureServiceWorker();
-	});
 </script>
 
 <div class="paper">
