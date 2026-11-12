@@ -13,15 +13,15 @@ import {
 
 export const Provider = {
 	Twitch: "twitch",
-	Vk: "vk",
+	VkVideoLive: "vk_video_live",
 } as const;
 
 export type Provider = (typeof Provider)[keyof typeof Provider];
 
-export const PROVIDERS: Provider[] = [Provider.Twitch, Provider.Vk];
+export const PROVIDERS: Provider[] = [Provider.Twitch, Provider.VkVideoLive];
 
 export function providerLabel(provider: Provider): string {
-	return provider === Provider.Vk ? "VK Видео Live" : "Twitch";
+	return provider === Provider.VkVideoLive ? "VK Видео Live" : "Twitch";
 }
 
 export type FinishResult =
@@ -32,8 +32,8 @@ export async function startProvider(
 	provider: Provider,
 ): Promise<Result<string, ApiError>> {
 	const res =
-		provider === Provider.Vk
-			? await api.startVkLogin()
+		provider === Provider.VkVideoLive
+			? await api.startVkVideoLiveLogin()
 			: await api.startTwitchLogin();
 	return res.map((r) => r.auth_url).mapErr(normalizeApiError);
 }
@@ -54,8 +54,8 @@ export async function finishProvider(
 	state: string,
 ): Promise<Result<FinishResult, ApiError>> {
 	const cb =
-		provider === Provider.Vk
-			? await api.vkLoginCallback({ code, state })
+		provider === Provider.VkVideoLive
+			? await api.vkVideoLiveLoginCallback({ code, state })
 			: await api.twitchLoginCallback({ code, state });
 	if (cb.isErr()) return errAsync(normalizeApiError(cb.error));
 

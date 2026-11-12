@@ -23,14 +23,12 @@ impl PlatformId {
     pub const TWITCH: PlatformId = PlatformId::new(1);
     pub const YOUTUBE: PlatformId = PlatformId::new(2);
     pub const VK_VIDEO_LIVE: PlatformId = PlatformId::new(3);
-    pub const VK: PlatformId = PlatformId::new(4);
 
     pub const fn name(self) -> &'static str {
         match self.0 {
             1 => "twitch",
             2 => "youtube",
             3 => "vk_video_live",
-            4 => "vk",
             _ => "unknown",
         }
     }

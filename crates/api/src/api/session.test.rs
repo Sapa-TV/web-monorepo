@@ -168,7 +168,7 @@ async fn link_adds_new_provider_to_current_account() {
     let cookie = session_cookie(&state, "alice").await;
     let ticket = state
         .session_service
-        .create_login_ticket(PlatformId::VK, "vk-alice", Some("Alice VK"))
+        .create_login_ticket(PlatformId::VK_VIDEO_LIVE, "vk-alice", Some("Alice VK"))
         .await
         .unwrap()
         .ticket
@@ -193,7 +193,7 @@ async fn link_adds_new_provider_to_current_account() {
     assert_eq!(response.status(), StatusCode::OK);
     let body: Value =
         serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap()).unwrap();
-    assert_eq!(body["platform"], "vk");
+    assert_eq!(body["platform"], "vk_video_live");
     assert_eq!(body["platform_user_id"], "vk-alice");
 
     let response = app
@@ -217,7 +217,7 @@ async fn link_adds_new_provider_to_current_account() {
         .map(|link| link["platform"].as_str().unwrap())
         .collect();
     assert!(platforms.contains(&"twitch"));
-    assert!(platforms.contains(&"vk"));
+    assert!(platforms.contains(&"vk_video_live"));
 }
 
 #[tokio::test]
@@ -227,12 +227,12 @@ async fn link_conflict_requires_merge_and_keeps_current_account() {
     let cookie = session_cookie(&state, "alice").await;
     state
         .user_service
-        .ensure_user_by_platform("vk", "vk-bob", "Bob")
+        .ensure_user_by_platform("vk_video_live", "vk-bob", "Bob")
         .await
         .unwrap();
     let ticket = state
         .session_service
-        .create_login_ticket(PlatformId::VK, "vk-bob", Some("Bob"))
+        .create_login_ticket(PlatformId::VK_VIDEO_LIVE, "vk-bob", Some("Bob"))
         .await
         .unwrap()
         .ticket
@@ -279,7 +279,7 @@ async fn link_conflict_requires_merge_and_keeps_current_account() {
         .map(|link| link["platform"].as_str().unwrap())
         .collect();
     assert!(platforms.contains(&"twitch"));
-    assert!(platforms.contains(&"vk"));
+    assert!(platforms.contains(&"vk_video_live"));
 }
 
 #[tokio::test]

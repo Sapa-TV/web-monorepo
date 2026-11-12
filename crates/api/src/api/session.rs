@@ -199,14 +199,14 @@ pub async fn start_twitch_login(
 
 #[utoipa::path(
     get,
-    path = "/auth/vk",
+    path = "/auth/vk-video-live",
     tag = "auth",
     responses(
         (status = 200, description = "VK Video Live login authorization URL", body = LoginStartResponse),
         (status = 400, description = "VK Video Live not configured"),
     )
 )]
-pub async fn start_vk_login(
+pub async fn start_vk_video_live_login(
     State(state): State<AppState>,
 ) -> Result<Json<LoginStartResponse>, StatusCode> {
     let auth_url = state.vk_admin_auth.start_login()?;
@@ -251,7 +251,7 @@ pub async fn twitch_login_callback(
 
 #[utoipa::path(
     get,
-    path = "/auth/vk/callback",
+    path = "/auth/vk-video-live/callback",
     tag = "auth",
     params(TwitchLoginCallbackQuery),
     responses(
@@ -260,7 +260,7 @@ pub async fn twitch_login_callback(
         (status = 403, description = "CSRF state mismatch or flow never started"),
     )
 )]
-pub async fn vk_login_callback(
+pub async fn vk_video_live_login_callback(
     State(state): State<AppState>,
     jar: CookieJar,
     Query(query): Query<TwitchLoginCallbackQuery>,
@@ -464,8 +464,8 @@ pub fn public_router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
         .routes(routes!(start_twitch_login))
         .routes(routes!(twitch_login_callback))
-        .routes(routes!(start_vk_login))
-        .routes(routes!(vk_login_callback))
+        .routes(routes!(start_vk_video_live_login))
+        .routes(routes!(vk_video_live_login_callback))
         .routes(routes!(create_session))
         .routes(routes!(create_guest_session))
 }

@@ -14,7 +14,6 @@ impl InMemoryPlatformRepository {
             Platform::from_id(PlatformId::TWITCH),
             Platform::from_id(PlatformId::YOUTUBE),
             Platform::from_id(PlatformId::VK_VIDEO_LIVE),
-            Platform::from_id(PlatformId::VK),
         ];
         Self {
             platforms: Mutex::new(platforms.to_vec()),

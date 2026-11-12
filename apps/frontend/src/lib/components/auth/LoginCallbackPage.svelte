@@ -62,7 +62,7 @@
 	async function afterLogin() {
 		const returnToAccount = sessionStorage.getItem("auth_return") === "account";
 		sessionStorage.removeItem("auth_return");
-		if (provider === "vk" || returnToAccount) {
+		if (provider === "vk_video_live" || returnToAccount) {
 			await go("account");
 			return;
 		}

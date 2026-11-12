@@ -1390,12 +1390,12 @@
         }
       }
     },
-    "/api/auth/vk": {
+    "/api/auth/vk-video-live": {
       "get": {
         "tags": [
           "auth"
         ],
-        "operationId": "start_vk_login",
+        "operationId": "start_vk_video_live_login",
         "responses": {
           "200": {
             "description": "VK Video Live login authorization URL",
@@ -1413,12 +1413,12 @@
         }
       }
     },
-    "/api/auth/vk/callback": {
+    "/api/auth/vk-video-live/callback": {
       "get": {
         "tags": [
           "auth"
         ],
-        "operationId": "vk_login_callback",
+        "operationId": "vk_video_live_login_callback",
         "parameters": [
           {
             "name": "code",

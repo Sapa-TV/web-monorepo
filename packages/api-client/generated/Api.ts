@@ -820,12 +820,12 @@ export class Api<
    * No description
    *
    * @tags auth
-   * @name StartVkLogin
-   * @request GET:/api/auth/vk
+   * @name StartVkVideoLiveLogin
+   * @request GET:/api/auth/vk-video-live
    */
-  startVkLogin = (params: RequestParams = {}) =>
+  startVkVideoLiveLogin = (params: RequestParams = {}) =>
     this.request<LoginStartResponse, void>({
-      path: `/api/auth/vk`,
+      path: `/api/auth/vk-video-live`,
       method: "GET",
       format: "json",
       ...params,
@@ -834,10 +834,10 @@ export class Api<
    * No description
    *
    * @tags auth
-   * @name VkLoginCallback
-   * @request GET:/api/auth/vk/callback
+   * @name VkVideoLiveLoginCallback
+   * @request GET:/api/auth/vk-video-live/callback
    */
-  vkLoginCallback = (
+  vkVideoLiveLoginCallback = (
     query: {
       code: string;
       state: string;
@@ -845,7 +845,7 @@ export class Api<
     params: RequestParams = {},
   ) =>
     this.request<LoginCallbackResponse, void>({
-      path: `/api/auth/vk/callback`,
+      path: `/api/auth/vk-video-live/callback`,
       method: "GET",
       query: query,
       format: "json",

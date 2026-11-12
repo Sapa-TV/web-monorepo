@@ -13,12 +13,11 @@ async fn load_all_returns_seeded_platforms() {
 
     let all = repo.load_all().await.unwrap();
 
-    assert_eq!(all.len(), 4);
+    assert_eq!(all.len(), 3);
     assert_eq!(all[0].id, PlatformId::TWITCH);
     assert_eq!(all[0].as_name(), "twitch");
     assert_eq!(all[1].id, PlatformId::YOUTUBE);
     assert_eq!(all[2].id, PlatformId::VK_VIDEO_LIVE);
-    assert_eq!(all[3].id, PlatformId::VK);
 }
 
 #[tokio::test]
