@@ -17,7 +17,6 @@ build/
 packages/api-client/generated/
 packages/ws-client/src/generated/
 crates/storage-sqlite/.sqlx/
-apps/backend/generated/
 
 # Не код: CI, инфраструктура, служебные YAML
 .github/
