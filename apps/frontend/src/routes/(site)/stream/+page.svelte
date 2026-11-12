@@ -114,7 +114,7 @@
 	.page {
 		min-height: 0;
 		display: flex;
-		height: calc(100vh - var(--site-nav-h));
+		height: calc(100dvh - var(--site-nav-h));
 		overflow: hidden;
 	}
 
@@ -260,12 +260,11 @@
 
 	@media (max-width: 768px) {
 		.page {
-			height: auto;
-			overflow: visible;
 			flex-direction: column;
 		}
 
 		.tuner {
+			flex: none;
 			height: auto;
 		}
 
@@ -276,8 +275,10 @@
 		}
 
 		.chat-sidebar {
+			flex: 1;
 			width: 100%;
-			height: clamp(360px, 45vh, 520px);
+			height: auto;
+			min-height: 0;
 			border-left: none;
 			border-top: 1px solid var(--outline-variant);
 		}

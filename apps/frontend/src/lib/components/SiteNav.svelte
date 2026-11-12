@@ -38,7 +38,7 @@
 	});
 
 	onMount(() => {
-		const query = window.matchMedia("(min-width: 641px)");
+		const query = window.matchMedia("(min-width: 761px)");
 		const close = () => {
 			menuOpen = false;
 		};
@@ -47,11 +47,15 @@
 	});
 
 	function handleWindowClick(event: MouseEvent) {
-		if (!menuOpen) return;
-		const target = event.target;
-		if (!(target instanceof Node)) return;
-		if (navEl?.querySelector(".site-menu")?.contains(target)) return;
-		if (navEl?.querySelector(".menu-toggle")?.contains(target)) return;
+		const path = event.composedPath();
+		const toggle = navEl?.querySelector(".menu-toggle");
+		const menu = navEl?.querySelector(".site-menu");
+
+		if (toggle && path.includes(toggle)) {
+			menuOpen = !menuOpen;
+			return;
+		}
+		if (menu && path.includes(menu)) return;
 		menuOpen = false;
 	}
 
@@ -103,7 +107,6 @@
 				aria-label="Меню"
 				aria-expanded={menuOpen}
 				aria-controls="site-menu"
-				onclick={() => (menuOpen = !menuOpen)}
 			>
 				{#if menuOpen}
 					<IconX aria-hidden="true" />
@@ -128,7 +131,7 @@
 	.site-nav {
 		position: sticky;
 		top: 0;
-		z-index: 50;
+		z-index: 1000;
 		height: var(--site-nav-h);
 		background: var(--surface-bright);
 		border-bottom: 1px solid var(--outline-variant);
@@ -237,6 +240,7 @@
 	.nav-link--icon {
 		justify-content: center;
 		width: 2.25rem;
+		height: 2.25rem;
 		padding: 0;
 	}
 
@@ -279,18 +283,23 @@
 		display: none;
 	}
 
-	@media (max-width: 640px) {
+	@media (max-width: 900px) {
+		.build-sha {
+			display: none;
+		}
+	}
+
+	@media (max-width: 760px) {
 		.site-nav-inner {
-			padding: 0 0.875rem;
-			gap: 0.5rem;
+			padding: 0 0.625rem;
+			gap: 0.375rem;
 		}
 
 		.nav-actions {
 			gap: 0.375rem;
 		}
 
-		.build-sha,
-		.nav-link,
+		.nav-link:not(.nav-link--icon),
 		.nav-actions :global(.donate-link) {
 			display: none;
 		}
