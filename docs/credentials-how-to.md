@@ -64,7 +64,6 @@ twitch user id). Сидятся при старте как обычные адм
 | ----------------------------------------- | ---------------------------------------------- |
 | `VK_VIDEO_LIVE__CLIENT_ID`                | ID приложения                                  |
 | `VK_VIDEO_LIVE__CLIENT_SECRET`            | Защищённый ключ                                |
-| `VK_VIDEO_LIVE__CHANNEL_URL`              | короткое имя канала VK Video Live              |
 | `VK_VIDEO_LIVE__REDIRECT_URI`             | `https://<домен>/login-callback/vk-video-live` |
 | `VK_VIDEO_LIVE__CREDENTIALS_REDIRECT_URI` | `https://<домен>/creds-callback/vk-video-live` |
 | `VK_VIDEO_LIVE__CSRF_TTL_SECS`            | напр. 600                                      |
