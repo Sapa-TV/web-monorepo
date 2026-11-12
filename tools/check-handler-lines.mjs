@@ -1,19 +1,23 @@
 import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
-import { dirname, join } from "node:path";
 
 const THRESHOLD = 20;
 
 const require = createRequire(import.meta.url);
-const cliPkg = dirname(require.resolve("@ast-grep/cli/package.json"));
-const astGrep = join(cliPkg, "ast-grep");
+const { resolveBinaryPath } = require("@ast-grep/cli/postinstall");
+const astGrep = resolveBinaryPath();
+if (!astGrep) {
+	console.error(
+		"ast-grep native binary not found; reinstall dependencies without --no-optional",
+	);
+	process.exit(1);
+}
 
 let json;
 try {
 	json = execFileSync(
-		process.execPath,
+		astGrep,
 		[
-			astGrep,
 			"scan",
 			"--json",
 			"-r",
@@ -24,6 +28,10 @@ try {
 		{ encoding: "utf8", maxBuffer: 64 * 1024 * 1024 },
 	);
 } catch (e) {
+	if (!e.stdout?.trim()) {
+		console.error(e.stderr?.trim() || e.message);
+		process.exit(1);
+	}
 	json = e.stdout;
 }
 
